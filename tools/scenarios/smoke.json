@@ -1,0 +1,6 @@
+[
+  { "wait": 1500 },
+  { "eval": "performance.getEntriesByType('resource').map(r => r.name).filter(n => !n.startsWith(location.origin))", "label": "requisições externas" },
+  { "eval": "!!document.querySelector('#app canvas')", "label": "canvas presente" },
+  { "shot": "smoke" }
+]
