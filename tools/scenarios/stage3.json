@@ -8,10 +8,10 @@
   { "wait": 2500 },
   { "shot": "s3-02-hip-bolt-flash" },
   { "eval": "(() => { delete game.weapon.updateEffects; return 'clarão liberado'; })()" },
-  { "eval": "(() => { __step(40); game.input.buttons |= 4; __step(12); const w = game.weapon; return { state: w.state, aim: w.aim, fov: +game.engine.camera.fov.toFixed(1), scopeVisivel: !document.querySelector('.hud-scope').hidden, armaVisivel: w.model.group.visible, lookScale: game.player.lookScale }; })()", "label": "mirando" },
+  { "eval": "(() => { __step(40); game.input.buttonsPressed |= 4; __step(12); const w = game.weapon; return { state: w.state, aim: w.aim, fov: +game.engine.camera.fov.toFixed(1), scopeVisivel: !document.querySelector('.hud-scope').hidden, armaVisivel: w.model.group.visible, lookScale: game.player.lookScale }; })()", "label": "mirando" },
   { "wait": 1500 },
   { "shot": "s3-03-scoped" },
-  { "eval": "(() => { __fire(); __step(40); game.input.buttons &= ~4; __step(12); const w = game.weapon; return { mag: w.magazine, aim: w.aim, fov: +game.engine.camera.fov.toFixed(1), scopeVisivel: !document.querySelector('.hud-scope').hidden }; })()", "label": "tiro na luneta + sair da mira" },
+  { "eval": "(() => { __fire(); __step(40); game.input.buttonsPressed |= 4; __step(12); const w = game.weapon; return { mag: w.magazine, aim: w.aim, fov: +game.engine.camera.fov.toFixed(1), scopeVisivel: !document.querySelector('.hud-scope').hidden }; })()", "label": "tiro na luneta + sair da mira" },
   { "eval": "(() => { for (let i = 0; i < 3; i++) { __fire(); if (i < 2) __step(40); } const w = game.weapon; return { mag: w.magazine, state: w.state, recarregandoVisivel: !document.querySelector('.hud-reload').hidden }; })()", "label": "esvaziar o carregador" },
   { "eval": "(() => { const fired = window.__shots.length; game.input.buttonsPressed |= 1; __step(1); return { disparouDuranteRecarga: window.__shots.length > fired }; })()", "label": "tentar atirar recarregando" },
   { "eval": "__step(15); 'meio da recarga'" },
@@ -21,6 +21,6 @@
   { "eval": "(() => { game.input.down.add('KeyW'); game.input.down.add('ShiftLeft'); __step(20); const fired = window.__shots.length; game.input.buttonsPressed |= 1; __step(1); return { correndo: game.player.running, disparouCorrendo: window.__shots.length > fired }; })()", "label": "correndo" },
   { "wait": 1500 },
   { "shot": "s3-05-sprint" },
-  { "eval": "(() => { game.input.down.clear(); game.input.buttons |= 4; game.input.down.add('ShiftLeft'); game.input.down.add('KeyW'); __step(12); const r = { correndoMirando: game.player.running, velocidade: +Math.hypot(game.player.velocity.x, game.player.velocity.z).toFixed(2) }; game.input.down.clear(); game.input.buttons = 0; __step(12); return r; })()", "label": "mirar anda devagar e não corre" },
+  { "eval": "(() => { game.input.down.clear(); game.input.buttonsPressed |= 4; game.input.down.add('ShiftLeft'); game.input.down.add('KeyW'); __step(12); const r = { correndoMirando: game.player.running, velocidade: +Math.hypot(game.player.velocity.x, game.player.velocity.z).toFixed(2) }; game.input.down.clear(); game.input.buttonsPressed |= 4; __step(12); return r; })()", "label": "mirar anda devagar e não corre" },
   { "eval": "window.__shots", "label": "desvio de cada tiro em graus (quadril, luneta, quadril...)" }
 ]

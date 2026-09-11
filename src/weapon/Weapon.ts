@@ -46,6 +46,8 @@ export class Weapon {
   state: State = 'ready';
   /** Progresso da mira: 0 = quadril, 1 = luneta no olho. */
   aim = 0;
+  /** Mira ligada (o botão direito alterna). */
+  aimToggled = false;
   /** Chamado a cada disparo com a origem e a direção exata do tiro (já com dispersão). */
   onFire?: (origin: THREE.Vector3, dir: THREE.Vector3) => void;
 
@@ -107,8 +109,12 @@ export class Weapon {
       this.setState('ready');
     }
 
-    // Mira: segurar o botão direito. Recarregar tira da mira; mirar impede correr.
-    const wantAim = this.input.isMouseDown(2) && this.state !== 'reloading';
+    // Mira: o botão direito liga/desliga. Shift (para correr) e a recarga desligam; mirar impede correr.
+    if (this.input.wasMousePressed(2) && this.state !== 'reloading') this.aimToggled = !this.aimToggled;
+    if (this.input.wasPressed('ShiftLeft') || this.input.wasPressed('ShiftRight') || this.state === 'reloading') {
+      this.aimToggled = false;
+    }
+    const wantAim = this.aimToggled;
     P.aiming = wantAim;
     this.aim = approach(this.aim, wantAim ? 1 : 0, dt / W.aimTime);
     const aimT = smoothstep(0, 1, this.aim);
@@ -142,6 +148,11 @@ export class Weapon {
 
     this.updatePose(dt, aimT);
     this.updateEffects(dt);
+  }
+
+  /** Desliga a mira (ex.: ao soltar o mouse com Esc). */
+  cancelAim(): void {
+    this.aimToggled = false;
   }
 
   private setState(state: State): void {

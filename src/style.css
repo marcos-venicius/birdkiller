@@ -47,6 +47,21 @@ body {
   opacity: 0.6;
 }
 
+.hud-score .kills {
+  margin-left: 16px;
+}
+
+.hud-kill {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 64px);
+  transform: translateX(-50%);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  opacity: 0;
+}
+
 .hud-ammo {
   position: absolute;
   right: 22px;

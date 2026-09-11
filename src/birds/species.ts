@@ -46,6 +46,8 @@ export interface Species {
   wary: number;
   /** Só pousa em árvores altas. */
   tallPerch: boolean;
+  /** Pontos base por abate (mais 1 ponto a cada 10 m de distância). */
+  points: number;
 }
 
 export const SPECIES: Species[] = [
@@ -82,6 +84,7 @@ export const SPECIES: Species[] = [
     max: 6,
     wary: 1,
     tallPerch: false,
+    points: 10,
   },
   {
     id: 'sabia',
@@ -116,6 +119,7 @@ export const SPECIES: Species[] = [
     max: 4,
     wary: 1.1,
     tallPerch: false,
+    points: 15,
   },
   {
     id: 'pisco',
@@ -150,6 +154,7 @@ export const SPECIES: Species[] = [
     max: 4,
     wary: 0.9,
     tallPerch: false,
+    points: 12,
   },
   {
     id: 'gralha',
@@ -184,6 +189,7 @@ export const SPECIES: Species[] = [
     max: 4,
     wary: 1.3,
     tallPerch: false,
+    points: 20,
   },
   {
     id: 'rolinha',
@@ -218,6 +224,7 @@ export const SPECIES: Species[] = [
     max: 4,
     wary: 1.2,
     tallPerch: false,
+    points: 12,
   },
   {
     id: 'gaviao',
@@ -252,5 +259,6 @@ export const SPECIES: Species[] = [
     max: 1,
     wary: 1.6,
     tallPerch: true,
+    points: 40,
   },
 ];

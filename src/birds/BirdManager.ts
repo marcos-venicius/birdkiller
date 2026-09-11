@@ -37,6 +37,8 @@ export class BirdManager implements BirdWorld {
   private readonly occupied = new Set<string>();
   private spawnTimer = 1;
   private flocks = 0;
+  /** Corpos em ordem de abate (o mais antigo sai primeiro quando passa do limite). */
+  private readonly corpses: Bird[] = [];
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -64,8 +66,12 @@ export class BirdManager implements BirdWorld {
       const b = this.active[i];
       b.update(dt, this);
       const hd = Math.hypot(b.pos.x - pp.x, b.pos.z - pp.z);
-      if (hd > C.despawnDistance) {
+      if (b.removable || hd > C.despawnDistance) {
         this.release(i);
+        continue;
+      }
+      if (!b.alive) {
+        if (b.corpseAge > CONFIG.combat.corpseLifetime) b.sink();
         continue;
       }
       if ((b.state === 'perched' || b.state === 'landing') && Math.hypot(hd, b.pos.y - _threat.y) < fear * b.species.wary) {
@@ -76,8 +82,33 @@ export class BirdManager implements BirdWorld {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = rand(C.spawnInterval[0], C.spawnInterval[1]);
-      if (this.active.length < C.maxActive) this.trySpawn(false);
+      if (this.living < C.maxActive) this.trySpawn(false);
     }
+  }
+
+  /** Pássaros vivos (os corpos não contam para o limite de spawn). */
+  get living(): number {
+    let n = 0;
+    for (const b of this.active) if (b.alive) n++;
+    return n;
+  }
+
+  /** Pássaro vivo mais próximo atingido pelo raio (d normalizado) antes de maxT. */
+  raycast(o: THREE.Vector3, d: THREE.Vector3, maxT: number): { bird: Bird; t: number; lethal: boolean } | null {
+    let best: { bird: Bird; t: number; lethal: boolean } | null = null;
+    for (const bird of this.active) {
+      const hit = bird.raycast(o, d, best ? best.t : maxT, CONFIG.combat.hitboxScale);
+      if (hit) best = { bird, t: hit.t, lethal: hit.lethal };
+    }
+    return best;
+  }
+
+  /** Abate: o pássaro cai e vira corpo; acima do limite, o corpo mais antigo é removido. */
+  kill(bird: Bird, dir: THREE.Vector3): void {
+    if (!bird.alive) return;
+    bird.kill(dir, this);
+    this.corpses.push(bird);
+    while (this.corpses.length > CONFIG.combat.maxCorpses) this.corpses.shift()!.sink();
   }
 
   /** Espanta os pássaros num raio (disparo). */
@@ -191,8 +222,8 @@ export class BirdManager implements BirdWorld {
     if (!ok) return;
 
     const flying = !initial && Math.random() < C.flyingSpawnChance;
-    const same = this.active.filter((b) => b.species === sp).length;
-    const n = Math.min(Math.floor(rand(sp.flock[0], sp.flock[1] + 1)), sp.max - same, C.maxActive - this.active.length);
+    const same = this.active.filter((b) => b.alive && b.species === sp).length;
+    const n = Math.min(Math.floor(rand(sp.flock[0], sp.flock[1] + 1)), sp.max - same, C.maxActive - this.living);
     const flockId = ++this.flocks;
     let leader: Bird | null = null;
 
@@ -236,7 +267,7 @@ export class BirdManager implements BirdWorld {
 
   private pickSpecies(): Species | null {
     const counts = new Map<Species, number>();
-    for (const b of this.active) counts.set(b.species, (counts.get(b.species) ?? 0) + 1);
+    for (const b of this.active) if (b.alive) counts.set(b.species, (counts.get(b.species) ?? 0) + 1);
     const available = SPECIES.filter((sp) => (counts.get(sp) ?? 0) < sp.max);
     let r = Math.random() * available.reduce((sum, sp) => sum + sp.weight, 0);
     for (const sp of available) {
@@ -299,6 +330,7 @@ export class BirdManager implements BirdWorld {
       this.geometries.set(sp, geo);
     }
     const bird = pool.pop() ?? new Bird(sp, geo, this.bodyMat, this.wingMat);
+    bird.revive();
     bird.active = true;
     bird.leader = null;
     bird.flockId = 0;
@@ -310,6 +342,8 @@ export class BirdManager implements BirdWorld {
   private release(i: number): void {
     const bird = this.active[i];
     this.releasePerch(bird);
+    const corpse = this.corpses.indexOf(bird);
+    if (corpse >= 0) this.corpses.splice(corpse, 1);
     bird.active = false;
     bird.leader = null;
     this.scene.remove(bird.group);

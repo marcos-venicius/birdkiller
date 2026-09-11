@@ -3,7 +3,7 @@ import { smoothstep, TAU } from '../core/math';
 import type { BirdGeometry } from './birdGeometry';
 import type { Species } from './species';
 
-export type BirdState = 'perched' | 'flying' | 'fleeing' | 'landing';
+export type BirdState = 'perched' | 'flying' | 'fleeing' | 'landing' | 'falling' | 'dead';
 /** perch = copa de árvore; ground = chão; roam = só passear até lá. */
 export type TargetKind = 'perch' | 'ground' | 'roam';
 
@@ -19,6 +19,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 const _v = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const HOP_TIME = 0.22;
+const GRAVITY = 9.8;
+/** Duração do encolhimento quando um corpo é removido (s). */
+const SINK_TIME = 1.5;
 
 export function rand(a: number, b: number): number {
   return a + Math.random() * (b - a);
@@ -31,7 +34,21 @@ function angleDiff(from: number, to: number): number {
   return d;
 }
 
-/** Um pássaro: comportamento (máquina de estados + voo por steering) e animação das asas. */
+/** Distância ao longo do raio (d normalizado) até a esfera, 0 se a origem está dentro, Infinity se não toca. */
+function raySphere(o: THREE.Vector3, d: THREE.Vector3, c: THREE.Vector3, r: number): number {
+  const ox = o.x - c.x;
+  const oy = o.y - c.y;
+  const oz = o.z - c.z;
+  const b = ox * d.x + oy * d.y + oz * d.z;
+  const q = ox * ox + oy * oy + oz * oz - r * r;
+  const disc = b * b - q;
+  if (disc < 0) return Infinity;
+  const s = Math.sqrt(disc);
+  if (-b - s > 0) return -b - s;
+  return -b + s > 0 ? 0 : Infinity;
+}
+
+/** Um pássaro: comportamento (máquina de estados + voo por steering), morte com física e animação das asas. */
 export class Bird {
   readonly group = new THREE.Group();
   readonly pos = new THREE.Vector3();
@@ -44,6 +61,8 @@ export class Bird {
   onGround = false;
   /** Em uso (fora do pool). */
   active = false;
+  /** Corpo terminou de encolher e pode voltar ao pool. */
+  removable = false;
   cruise = 10;
   flockId = 0;
   leader: Bird | null = null;
@@ -74,6 +93,11 @@ export class Bird {
   private landDur = 1;
   private time = Math.random() * 100;
   private readonly phase = Math.random() * TAU;
+  private readonly spin = new THREE.Vector3();
+  private limp = 0.5;
+  private restPitch = 0;
+  private restBank = 0;
+  private sinkTime = -1;
 
   constructor(
     readonly species: Species,
@@ -93,6 +117,25 @@ export class Bird {
     }
     this.group.scale.setScalar(species.length);
     this.group.rotation.order = 'YXZ';
+  }
+
+  /** Vivo = pode ser alvo, se assustar e pontuar. */
+  get alive(): boolean {
+    return this.state !== 'falling' && this.state !== 'dead';
+  }
+
+  /** Tempo desde que o corpo parou no chão (s). */
+  get corpseAge(): number {
+    return this.state === 'dead' ? this.stateTime : 0;
+  }
+
+  /** Prepara um pássaro vindo do pool. */
+  revive(): void {
+    this.group.scale.setScalar(this.species.length);
+    this.sinkTime = -1;
+    this.removable = false;
+    this.pitch = 0;
+    this.bank = 0;
   }
 
   /** Coloca o pássaro pousado em `p` (já com a altura do corpo acima do galho/chão). */
@@ -141,7 +184,7 @@ export class Bird {
 
   /** Foge para longe de `threat` (jogador ou disparo). */
   scare(threat: THREE.Vector3, world: BirdWorld): void {
-    if (this.state === 'fleeing') return;
+    if (!this.alive || this.state === 'fleeing') return;
     const sitting = this.state === 'perched' || this.state === 'landing';
     world.releasePerch(this);
     _v.subVectors(this.pos, threat).setY(0);
@@ -157,13 +200,70 @@ export class Bird {
     if (sitting) this.vel.set(_v.x * 2.5, rand(3.5, 5), _v.z * 2.5);
   }
 
+  /** Tiro letal: o pássaro para de voar e cai, girando, empurrado na direção do disparo. */
+  kill(dir: THREE.Vector3, world: BirdWorld): void {
+    if (!this.alive) return;
+    world.releasePerch(this);
+    this.leader = null;
+    this.onGround = false;
+    this.setState('falling');
+    this.vel.multiplyScalar(0.4).addScaledVector(dir, rand(2, 4));
+    this.vel.y += rand(0.5, 1.5);
+    this.spin.set(rand(-8, 8), rand(-4, 4), rand(-10, 10));
+    this.limp = rand(0.25, 0.65);
+  }
+
+  /** Começa a remover o corpo (encolhe e some). */
+  sink(): void {
+    if (this.sinkTime < 0) this.sinkTime = 0;
+  }
+
+  /**
+   * Teste de acerto com o raio (d normalizado). Corpo e cabeça são letais; com as asas abertas,
+   * passar perto do corpo pega a asa (raspão, não letal). `scale` aumenta as esferas de acerto.
+   */
+  raycast(o: THREE.Vector3, d: THREE.Vector3, maxT: number, scale: number): { t: number; lethal: boolean } | null {
+    if (!this.alive) return null;
+    const L = this.species.length;
+    let t = raySphere(o, d, this.pos, 0.3 * L * scale);
+    const cp = Math.cos(this.pitch);
+    _v.set(Math.sin(this.yaw) * cp, -Math.sin(this.pitch), Math.cos(this.yaw) * cp).multiplyScalar(0.42 * L).add(this.pos);
+    _v.y += 0.12 * L;
+    t = Math.min(t, raySphere(o, d, _v, 0.17 * L * scale));
+    if (t < maxT) return { t, lethal: true };
+    if (this.fold < 0.5) {
+      const tw = raySphere(o, d, this.pos, this.species.span * L * 0.9);
+      if (tw < maxT) return { t: tw, lethal: false };
+    }
+    return null;
+  }
+
   update(dt: number, world: BirdWorld): void {
     this.time += dt;
     this.stateTime += dt;
     this.legTime += dt;
-    if (this.state === 'perched') this.updatePerched(dt, world);
-    else if (this.state === 'landing') this.updateLanding(dt);
-    else this.updateFlight(dt, world);
+    switch (this.state) {
+      case 'perched':
+        this.updatePerched(dt, world);
+        break;
+      case 'landing':
+        this.updateLanding(dt);
+        break;
+      case 'falling':
+        this.updateFalling(dt, world);
+        break;
+      case 'dead':
+        this.updateDead(dt);
+        break;
+      default:
+        this.updateFlight(dt, world);
+    }
+    if (this.sinkTime >= 0) {
+      this.sinkTime += dt;
+      const s = Math.max(0, 1 - this.sinkTime / SINK_TIME);
+      this.group.scale.setScalar(this.species.length * s);
+      if (s === 0) this.removable = true;
+    }
     this.updateWings(dt);
     this.applyTransform();
   }
@@ -320,6 +420,37 @@ export class Bird {
     if (t >= 1) this.perchAt(this.target, this.targetKind === 'ground', this.perchKey);
   }
 
+  private updateFalling(dt: number, world: BirdWorld): void {
+    const L = this.species.length;
+    this.vel.y -= GRAVITY * dt;
+    this.vel.multiplyScalar(Math.exp(-0.5 * dt));
+    this.pos.addScaledVector(this.vel, dt);
+    this.pitch += this.spin.x * dt;
+    this.yaw += this.spin.y * dt;
+    this.bank += this.spin.z * dt;
+
+    const rest = world.groundAt(this.pos.x, this.pos.z) + L * 0.18;
+    if (this.pos.y > rest) return;
+    this.pos.y = rest;
+    if (this.vel.y < -2) {
+      // Quique curto no chão.
+      this.vel.set(this.vel.x * 0.4, -this.vel.y * 0.2, this.vel.z * 0.4);
+      this.spin.multiplyScalar(0.4);
+      return;
+    }
+    this.setState('dead');
+    this.vel.set(0, 0, 0);
+    // Fica de lado (mais comum) ou de barriga para cima.
+    this.restBank = Math.random() < 0.7 ? (Math.random() < 0.5 ? -1 : 1) * rand(1.25, 1.5) : Math.PI;
+    this.restPitch = rand(-0.25, 0.25);
+  }
+
+  private updateDead(dt: number): void {
+    const k = 1 - Math.exp(-8 * dt);
+    this.pitch += angleDiff(this.pitch, this.restPitch) * k;
+    this.bank += angleDiff(this.bank, this.restBank) * k;
+  }
+
   private updateWings(dt: number): void {
     const sp = this.species;
     let amp = 0;
@@ -331,6 +462,13 @@ export class Bird {
     } else if (this.state === 'landing') {
       amp = 1;
       freq *= 1.3;
+    } else if (this.state === 'falling') {
+      // Asas moles, tremulando com o vento da queda.
+      amp = 0.3;
+      freq = 5;
+      fold = this.limp;
+    } else if (this.state === 'dead') {
+      fold = this.limp;
     } else {
       const climbing = this.vel.y > 1.5 || this.state === 'fleeing';
       if (sp.flight === 'bounding') {

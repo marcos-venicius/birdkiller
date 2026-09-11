@@ -1,6 +1,8 @@
 /** HUD mínima em DOM: pontuação, munição, retículo, luneta, recarga e dica de controle. */
 export class HUD {
   private readonly scoreEl: HTMLElement;
+  private readonly killsEl: HTMLElement;
+  private readonly killEl: HTMLElement;
   private readonly ammoEl: HTMLElement;
   private readonly reloadEl: HTMLElement;
   private readonly hintEl: HTMLElement;
@@ -26,17 +28,23 @@ export class HUD {
         </svg>
       </div>
       <div class="hud-flash"></div>
-      <div class="hud-score"><span class="label">Pontos</span><span data-score>0</span></div>
+      <div class="hud-score">
+        <span class="label">Pontos</span><span data-score>0</span>
+        <span class="label kills">Abates</span><span data-kills>0</span>
+      </div>
       <div class="hud-crosshair"></div>
+      <div class="hud-kill"></div>
       <div class="hud-reload" hidden>Recarregando...</div>
       <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
       <div class="hud-hint">
         Clique para controlar
-        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mirar · Botão esquerdo atirar · Esc soltar o mouse</small>
+        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · Esc soltar o mouse</small>
       </div>
       <div class="hud-debug" hidden></div>
     `;
     this.scoreEl = root.querySelector('[data-score]')!;
+    this.killsEl = root.querySelector('[data-kills]')!;
+    this.killEl = root.querySelector('.hud-kill')!;
     this.ammoEl = root.querySelector('[data-ammo]')!;
     this.reloadEl = root.querySelector('.hud-reload')!;
     this.hintEl = root.querySelector('.hud-hint')!;
@@ -46,8 +54,20 @@ export class HUD {
     this.flashEl = root.querySelector('.hud-flash')!;
   }
 
-  setScore(score: number): void {
+  setScore(score: number, kills: number): void {
     this.scoreEl.textContent = String(score);
+    this.killsEl.textContent = String(kills);
+  }
+
+  /** Aviso discreto de abate (ex.: "+18  Sabiá · 42 m") que some sozinho. */
+  showKill(text: string): void {
+    const el = this.killEl;
+    el.textContent = text;
+    el.style.transition = 'none';
+    el.style.opacity = '1';
+    void el.offsetWidth;
+    el.style.transition = 'opacity 0.8s ease-in 1.4s';
+    el.style.opacity = '0';
   }
 
   setAmmo(inMagazine: number): void {

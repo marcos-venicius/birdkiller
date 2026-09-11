@@ -11,6 +11,8 @@ const LITTER = new THREE.Color(0x6a5234);
 const DIRT = new THREE.Color(0x755c40);
 
 const _color = new THREE.Color();
+/** Acima disto nenhum morro chega (amplitudes 18 + 4 + 0,25 m). */
+const MAX_HEIGHT = 23;
 
 /**
  * Relevo procedural contínuo e infinito: heightAt() é a fonte única de verdade,
@@ -178,5 +180,26 @@ export class Terrain {
     const yd = y[(a + verts + 1) * 3 + 1];
     // Mesma diagonal (b–c) usada nos índices: triângulos (a, c, b) e (b, c, d).
     return tx + tz <= 1 ? ya + (yb - ya) * tx + (yc - ya) * tz : yd + (yc - yd) * (1 - tx) + (yb - yd) * (1 - tz);
+  }
+
+  /** Distância até o raio (d normalizado) tocar o relevo, ou Infinity. Marcha em passos + bisseção. */
+  raycast(o: THREE.Vector3, d: THREE.Vector3, maxT: number, step = 1): number {
+    let prev = 0;
+    for (let t = step; t <= maxT; t += step) {
+      const y = o.y + d.y * t;
+      if (d.y >= 0 && y > MAX_HEIGHT) break;
+      if (y < this.heightAt(o.x + d.x * t, o.z + d.z * t)) {
+        let a = prev;
+        let b = t;
+        for (let i = 0; i < 10; i++) {
+          const m = (a + b) * 0.5;
+          if (o.y + d.y * m < this.heightAt(o.x + d.x * m, o.z + d.z * m)) b = m;
+          else a = m;
+        }
+        return b;
+      }
+      prev = t;
+    }
+    return Infinity;
   }
 }

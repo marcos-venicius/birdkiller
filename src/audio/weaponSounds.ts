@@ -35,6 +35,28 @@ export function playBoltClose(a: AudioSystem, at = 0): void {
   click(a, at + 0.2, 2800, 0.4);
 }
 
+/** Impacto no pássaro: baque abafado + penas; chega com o atraso do som (distância / 343 m/s). */
+export function playBirdHit(a: AudioSystem, distance: number): void {
+  const at = distance / 343;
+  const g = Math.min(0.5, 8 / Math.max(distance, 1));
+  a.noiseBurst({ at, duration: 0.07, type: 'lowpass', freq: 700, gain: g, reverb: 0.2 });
+  a.noiseBurst({ at: at + 0.02, duration: 0.25, type: 'bandpass', freq: 3500, q: 1.2, gain: g * 0.5, attack: 0.01, reverb: 0.3 });
+}
+
+/** Bala acertando madeira, pedra ou terra. */
+export function playImpact(a: AudioSystem, distance: number, kind: 'trunk' | 'rock' | 'terrain'): void {
+  const at = distance / 343;
+  const g = Math.min(0.35, 5 / Math.max(distance, 1));
+  if (kind === 'trunk') {
+    a.noiseBurst({ at, duration: 0.09, type: 'bandpass', freq: 900, q: 3, gain: g, reverb: 0.3 });
+  } else if (kind === 'rock') {
+    a.noiseBurst({ at, duration: 0.05, type: 'highpass', freq: 2500, gain: g, reverb: 0.3 });
+    a.tone({ at, duration: 0.25, freq: 2400, freqEnd: 1900, type: 'triangle', gain: g * 0.3, reverb: 0.4 });
+  } else {
+    a.noiseBurst({ at, duration: 0.12, type: 'lowpass', freq: 350, gain: g, reverb: 0.2 });
+  }
+}
+
 /** Recarga com pente: abre o ferrolho, encaixa o pente, empurra os 5 cartuchos e fecha no fim. */
 export function playReload(a: AudioSystem, duration: number): void {
   playBoltOpen(a, 0.15);

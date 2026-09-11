@@ -40,16 +40,18 @@ interface Species {
   radius: number;
   /** Ponto de pouso no alto da copa (espaço da árvore, escala 1), com folga para ficar à vista. */
   perch: [number, number, number];
+  /** Altura do tronco para a oclusão do tiro (escala 1), um pouco abaixo do poleiro. */
+  trunkTop: number;
   minScale: number;
   maxScale: number;
 }
 
 const SPECIES: Record<'conifer' | 'broadleaf' | 'birch' | 'snag', Species> = {
   // Pontas: conífera = ponta do último cone; copa/bétula = topo da bola de folhas mais alta; seca = topo do tronco.
-  conifer: { layer: LAYER.conifer, radius: 0.32, perch: [0, 13.35, 0], minScale: 0.7, maxScale: 1.5 },
-  broadleaf: { layer: LAYER.broadleaf, radius: 0.42, perch: [-0.2, 10.45, 0.5], minScale: 0.75, maxScale: 1.35 },
-  birch: { layer: LAYER.birch, radius: 0.2, perch: [-0.4, 10.3, 0.3], minScale: 0.8, maxScale: 1.25 },
-  snag: { layer: LAYER.snag, radius: 0.34, perch: [0, 8.02, 0], minScale: 0.75, maxScale: 1.2 },
+  conifer: { layer: LAYER.conifer, radius: 0.32, perch: [0, 13.35, 0], trunkTop: 12.3, minScale: 0.7, maxScale: 1.5 },
+  broadleaf: { layer: LAYER.broadleaf, radius: 0.42, perch: [-0.2, 10.45, 0.5], trunkTop: 6.0, minScale: 0.75, maxScale: 1.35 },
+  birch: { layer: LAYER.birch, radius: 0.2, perch: [-0.4, 10.3, 0.3], trunkTop: 9.6, minScale: 0.8, maxScale: 1.25 },
+  snag: { layer: LAYER.snag, radius: 0.34, perch: [0, 8.02, 0], trunkTop: 7.7, minScale: 0.75, maxScale: 1.2 },
 };
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -156,6 +158,7 @@ export class Vegetation {
           continue;
         }
         chunk.colliders.push(x, z, sp.radius * sxz + 0.05);
+        chunk.trunks.push(x, z, sp.radius * sxz, y + sp.trunkTop * s);
         // Topo da copa pela mesma matriz da instância (inclui escala e inclinação).
         _p.fromArray(sp.perch).applyMatrix4(_m);
         chunk.perches.push(_p.x, _p.y, _p.z);
@@ -224,8 +227,10 @@ export class Vegetation {
       const z = oz + rand() * size;
       if (rand() > biome.forest(x, z) * 0.5) continue;
       const s = 0.7 + rand() * 0.6;
-      this.put(chunk, LAYER.stump, x, terrain.heightAt(x, z) - 0.05, z, rand() * TAU, s, s, s, tint(rand, 0.25, 0.06));
+      const y = terrain.heightAt(x, z) - 0.05;
+      this.put(chunk, LAYER.stump, x, y, z, rand() * TAU, s, s, s, tint(rand, 0.25, 0.06));
       chunk.colliders.push(x, z, 0.42 * s);
+      chunk.trunks.push(x, z, 0.42 * s, y + 0.6 * s);
     }
 
     // Galhos secos no chão.
@@ -273,6 +278,7 @@ export class Vegetation {
     const y = this.terrain.heightAt(x, z) - sy * 0.3;
     this.put(chunk, LAYER.rock, x, y, z, rand() * TAU, s * (0.8 + rand() * 0.4), sy, s * (0.8 + rand() * 0.4), tint(rand, 0.25, 0.05), (rand() - 0.5) * 0.5, (rand() - 0.5) * 0.5);
     if (s > 0.6) chunk.colliders.push(x, z, s * 0.75);
+    if (s > 0.35) chunk.rocks.push(x, y, z, s * 0.85);
   }
 
   private put(

@@ -18,6 +18,32 @@ function chunkDistance(x: number, z: number, cx: number, cz: number): number {
   return Math.hypot(dx, dz);
 }
 
+/** O segmento (em XZ) de o até o + d·maxT passa pelo quadrado [x0, x0+size]×[z0, z0+size] (com margem)? */
+function segmentHitsSquare(
+  ox: number,
+  oz: number,
+  dx: number,
+  dz: number,
+  maxT: number,
+  x0: number,
+  z0: number,
+  size: number,
+  margin: number,
+): boolean {
+  let t0 = 0;
+  let t1 = maxT;
+  const slab = (o: number, d: number, lo: number, hi: number): boolean => {
+    if (Math.abs(d) < 1e-9) return o >= lo && o <= hi;
+    let ta = (lo - o) / d;
+    let tb = (hi - o) / d;
+    if (ta > tb) [ta, tb] = [tb, ta];
+    t0 = Math.max(t0, ta);
+    t1 = Math.min(t1, tb);
+    return t0 <= t1;
+  };
+  return slab(ox, dx, x0 - margin, x0 + size + margin) && slab(oz, dz, z0 - margin, z0 + size + margin);
+}
+
 /**
  * Streaming do mundo infinito: mantém carregados os chunks até loadDistance do jogador,
  * descarrega os que passam de unloadDistance e reaproveita tudo via pool.
@@ -134,6 +160,52 @@ export class ChunkManager {
       }
     }
     return true;
+  }
+
+  /**
+   * Primeiro tronco/toco ou pedra atingido pelo raio (d normalizado) antes de maxT.
+   * Troncos são cilindros verticais do chão até yTopo; pedras, esferas. Só testa os chunks que o raio cruza.
+   */
+  raycastObstacles(o: THREE.Vector3, d: THREE.Vector3, maxT: number): { t: number; kind: 'trunk' | 'rock' | null } {
+    const s = CONFIG.world.chunkSize;
+    const a = d.x * d.x + d.z * d.z;
+    let best = maxT;
+    let kind: 'trunk' | 'rock' | null = null;
+    for (const chunk of this.loaded.values()) {
+      if (!segmentHitsSquare(o.x, o.z, d.x, d.z, best, chunk.cx * s, chunk.cz * s, s, 2.5)) continue;
+      const tr = chunk.trunks;
+      if (a > 1e-9) {
+        for (let i = 0; i < tr.length; i += 4) {
+          const ox = o.x - tr[i];
+          const oz = o.z - tr[i + 1];
+          const r = tr[i + 2];
+          const b = ox * d.x + oz * d.z;
+          const c = ox * ox + oz * oz - r * r;
+          if (c <= 0) continue;
+          const disc = b * b - a * c;
+          if (disc <= 0) continue;
+          const t = (-b - Math.sqrt(disc)) / a;
+          if (t <= 0 || t >= best || o.y + d.y * t > tr[i + 3]) continue;
+          best = t;
+          kind = 'trunk';
+        }
+      }
+      const rk = chunk.rocks;
+      for (let i = 0; i < rk.length; i += 4) {
+        const ox = o.x - rk[i];
+        const oy = o.y - rk[i + 1];
+        const oz = o.z - rk[i + 2];
+        const r = rk[i + 3];
+        const b = ox * d.x + oy * d.y + oz * d.z;
+        const disc = b * b - (ox * ox + oy * oy + oz * oz - r * r);
+        if (disc <= 0) continue;
+        const t = -b - Math.sqrt(disc);
+        if (t <= 0 || t >= best) continue;
+        best = t;
+        kind = 'rock';
+      }
+    }
+    return { t: kind ? best : Infinity, kind };
   }
 
   /**

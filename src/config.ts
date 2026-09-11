@@ -143,4 +143,17 @@ export const CONFIG = {
     /** Raio em que um disparo espanta os pássaros. */
     shotScare: 80,
   },
+
+  combat: {
+    /** Alcance máximo do tiro (m). */
+    range: 400,
+    /** Aumenta as esferas de acerto dos pássaros (tamanho real seria punitivo demais a distância). */
+    hitboxScale: 1.35,
+    /** Um obstáculo só bloqueia se estiver esta distância antes do pássaro (m). */
+    occlusionSlack: 0.35,
+    /** Máximo de corpos no chão; acima disso o mais antigo some. */
+    maxCorpses: 15,
+    /** Tempo até um corpo sumir (s). */
+    corpseLifetime: 240,
+  },
 } as const;

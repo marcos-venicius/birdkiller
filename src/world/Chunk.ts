@@ -40,8 +40,12 @@ export class Chunk {
   readonly layers: THREE.InstancedMesh[];
   /** Obstáculos para colisão: tripletos (x, z, raio). */
   readonly colliders: number[] = [];
-  /** Pontos de pouso para pássaros (Etapa 4): tripletos (x, y, z). */
+  /** Pontos de pouso para pássaros: tripletos (x, y, z). */
   readonly perches: number[] = [];
+  /** Troncos e tocos para oclusão do tiro: (x, z, raio, yTopo). */
+  readonly trunks: number[] = [];
+  /** Pedras para oclusão do tiro: esferas (x, y, z, raio). */
+  readonly rocks: number[] = [];
   grass: THREE.InstancedMesh | null = null;
 
   constructor(
@@ -76,6 +80,8 @@ export class Chunk {
     for (const mesh of this.layers) mesh.count = 0;
     this.colliders.length = 0;
     this.perches.length = 0;
+    this.trunks.length = 0;
+    this.rocks.length = 0;
   }
 
   finishContent(): void {

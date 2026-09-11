@@ -2,6 +2,8 @@ import './style.css';
 import * as THREE from 'three';
 import { AudioSystem } from './audio/AudioSystem';
 import { BirdManager } from './birds/BirdManager';
+import { Hunting } from './combat/Hunting';
+import { Particles } from './effects/Particles';
 import { CONFIG } from './config';
 import { Engine } from './core/Engine';
 import { Input } from './core/Input';
@@ -45,9 +47,13 @@ chunks.resolveCollision(player.position, CONFIG.player.radius);
 const weapon = new Weapon(engine, input, player, hud, audio, atmosphere.sunDir);
 const birds = new BirdManager(engine.scene, terrain, biome, chunks, player, engine.camera);
 birds.populate();
-// Por enquanto o disparo só espanta os pássaros; a detecção de acerto vem na Etapa 5.
-weapon.onFire = (origin) => birds.scare(origin, CONFIG.birds.shotScare);
-input.onLockChange = (locked) => hud.setHintVisible(!locked);
+const particles = new Particles(engine.scene, terrain);
+const hunting = new Hunting(terrain, chunks, birds, particles, hud, audio);
+weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
+input.onLockChange = (locked) => {
+  hud.setHintVisible(!locked);
+  if (!locked) weapon.cancelAim();
+};
 
 const debug = new URLSearchParams(location.search).has('debug');
 let frames = 0;
@@ -64,6 +70,7 @@ engine.renderer.setAnimationLoop(() => {
   player.update(dt);
   weapon.update(dt);
   birds.update(dt);
+  particles.update(dt);
   chunks.update(player.position);
   atmosphere.update(player.position, engine.camera);
   engine.render();
@@ -82,7 +89,7 @@ engine.renderer.setAnimationLoop(() => {
       hud.setDebug(
         `${fps} fps\ndraw ${info.calls}  tris ${info.triangles}\n` +
           `chunks ${s.loaded}  fila ${s.queued}  grama ${s.grass}\n` +
-          `pássaros ${birds.active.length}\n` +
+          `pássaros ${birds.living}  corpos ${birds.active.length - birds.living}  partículas ${particles.count}\n` +
           `pos ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}`,
       );
     }
@@ -91,6 +98,21 @@ engine.renderer.setAnimationLoop(() => {
 
 if (import.meta.env.DEV) {
   Object.assign(window, {
-    game: { engine, input, player, terrain, biome, vegetation, chunks, atmosphere, hud, audio, weapon, birds },
+    game: {
+      engine,
+      input,
+      player,
+      terrain,
+      biome,
+      vegetation,
+      chunks,
+      atmosphere,
+      hud,
+      audio,
+      weapon,
+      birds,
+      particles,
+      hunting,
+    },
   });
 }
