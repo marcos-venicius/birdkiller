@@ -1,3 +1,4 @@
+import type { Vector3 } from 'three';
 import type { AudioSystem } from './AudioSystem';
 
 /** Estampido do rifle: estalo agudo + corpo grave + ecos devolvidos pelo relevo. */
@@ -35,25 +36,25 @@ export function playBoltClose(a: AudioSystem, at = 0): void {
   click(a, at + 0.2, 2800, 0.4);
 }
 
-/** Impacto no pássaro: baque abafado + penas; chega com o atraso do som (distância / 343 m/s). */
-export function playBirdHit(a: AudioSystem, distance: number): void {
+/** Impacto no pássaro: baque abafado + penas, vindo do ponto do acerto com o atraso do som (343 m/s). */
+export function playBirdHit(a: AudioSystem, distance: number, pos: Vector3): void {
   const at = distance / 343;
-  const g = Math.min(0.5, 8 / Math.max(distance, 1));
-  a.noiseBurst({ at, duration: 0.07, type: 'lowpass', freq: 700, gain: g, reverb: 0.2 });
-  a.noiseBurst({ at: at + 0.02, duration: 0.25, type: 'bandpass', freq: 3500, q: 1.2, gain: g * 0.5, attack: 0.01, reverb: 0.3 });
+  const dest = a.spatial(pos, 'sfx', 6);
+  a.noiseBurst({ at, duration: 0.07, type: 'lowpass', freq: 700, gain: 0.6, dest });
+  a.noiseBurst({ at: at + 0.02, duration: 0.25, type: 'bandpass', freq: 3500, q: 1.2, gain: 0.3, attack: 0.01, dest });
 }
 
-/** Bala acertando madeira, pedra ou terra. */
-export function playImpact(a: AudioSystem, distance: number, kind: 'trunk' | 'rock' | 'terrain'): void {
+/** Bala acertando madeira, pedra ou terra, vindo do ponto do impacto. */
+export function playImpact(a: AudioSystem, distance: number, kind: 'trunk' | 'rock' | 'terrain', pos: Vector3): void {
   const at = distance / 343;
-  const g = Math.min(0.35, 5 / Math.max(distance, 1));
+  const dest = a.spatial(pos, 'sfx', 6);
   if (kind === 'trunk') {
-    a.noiseBurst({ at, duration: 0.09, type: 'bandpass', freq: 900, q: 3, gain: g, reverb: 0.3 });
+    a.noiseBurst({ at, duration: 0.09, type: 'bandpass', freq: 900, q: 3, gain: 0.5, dest });
   } else if (kind === 'rock') {
-    a.noiseBurst({ at, duration: 0.05, type: 'highpass', freq: 2500, gain: g, reverb: 0.3 });
-    a.tone({ at, duration: 0.25, freq: 2400, freqEnd: 1900, type: 'triangle', gain: g * 0.3, reverb: 0.4 });
+    a.noiseBurst({ at, duration: 0.05, type: 'highpass', freq: 2500, gain: 0.5, dest });
+    a.tone({ at, duration: 0.25, freq: 2400, freqEnd: 1900, type: 'triangle', gain: 0.15, dest });
   } else {
-    a.noiseBurst({ at, duration: 0.12, type: 'lowpass', freq: 350, gain: g, reverb: 0.2 });
+    a.noiseBurst({ at, duration: 0.12, type: 'lowpass', freq: 350, gain: 0.5, dest });
   }
 }
 

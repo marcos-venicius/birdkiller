@@ -1,0 +1,6 @@
+[
+  { "wait": 2500 },
+  { "eval": "(() => { game.audio.unlock(); return { pronto: game.audio.ready }; })()", "label": "desbloquear áudio real" },
+  { "wait": 1500 },
+  { "eval": "(() => { const g = game, B = g.birds, V = g.voices, e = g.engine.camera.position, p = g.player; B.spawnTimer = 1e9; const f = { x: -Math.sin(p.yaw), z: -Math.cos(p.yaw) }; const pos = e.clone(); pos.x += f.x * 12; pos.z += f.z * 12; const b = B.spawnPerched(B.speciesList[1], pos, false, null); b.idleTime = 1e9; V.busyUntil = []; V.update(1 / 30, B.active, e); const antes = { ...V.stats }; b.scare(e, B); V.busyUntil = []; V.update(1 / 30, B.active, e); const aposSusto = { ...V.stats }; const c = B.spawnPerched(B.speciesList[0], pos.clone().setY(pos.y + 5), false, null); V.update(1 / 30, B.active, e); B.kill(c, new e.constructor(0, 0, 1)); for (let i = 0; i < 150; i++) { B.update(1 / 30); V.update(1 / 30, B.active, e); } return { antes, aposSusto, aposAbate: { ...V.stats }, estadoCorpo: c.state }; })()", "label": "asas ao decolar, alarme e baque do corpo" }
+]

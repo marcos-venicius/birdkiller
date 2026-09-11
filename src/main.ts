@@ -1,6 +1,12 @@
 import './style.css';
 import * as THREE from 'three';
+import { Ambience } from './audio/Ambience';
+import * as animalSounds from './audio/animalSounds';
 import { AudioSystem } from './audio/AudioSystem';
+import * as birdSongs from './audio/birdSongs';
+import { BirdVoices } from './audio/BirdVoices';
+import { Footsteps } from './audio/Footsteps';
+import * as weaponSounds from './audio/weaponSounds';
 import { BirdManager } from './birds/BirdManager';
 import { Hunting } from './combat/Hunting';
 import { Particles } from './effects/Particles';
@@ -49,6 +55,9 @@ const birds = new BirdManager(engine.scene, terrain, biome, chunks, player, engi
 birds.populate();
 const particles = new Particles(engine.scene, terrain);
 const hunting = new Hunting(terrain, chunks, birds, particles, hud, audio);
+const ambience = new Ambience(audio, biome);
+const voices = new BirdVoices(audio);
+const footsteps = new Footsteps(audio, biome);
 weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
 input.onLockChange = (locked) => {
   hud.setHintVisible(!locked);
@@ -71,6 +80,10 @@ engine.renderer.setAnimationLoop(() => {
   weapon.update(dt);
   birds.update(dt);
   particles.update(dt);
+  audio.updateListener(engine.camera);
+  ambience.update(dt, player, engine.camera.position);
+  voices.update(dt, birds.active, engine.camera.position);
+  footsteps.update(dt, player);
   chunks.update(player.position);
   atmosphere.update(player.position, engine.camera);
   engine.render();
@@ -113,6 +126,10 @@ if (import.meta.env.DEV) {
       birds,
       particles,
       hunting,
+      ambience,
+      voices,
+      footsteps,
+      sounds: { ...weaponSounds, ...birdSongs, ...animalSounds },
     },
   });
 }

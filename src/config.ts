@@ -113,6 +113,8 @@ export const CONFIG = {
 
   audio: {
     master: 0.8,
+    /** Volume de cada grupo de sons. */
+    buses: { sfx: 1, ambience: 0.8, birds: 1, steps: 1 },
   },
 
   birds: {

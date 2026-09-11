@@ -16,7 +16,8 @@ npm run build        # checagem de tipos + build em dist/
 npm run preview      # serve dist/ em http://localhost:4173
 ```
 Em modo dev, `window.game` expõe `engine`, `input`, `player`, `terrain`, `biome`, `vegetation`, `chunks`,
-`atmosphere`, `hud`, `audio`, `weapon`, `birds`, `particles`, `hunting` para depuração
+`atmosphere`, `hud`, `audio`, `weapon`, `birds`, `particles`, `hunting`, `ambience`, `voices`, `footsteps` e
+`sounds` (todas as funções de som) para depuração
 (`game.birds.frozen = true` congela os pássaros; `game.hunting.lastShot` mostra o resultado do último tiro).
 
 ### Teste automatizado (Chrome headless, sem dependências)
@@ -31,6 +32,8 @@ Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida,
 `stage4.json` (pássaros: vitrine das espécies, simulação de 90 s, regra de spawn fora da visão, sustos, memória),
 `stage4-perch.json` (pássaros nas copas vistos da clareira, com a luneta),
 `stage5.json` (abate, corpo, tiro em corpo, oclusão por tronco, raspão, chão/céu, limite de corpos, mira alternada),
+`stage6.json` (render offline de cada som com pico/RMS/NaN via `game.audio.debugRender`, nível ao vivo via
+`game.audio.level()`, passos simulados), `stage6-events.json` (asas ao decolar, alarme, baque do corpo),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -51,7 +54,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - [x] **3. Arma** — Kar98k procedural com luneta (~4x, "sniper"), renderizada em passada própria; poses quadril/correndo/recarregando/mirando; balanço de passos e do mouse; mira com FOV 75→18°, retículo alemão e respiração; dispersão (quadril ~1°, luneta ~0,005°); coice de câmera e arma; clarão (sprite + luz na mata); ferrolho animado (1 s); carregador de 5 e recarga automática (2,6 s) com "Recarregando..."; sons sintetizados de disparo com eco, ferrolho e recarga.
 - [x] **4. Pássaros** — 6 espécies procedurais (pardal, sabiá, pisco, gralha-azul, rolinha, gavião) com cores, tamanhos e estilos de voo próprios (ondulado, contínuo, planando em térmicas); estados pousado/voando/pousando/fugindo; idle com viradas, bicadas e pulinhos no chão; destinos em copas (um pássaro por poleiro), no chão de clareiras ou passeio; bandos seguem o líder; susto com a aproximação (raio conforme andar/correr/agachar) e com disparos; spawn dinâmico (máx. 20, 60–170 m, fora do campo de visão ou oculto pela névoa, parte já pousada, parte chegando voando); às vezes vão embora e são reciclados (pool).
 - [x] **5. Tiro e morte** — hitscan exato (até 400 m) contra relevo (marcha + bisseção), troncos/tocos (cilindros com altura), pedras (esferas) e pássaros (esferas de corpo e cabeça = letal; asa aberta = raspão, foge); obstáculo só bloqueia se estiver antes do pássaro; queda com gravidade, arrasto, giro e quique; corpo deitado no chão, inerte (não pontua de novo); máx. 15 corpos, somem após 4 min; pontos por espécie + 1 a cada 10 m; HUD "Pontos · Abates" + aviso "+18 Sabiá · 32 m"; penas e lascas (terra/casca/pedra) em InstancedMesh com pool; sons de impacto com atraso da distância; mira no botão direito virou alterna (liga/desliga).
-- [ ] **6. Áudio** — vento, folhas, cantos espaciais, animais distantes, passos, farfalhar, sons da arma.
+- [x] **6. Áudio** — ouvinte na câmera e sons espaciais (HRTF + distância; longe = mais reverb da mata); grupos de volume (efeitos/ambiente/pássaros/passos); vento em rajadas, folhas estéreo (mais na mata fechada), farfalhar ao andar na grama, grilos em volta; animais ocasionais ao longe (coruja, pica-pau, corvo, galho estalando, bugio); canto próprio de cada espécie vindo do pássaro, alarme ao fugir, bater de asas ao decolar, baque do corpo; passos sincronizados com o balanço (folhas/grama, correndo/agachado, aterrissagem, graveto); impactos do tiro espaciais; áudio pausa com a aba em segundo plano.
 - [ ] **7. Polimento e desempenho** — iluminação, perfil de FPS/memória, sessão longa, build offline final.
 
 ## Estrutura atual
@@ -95,6 +98,12 @@ src/
                           + raycastObstacles(o, d, maxT) — troncos (chunk.trunks) e pedras (chunk.rocks)
   world/Terrain.ts        + raycast(o, d, maxT) — marcha de 1 m + bisseção
   combat/Hunting.ts       shoot(origin, dir): resolve o tiro, abate/raspão, pontuação, efeitos e sons; lastShot
+  audio/AudioSystem.ts    + buses, updateListener(camera), spatial(pos, bus, ref), loop(), level(), debugRender()
+  audio/Ambience.ts       vento/folhas/farfalhar (loops), grilos, animais ocasionais
+  audio/BirdVoices.ts     cantos por pássaro (intervalo/alcance por espécie, máx. 6 simultâneos) e sons de transição
+  audio/birdSongs.ts      SONGS[espécie](a, dest, alarme), wingFlutter, corpseThud
+  audio/animalSounds.ts   ANIMALS (coruja, pica-pau, corvo, galho, bugio), cricketChirp
+  audio/Footsteps.ts      passos pelo stepPhase do jogador + aterrissagem
   effects/Particles.ts    penas e lascas (um InstancedMesh, pool de 240)
   birds/Bird.ts           + estados falling/dead, kill(), raycast() (esferas), sink() e corpseAge
   birds/BirdManager.ts    + raycast(), kill() com limite de corpos, living (vivos)
@@ -104,8 +113,10 @@ src/
 - Tiro: `weapon.onFire` → `hunting.shoot()`. Ajustes em `CONFIG.combat` (alcance, `hitboxScale` 1,35 — as esferas
   de acerto são maiores que o corpo real —, folga de oclusão, máximo e tempo de vida dos corpos) e pontos em
   `species.ts`. Folhagem não bloqueia o tiro (só troncos, pedras e relevo). Custo ~0,4 ms por tiro.
-- Etapa 6 (áudio): `playBirdHit`/`playImpact` já atrasam pela distância, mas não são espaciais. Para os cantos,
-  usar `bird.pos` (vivos: `bird.alive`) com PannerNode + listener seguindo a câmera.
+- Áudio: sem arquivos — tudo sintetizado (ruído filtrado + osciladores com envelope). Volumes em
+  `CONFIG.audio` (master e buses). Níveis de referência (render offline): disparo ~0,40 de pico, cantos a 15 m
+  0,05–0,14, ambiente ao vivo ~0,05. `BirdVoices` detecta transições de estado observando os pássaros, sem acoplar
+  áudio ao comportamento. Na simulação do headless o relógio do áudio não anda (vozes ficam "ocupadas").
 - Pássaros: custo ~0,13 ms/quadro com 20 ativos; 3 draw calls por pássaro visível (corpo + 2 asas).
   Poleiros = ponto exato do topo de cada espécie (`SPECIES[].perch` em `Vegetation.ts`, com a matriz da instância).
   Pássaros no chão ficam parcialmente escondidos pela grama alta das clareiras (proposital).

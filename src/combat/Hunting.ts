@@ -80,10 +80,10 @@ export class Hunting {
         this.particles.feathers(result.point, sp.colors, 5, dir);
         hit.bird.scare(origin, this.birds);
       }
-      playBirdHit(this.audio, hit.t);
+      playBirdHit(this.audio, hit.t, result.point);
     } else if (kind !== 'none') {
       this.particles.debris(result.point, DEBRIS_COLOR[kind], 7);
-      playImpact(this.audio, blockT, kind);
+      playImpact(this.audio, blockT, kind, result.point);
     }
 
     this.birds.scare(origin, CONFIG.birds.shotScare);
