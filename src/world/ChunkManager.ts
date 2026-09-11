@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config';
+import { TAU } from '../core/math';
 import { Chunk } from './Chunk';
 import type { Terrain } from './Terrain';
 import type { Vegetation } from './vegetation/Vegetation';
@@ -133,6 +134,35 @@ export class ChunkManager {
       }
     }
     return true;
+  }
+
+  /**
+   * Sorteia um ponto de pouso (topo de copa) entre minR e maxR de (x, z), entre os chunks carregados.
+   * `accept` pode recusar candidatos (poleiro ocupado, árvore baixa...). Retorna false se não achar.
+   */
+  randomPerch(
+    x: number,
+    z: number,
+    minR: number,
+    maxR: number,
+    out: THREE.Vector3,
+    accept?: (px: number, py: number, pz: number) => boolean,
+  ): boolean {
+    const s = CONFIG.world.chunkSize;
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const a = Math.random() * TAU;
+      const r = minR + Math.random() * (maxR - minR);
+      const chunk = this.loaded.get(key(Math.floor((x + Math.cos(a) * r) / s), Math.floor((z + Math.sin(a) * r) / s)));
+      const p = chunk?.perches;
+      if (!p || p.length === 0) continue;
+      const i = Math.floor(Math.random() * (p.length / 3)) * 3;
+      const d = Math.hypot(p[i] - x, p[i + 2] - z);
+      if (d < minR * 0.7 || d > maxR * 1.2) continue;
+      if (accept && !accept(p[i], p[i + 1], p[i + 2])) continue;
+      out.set(p[i], p[i + 1], p[i + 2]);
+      return true;
+    }
+    return false;
   }
 
   private refresh(pos: THREE.Vector3): void {

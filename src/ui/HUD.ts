@@ -11,14 +11,17 @@ export class HUD {
 
   constructor(root: HTMLElement) {
     // Retículo da luneta no estilo alemão: barras laterais grossas e poste inferior pontudo.
+    // O centro fica aberto (o poste termina logo abaixo) para não cobrir pássaros pequenos;
+    // o ponto minúsculo marca exatamente para onde vai o tiro.
     root.innerHTML = `
       <div class="hud-scope" hidden>
         <svg viewBox="-50 -50 100 100" aria-hidden="true">
           <g fill="#060606" stroke="rgba(255,240,220,0.25)" stroke-width="0.12">
             <rect x="-50" y="-0.45" width="44" height="0.9" />
             <rect x="6" y="-0.45" width="44" height="0.9" />
-            <path d="M -1.3 50 L 1.3 50 L 1.3 3.5 L 0 0 L -1.3 3.5 Z" />
+            <path d="M -1.3 50 L 1.3 50 L 1.3 5.5 L 0 2.5 L -1.3 5.5 Z" />
             <rect x="-0.08" y="-50" width="0.16" height="46" />
+            <circle r="0.22" />
           </g>
         </svg>
       </div>

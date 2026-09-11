@@ -16,7 +16,7 @@ npm run build        # checagem de tipos + build em dist/
 npm run preview      # serve dist/ em http://localhost:4173
 ```
 Em modo dev, `window.game` expõe `engine`, `input`, `player`, `terrain`, `biome`, `vegetation`, `chunks`,
-`atmosphere`, `hud`, `audio`, `weapon` para depuração.
+`atmosphere`, `hud`, `audio`, `weapon`, `birds` para depuração (`game.birds.frozen = true` congela os pássaros).
 
 ### Teste automatizado (Chrome headless, sem dependências)
 ```bash
@@ -27,6 +27,8 @@ node tools/cdp.mjs "http://localhost:5173/?debug" tools/scenarios/stage1.json
 (`wait`, `shot`, `eval`, `keyDown`/`keyUp`/`press`), salva capturas em `tools/shots/` e imprime o console da página.
 Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida, teleporte, colisão, custo de geração),
 `stage3.json` (arma: estados, mira, dispersão, recarga, poses — botões injetados em `game.input.buttons`/`buttonsPressed`),
+`stage4.json` (pássaros: vitrine das espécies, simulação de 90 s, regra de spawn fora da visão, sustos, memória),
+`stage4-perch.json` (pássaros nas copas vistos da clareira, com a luneta),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -44,7 +46,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - [x] **1. Base** — Vite/TS/Three, Engine, loop, atmosfera de fim de tarde (sol baixo, sombras, névoa, céu em shader), terreno com relevo, PlayerController, HUD esqueleto. Velocidades: andar 5, correr 9, agachado 2,6 m/s.
 - [x] **2. Mundo infinito** — ChunkManager (streaming em etapas + pool), vegetação instanciada por chunk (4 espécies de árvore, arbustos, samambaias, grama, pedras, troncos caídos, tocos, galhos), clareiras/áreas densas via `Biome`, LOD por distância, vento no shader, colisão com troncos/pedras/tocos, spawn em ponto livre.
 - [x] **3. Arma** — Kar98k procedural com luneta (~4x, "sniper"), renderizada em passada própria; poses quadril/correndo/recarregando/mirando; balanço de passos e do mouse; mira com FOV 75→18°, retículo alemão e respiração; dispersão (quadril ~1°, luneta ~0,005°); coice de câmera e arma; clarão (sprite + luz na mata); ferrolho animado (1 s); carregador de 5 e recarga automática (2,6 s) com "Recarregando..."; sons sintetizados de disparo com eco, ferrolho e recarga.
-- [ ] **4. Pássaros** — malhas low-poly com variações, animação de asas, estados (voar/pousar/parado/fugir), spawn dinâmico fora da visão, pool.
+- [x] **4. Pássaros** — 6 espécies procedurais (pardal, sabiá, pisco, gralha-azul, rolinha, gavião) com cores, tamanhos e estilos de voo próprios (ondulado, contínuo, planando em térmicas); estados pousado/voando/pousando/fugindo; idle com viradas, bicadas e pulinhos no chão; destinos em copas (um pássaro por poleiro), no chão de clareiras ou passeio; bandos seguem o líder; susto com a aproximação (raio conforme andar/correr/agachar) e com disparos; spawn dinâmico (máx. 20, 60–170 m, fora do campo de visão ou oculto pela névoa, parte já pousada, parte chegando voando); às vezes vão embora e são reciclados (pool).
 - [ ] **5. Tiro e morte** — raycast ray-sphere com oclusão, morte com física de queda, pontuação única, limite/tempo de vida dos corpos.
 - [ ] **6. Áudio** — vento, folhas, cantos espaciais, animais distantes, passos, farfalhar, sons da arma.
 - [ ] **7. Polimento e desempenho** — iluminação, perfil de FPS/memória, sessão longa, build offline final.
@@ -80,11 +82,23 @@ src/
                           noiseBurst()/tone() com envelope — base para a Etapa 6
   audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
   ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setScoped, setCrosshairVisible, flash, setDebug
+  birds/species.ts        definição das espécies (cores, tamanho, voo, destinos, bando, peso/máximo, cautela)
+  birds/birdGeometry.ts   corpo (tronco, cabeça, bico, olhos, cauda, crista) + asa em leque; unidade = comprimento
+  birds/Bird.ts           um pássaro: máquina de estados, voo por steering (vagueio, inclinação nas curvas,
+                          térmicas), pouso, idle, susto; asas com batida/planeio/dobra; showcase() p/ depuração
+  birds/BirdManager.ts    spawn fora da visão, destinos (chooseDestination), poleiros ocupados, bandos,
+                          sustos (scare), despawn e pool; implementa BirdWorld
+  world/ChunkManager.ts   + randomPerch(x, z, minR, maxR, out, accept) — sorteia topo de copa carregado
 ```
 
 ## Notas para as próximas etapas
-- Etapa 5 (tiro): ligar `weapon.onFire = (origin, dir) => ...` — a direção já inclui dispersão, respiração e coice.
-  Na luneta o desvio é ~0,005°, então o raio é praticamente o centro do retículo.
+- Etapa 5 (tiro): `main.ts` já liga `weapon.onFire` a `birds.scare(...)`; trocar por hit detection e manter o susto.
+  A direção já inclui dispersão, respiração e coice (luneta: desvio ~0,005°).
+  Alvos: `birds.active` (pos = centro do corpo, tamanho = `species.length`). Falta criar os estados de morte
+  (queda com física, corpo no chão, limite/tempo de vida dos corpos) no `Bird` e no `BirdManager`.
+- Pássaros: custo ~0,13 ms/quadro com 20 ativos; 3 draw calls por pássaro visível (corpo + 2 asas).
+  Poleiros = ponto exato do topo de cada espécie (`SPECIES[].perch` em `Vegetation.ts`, com a matriz da instância).
+  Pássaros no chão ficam parcialmente escondidos pela grama alta das clareiras (proposital).
 - Ajustes da arma ficam em `CONFIG.weapon` (tempos, FOV da luneta, dispersão, coice, respiração, clarão) e as poses
   no topo de `Weapon.ts` (HIP/ADS/SPRINT/RELOAD).
 - Etapa 4 (pássaros): pontos de pouso já existem em `chunk.perches` (topo das copas, escalado). Árvores secas

@@ -1,0 +1,17 @@
+[
+  { "wait": 2500 },
+  { "eval": "(() => { const g = game, p = g.player, B = g.birds; window.__aim = (b, scope) => { const e = g.engine.camera.position; const dx = b.pos.x - e.x, dy = b.pos.y - e.y, dz = b.pos.z - e.z; p.yaw = Math.atan2(-dx, -dz); p.pitch = Math.atan2(dy, Math.hypot(dx, dz)); if (scope) g.input.buttons |= 4; else g.input.buttons = 0; for (let i = 0; i < 12; i++) { p.update(1 / 30); g.weapon.update(1 / 30); } return { especie: b.species.id, dist: +b.pos.distanceTo(e).toFixed(1) }; }; p.position.set(-29, g.terrain.heightAt(-29, -28), -28); p.velocity.set(0, 0, 0); g.chunks.warmup(p.position); B.frozen = true; for (let i = B.active.length - 1; i >= 0; i--) B.release(i); const v = p.position.clone(); window.__perched = []; const jay = B.speciesList.find(s => s.id === 'gralha'); const hawk = B.speciesList.find(s => s.id === 'gaviao'); for (let k = 0; k < 60 && window.__perched.length < 4; k++) { if (!g.chunks.randomPerch(p.position.x, p.position.z, 18, 50, v)) continue; if (window.__perched.some(b => b.pos.distanceTo(v) < 5)) continue; const b = B.spawnPerched(window.__perched.length % 2 ? hawk : jay, v, false, null); b.showcase(b.pos, Math.random() * 6.28, 0, 1); window.__perched.push(b); } return window.__perched.map(b => ({ especie: b.species.id, dist: +b.pos.distanceTo(p.position).toFixed(1), altura: +(b.pos.y - g.terrain.heightAt(b.pos.x, b.pos.z)).toFixed(1) })); })()", "label": "pássaros em copas vistos da clareira" },
+  { "eval": "__aim(__perched[0], false)", "label": "quadril → copa 0" },
+  { "wait": 2500 },
+  { "shot": "s4-05-canopy-hip" },
+  { "eval": "__aim(__perched[0], true)", "label": "luneta → copa 0" },
+  { "wait": 2500 },
+  { "shot": "s4-06-canopy-scope-0" },
+  { "eval": "__aim(__perched[1], true)", "label": "luneta → copa 1" },
+  { "wait": 2500 },
+  { "shot": "s4-07-canopy-scope-1" },
+  { "eval": "__aim(__perched[2], true)", "label": "luneta → copa 2" },
+  { "wait": 2500 },
+  { "shot": "s4-08-canopy-scope-2" },
+  { "eval": "(() => { game.input.buttons = 0; game.birds.frozen = false; return 'ok'; })()" }
+]

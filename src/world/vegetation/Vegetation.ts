@@ -38,17 +38,18 @@ interface Species {
   layer: number;
   /** Raio do tronco na base (colisão), em escala 1. */
   radius: number;
-  /** Altura do ponto de pouso no topo, em escala 1. */
-  top: number;
+  /** Ponto de pouso no alto da copa (espaço da árvore, escala 1), com folga para ficar à vista. */
+  perch: [number, number, number];
   minScale: number;
   maxScale: number;
 }
 
 const SPECIES: Record<'conifer' | 'broadleaf' | 'birch' | 'snag', Species> = {
-  conifer: { layer: LAYER.conifer, radius: 0.32, top: 13.1, minScale: 0.7, maxScale: 1.5 },
-  broadleaf: { layer: LAYER.broadleaf, radius: 0.42, top: 10.2, minScale: 0.75, maxScale: 1.35 },
-  birch: { layer: LAYER.birch, radius: 0.2, top: 9.8, minScale: 0.8, maxScale: 1.25 },
-  snag: { layer: LAYER.snag, radius: 0.34, top: 7.9, minScale: 0.75, maxScale: 1.2 },
+  // Pontas: conífera = ponta do último cone; copa/bétula = topo da bola de folhas mais alta; seca = topo do tronco.
+  conifer: { layer: LAYER.conifer, radius: 0.32, perch: [0, 13.35, 0], minScale: 0.7, maxScale: 1.5 },
+  broadleaf: { layer: LAYER.broadleaf, radius: 0.42, perch: [-0.2, 10.45, 0.5], minScale: 0.75, maxScale: 1.35 },
+  birch: { layer: LAYER.birch, radius: 0.2, perch: [-0.4, 10.3, 0.3], minScale: 0.8, maxScale: 1.25 },
+  snag: { layer: LAYER.snag, radius: 0.34, perch: [0, 8.02, 0], minScale: 0.75, maxScale: 1.2 },
 };
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -151,9 +152,13 @@ export class Vegetation {
         const y = terrain.heightAt(x, z) - 0.2;
         const autumn = sp === SPECIES.broadleaf && rand() < 0.06;
         const c = autumn ? _tint.setRGB(1.2, 1.0, 0.7).multiplyScalar(0.85 + rand() * 0.2) : tint(rand, 0.3, 0.06);
-        this.put(chunk, sp.layer, x, y, z, rand() * TAU, sxz, s, sxz, c, (rand() - 0.5) * 0.06, (rand() - 0.5) * 0.06);
+        if (!this.put(chunk, sp.layer, x, y, z, rand() * TAU, sxz, s, sxz, c, (rand() - 0.5) * 0.06, (rand() - 0.5) * 0.06)) {
+          continue;
+        }
         chunk.colliders.push(x, z, sp.radius * sxz + 0.05);
-        chunk.perches.push(x, y + sp.top * s, z);
+        // Topo da copa pela mesma matriz da instância (inclui escala e inclinação).
+        _p.fromArray(sp.perch).applyMatrix4(_m);
+        chunk.perches.push(_p.x, _p.y, _p.z);
       }
     }
 
@@ -283,14 +288,15 @@ export class Vegetation {
     color: THREE.Color,
     tiltX = 0,
     tiltZ = 0,
-  ): void {
+  ): boolean {
     const mesh = chunk.layers[layer];
-    if (mesh.count >= this.layers[layer].capacity) return;
+    if (mesh.count >= this.layers[layer].capacity) return false;
     _p.set(x, y, z);
     _q.setFromEuler(_e.set(tiltX, yaw, tiltZ, 'YXZ'));
     _s.set(sx, sy, sz);
     mesh.setMatrixAt(mesh.count, _m.compose(_p, _q, _s));
     mesh.setColorAt(mesh.count, color);
     mesh.count++;
+    return true;
   }
 }

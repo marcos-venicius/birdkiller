@@ -114,4 +114,33 @@ export const CONFIG = {
   audio: {
     master: 0.8,
   },
+
+  birds: {
+    /** Máximo de pássaros vivos ao mesmo tempo. */
+    maxActive: 20,
+    /** Pássaros já presentes no início (deixa vagas para chegarem outros). */
+    initialBirds: 12,
+    /** Chance, a cada novo destino, de o pássaro ir embora de vez (é reciclado ao sair do alcance). */
+    leaveChance: 0.1,
+    /** Distâncias de spawn ao redor do jogador (m). */
+    initialMin: 30,
+    spawnMin: 60,
+    spawnMax: 170,
+    /** Além desta distância a névoa esconde o surgimento — pode nascer mesmo dentro da visão. */
+    hiddenDistance: 150,
+    /** Folga (graus) além da borda do campo de visão para spawns mais próximos. */
+    viewMargin: 20,
+    flyingSpawnChance: 0.4,
+    /** Intervalo entre tentativas de spawn (s). */
+    spawnInterval: [1.5, 4],
+    despawnDistance: 240,
+    /** Longe disto, os destinos puxam o pássaro de volta para a região do jogador. */
+    homeRadius: 120,
+    /** Raio de susto com o jogador (m): andando, correndo, agachado. */
+    fearWalk: 14,
+    fearRun: 24,
+    fearCrouch: 7,
+    /** Raio em que um disparo espanta os pássaros. */
+    shotScare: 80,
+  },
 } as const;
