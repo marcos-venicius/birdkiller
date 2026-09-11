@@ -34,6 +34,7 @@ Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida,
 `stage5.json` (abate, corpo, tiro em corpo, oclusão por tronco, raspão, chão/céu, limite de corpos, mira alternada),
 `stage6.json` (render offline de cada som com pico/RMS/NaN via `game.audio.debugRender`, nível ao vivo via
 `game.audio.level()`, passos simulados), `stage6-events.json` (asas ao decolar, alarme, baque do corpo),
+`stage6-music.json` (música offline vs. referências, nível ao vivo com/sem música, tecla M),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -46,6 +47,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - WASD / setas: mover · Shift: correr (sem stamina) · C: agachar (alterna) · Espaço: pular.
 - Botão esquerdo: atirar · Botão direito: liga/desliga a luneta (anda mais devagar, não corre).
   Shift, a recarga automática e soltar o mouse (Esc) desligam a mira.
+- M: liga/desliga a música de fundo (lembra a escolha).
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
 
 ## Etapas
@@ -55,6 +57,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - [x] **4. Pássaros** — 6 espécies procedurais (pardal, sabiá, pisco, gralha-azul, rolinha, gavião) com cores, tamanhos e estilos de voo próprios (ondulado, contínuo, planando em térmicas); estados pousado/voando/pousando/fugindo; idle com viradas, bicadas e pulinhos no chão; destinos em copas (um pássaro por poleiro), no chão de clareiras ou passeio; bandos seguem o líder; susto com a aproximação (raio conforme andar/correr/agachar) e com disparos; spawn dinâmico (máx. 20, 60–170 m, fora do campo de visão ou oculto pela névoa, parte já pousada, parte chegando voando); às vezes vão embora e são reciclados (pool).
 - [x] **5. Tiro e morte** — hitscan exato (até 400 m) contra relevo (marcha + bisseção), troncos/tocos (cilindros com altura), pedras (esferas) e pássaros (esferas de corpo e cabeça = letal; asa aberta = raspão, foge); obstáculo só bloqueia se estiver antes do pássaro; queda com gravidade, arrasto, giro e quique; corpo deitado no chão, inerte (não pontua de novo); máx. 15 corpos, somem após 4 min; pontos por espécie + 1 a cada 10 m; HUD "Pontos · Abates" + aviso "+18 Sabiá · 32 m"; penas e lascas (terra/casca/pedra) em InstancedMesh com pool; sons de impacto com atraso da distância; mira no botão direito virou alterna (liga/desliga).
 - [x] **6. Áudio** — ouvinte na câmera e sons espaciais (HRTF + distância; longe = mais reverb da mata); grupos de volume (efeitos/ambiente/pássaros/passos); vento em rajadas, folhas estéreo (mais na mata fechada), farfalhar ao andar na grama, grilos em volta; animais ocasionais ao longe (coruja, pica-pau, corvo, galho estalando, bugio); canto próprio de cada espécie vindo do pássaro, alarme ao fugir, bater de asas ao decolar, baque do corpo; passos sincronizados com o balanço (folhas/grama, correndo/agachado, aterrissagem, graveto); impactos do tiro espaciais; áudio pausa com a aba em segundo plano.
+- [x] **6b. Música de fundo** (pedido do usuário) — compositor generativo estilo "RPG de exploração": progressões clássicas (I–V–vi–IV, IV–V–iii–vi...), tônica e andamento (70–84 BPM) novos a cada seção; cordas (pad serra desafinado + passa-baixa), baixo, harpa em arpejos, melodia de flauta/ocarina com vibrato (motivo A, sequência, resposta B, cadência em nota longa) e sininhos; eco + reverb da mata; pausas de 15–35 s às vezes; volume bem baixo (bus `music`); tecla M liga/desliga (preferência salva no navegador).
 - [ ] **7. Polimento e desempenho** — iluminação, perfil de FPS/memória, sessão longa, build offline final.
 
 ## Estrutura atual
@@ -104,6 +107,8 @@ src/
   audio/birdSongs.ts      SONGS[espécie](a, dest, alarme), wingFlutter, corpseThud
   audio/animalSounds.ts   ANIMALS (coruja, pica-pau, corvo, galho, bugio), cricketChirp
   audio/Footsteps.ts      passos pelo stepPhase do jogador + aterrissagem
+  audio/Music.ts          música generativa (seções, frases por motivos, instrumentos via AudioSystem.voice),
+                          agendamento com lookahead de 1,2 s; toggle() da tecla M; debugSchedule() p/ testes
   effects/Particles.ts    penas e lascas (um InstancedMesh, pool de 240)
   birds/Bird.ts           + estados falling/dead, kill(), raycast() (esferas), sink() e corpseAge
   birds/BirdManager.ts    + raycast(), kill() com limite de corpos, living (vivos)
@@ -117,6 +122,8 @@ src/
   `CONFIG.audio` (master e buses). Níveis de referência (render offline): disparo ~0,40 de pico, cantos a 15 m
   0,05–0,14, ambiente ao vivo ~0,05. `BirdVoices` detecta transições de estado observando os pássaros, sem acoplar
   áudio ao comportamento. Na simulação do headless o relógio do áudio não anda (vozes ficam "ocupadas").
+- Música: volume do bus `music` = 0,12 → RMS ~0,009, cerca de metade do ambiente ao vivo (RMS ~0,016), para
+  ficar "bem baixo" no fundo. Com 0,35 ela ficava mais alta que o vento/folhas.
 - Pássaros: custo ~0,13 ms/quadro com 20 ativos; 3 draw calls por pássaro visível (corpo + 2 asas).
   Poleiros = ponto exato do topo de cada espécie (`SPECIES[].perch` em `Vegetation.ts`, com a matriz da instância).
   Pássaros no chão ficam parcialmente escondidos pela grama alta das clareiras (proposital).

@@ -1,0 +1,11 @@
+[
+  { "wait": 2500 },
+  { "eval": "(async () => { const g = game, A = g.audio, S = g.sounds; const out = {}; for (let i = 0; i < 3; i++) { const r = await A.debugRender(24, a => g.music.debugSchedule(22)); out['música (seção ' + (i + 1) + ', 24 s)'] = { pico: +r.peak.toFixed(3), rms: +r.rms.toFixed(4), invalido: r.invalid }; } const amb = await A.debugRender(2, a => S.cricketChirp(a, a.spatial(new g.player.position.constructor(10, 0, 0), 'ambience', 3), 4600)); out['referência: grilo a 10 m'] = { pico: +amb.peak.toFixed(3) }; const gun = await A.debugRender(3, a => S.playGunshot(a)); out['referência: disparo'] = { pico: +gun.peak.toFixed(3) }; return out; })()", "label": "render offline da música vs. referências" },
+  { "eval": "(() => { game.audio.unlock(); return { pronto: game.audio.ready, musicaLigada: game.music.enabled }; })()", "label": "desbloquear áudio real" },
+  { "wait": 9000 },
+  { "eval": "(async () => { const A = game.audio; let peak = 0, rms = 0; for (let i = 0; i < 30; i++) { const l = A.level(); peak = Math.max(peak, l.peak); rms = Math.max(rms, l.rms); await new Promise(r => setTimeout(r, 100)); } return { secao: game.music.section && { tonica: game.music.section.tonic, compassos: game.music.section.bars, notasMelodia: game.music.section.melody.length, compassoAtual: game.music.bar }, pico: +peak.toFixed(4), rms: +rms.toFixed(4) }; })()", "label": "ao vivo com música (ambiente + música)" },
+  { "eval": "(() => { const on = game.music.toggle(); return { musicaLigada: on, toast: document.querySelector('.hud-kill').textContent }; })()", "label": "tecla M (desliga)" },
+  { "wait": 4000 },
+  { "eval": "(async () => { const A = game.audio; let peak = 0, rms = 0; for (let i = 0; i < 30; i++) { const l = A.level(); peak = Math.max(peak, l.peak); rms = Math.max(rms, l.rms); await new Promise(r => setTimeout(r, 100)); } let pref = null; try { pref = localStorage.getItem('birdkiller.music'); } catch {} return { pico: +peak.toFixed(4), rms: +rms.toFixed(4), preferenciaSalva: pref }; })()", "label": "ao vivo sem música (só ambiente)" },
+  { "eval": "(() => { game.music.toggle(); return { musicaLigada: game.music.enabled }; })()", "label": "religar (restaura a preferência)" }
+]

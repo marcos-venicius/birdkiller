@@ -6,6 +6,7 @@ import { AudioSystem } from './audio/AudioSystem';
 import * as birdSongs from './audio/birdSongs';
 import { BirdVoices } from './audio/BirdVoices';
 import { Footsteps } from './audio/Footsteps';
+import { Music } from './audio/Music';
 import * as weaponSounds from './audio/weaponSounds';
 import { BirdManager } from './birds/BirdManager';
 import { Hunting } from './combat/Hunting';
@@ -58,6 +59,7 @@ const hunting = new Hunting(terrain, chunks, birds, particles, hud, audio);
 const ambience = new Ambience(audio, biome);
 const voices = new BirdVoices(audio);
 const footsteps = new Footsteps(audio, biome);
+const music = new Music(audio);
 weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
 input.onLockChange = (locked) => {
   hud.setHintVisible(!locked);
@@ -84,6 +86,8 @@ engine.renderer.setAnimationLoop(() => {
   ambience.update(dt, player, engine.camera.position);
   voices.update(dt, birds.active, engine.camera.position);
   footsteps.update(dt, player);
+  music.update();
+  if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
   chunks.update(player.position);
   atmosphere.update(player.position, engine.camera);
   engine.render();
@@ -129,6 +133,7 @@ if (import.meta.env.DEV) {
       ambience,
       voices,
       footsteps,
+      music,
       sounds: { ...weaponSounds, ...birdSongs, ...animalSounds },
     },
   });

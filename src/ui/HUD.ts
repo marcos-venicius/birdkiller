@@ -38,7 +38,7 @@ export class HUD {
       <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
       <div class="hud-hint">
         Clique para controlar
-        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · Esc soltar o mouse</small>
+        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · M música · Esc soltar o mouse</small>
       </div>
       <div class="hud-debug" hidden></div>
     `;
@@ -59,8 +59,8 @@ export class HUD {
     this.killsEl.textContent = String(kills);
   }
 
-  /** Aviso discreto de abate (ex.: "+18  Sabiá · 42 m") que some sozinho. */
-  showKill(text: string): void {
+  /** Aviso discreto acima do retículo (abate, música ligada/desligada...) que some sozinho. */
+  toast(text: string): void {
     const el = this.killEl;
     el.textContent = text;
     el.style.transition = 'none';

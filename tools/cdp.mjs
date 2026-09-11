@@ -71,7 +71,9 @@ for (const a of actions) {
     console.log(`shot -> shots/${a.shot}.png`);
   } else if (a.eval) {
     const r = await send('Runtime.evaluate', { expression: a.eval, returnByValue: true, awaitPromise: true });
-    console.log(`eval ${a.label ?? a.eval.slice(0, 60)} =>`, JSON.stringify(r.result.result?.value ?? r.result.exceptionDetails?.text));
+    const ex = r.result.exceptionDetails;
+    const value = ex ? `ERRO: ${ex.exception?.description ?? ex.text}` : r.result.result?.value;
+    console.log(`eval ${a.label ?? a.eval.slice(0, 60)} =>`, JSON.stringify(value));
   } else if (a.keyDown) await keyEvt('keyDown', a.keyDown);
   else if (a.keyUp) await keyEvt('keyUp', a.keyUp);
   else if (a.press) { await keyEvt('keyDown', a.press); await sleep(50); await keyEvt('keyUp', a.press); }

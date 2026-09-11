@@ -73,7 +73,7 @@ export class Hunting {
         this.score += result.points;
         this.kills++;
         this.hud.setScore(this.score, this.kills);
-        this.hud.showKill(`+${result.points}  ${sp.name} · ${Math.round(hit.t)} m`);
+        this.hud.toast(`+${result.points}  ${sp.name} · ${Math.round(hit.t)} m`);
         this.particles.feathers(result.point, sp.colors, 16, dir);
       } else {
         // Raspão na asa: algumas penas e o pássaro foge.

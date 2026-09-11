@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from '../config';
 
 /** Grupos de volume (ajustados em CONFIG.audio.buses). */
-export type Bus = 'sfx' | 'ambience' | 'birds' | 'steps';
+export type Bus = 'sfx' | 'ambience' | 'birds' | 'steps' | 'music';
 
 export interface FilterOptions {
   type: BiquadFilterType;
@@ -31,7 +31,7 @@ export interface NoiseOptions extends Routing {
   attack?: number;
 }
 
-/** Tom de oscilador com envelope (e filtro opcional). */
+/** Tom de oscilador com envelope percussivo (e filtro opcional). */
 export interface ToneOptions extends Routing {
   at?: number;
   duration: number;
@@ -40,6 +40,26 @@ export interface ToneOptions extends Routing {
   type?: OscillatorType;
   gain: number;
   attack?: number;
+  filter?: FilterOptions;
+}
+
+/** Nota musical com envelope ADSR, desafinação (dois osciladores), vibrato e filtro opcionais. */
+export interface VoiceOptions extends Routing {
+  at?: number;
+  freq: number;
+  /** Tempo até soltar a nota (s); depois vem o release. */
+  duration: number;
+  attack: number;
+  release: number;
+  gain: number;
+  type?: OscillatorType;
+  /** Nível mantido após o ataque (fração do gain) e constante de tempo do decaimento até ele. */
+  sustain?: number;
+  decay?: number;
+  /** Desafinação ± em cents (usa dois osciladores — encorpa cordas/pads). */
+  detune?: number;
+  /** Vibrato: frequência (Hz) e profundidade (cents), entrando aos poucos. */
+  vibrato?: { rate: number; depth: number };
   filter?: FilterOptions;
 }
 
@@ -96,6 +116,8 @@ export class AudioSystem {
   private noise!: AudioBuffer;
   private loopNoise!: AudioBuffer;
   private readonly listener = new THREE.Vector3();
+  /** Volumes atuais dos grupos (sobrevivem à troca de contexto nos testes offline). */
+  private readonly volumes: Record<Bus, number> = { ...CONFIG.audio.buses };
 
   /** Contexto real ativo e tocando. */
   get ready(): boolean {
@@ -119,6 +141,13 @@ export class AudioSystem {
       });
     }
     if (this.live.state === 'suspended' && !document.hidden) void this.live.resume();
+  }
+
+  /** Muda o volume de um grupo com transição suave (s). */
+  setBusGain(bus: Bus, value: number, fade = 0.5): void {
+    this.volumes[bus] = value;
+    if (!this.ctx) return;
+    this.buses[bus].gain.setTargetAtTime(value, this.ctx.currentTime, Math.max(fade / 3, 0.001));
   }
 
   /** Coloca o ouvinte na câmera (posição e orientação). */
@@ -198,10 +227,7 @@ export class AudioSystem {
     if (o.freqEnd) osc.frequency.exponentialRampToValueAtTime(o.freqEnd, t + o.duration);
     let node: AudioNode = osc;
     if (o.filter) {
-      const f = ctx.createBiquadFilter();
-      f.type = o.filter.type;
-      f.frequency.value = o.filter.freq;
-      f.Q.value = o.filter.q ?? 0.7;
+      const f = this.filter(o.filter);
       osc.connect(f);
       node = f;
     }
@@ -212,6 +238,48 @@ export class AudioSystem {
     osc.stop(t + o.duration + 0.05);
   }
 
+  voice(o: VoiceOptions): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t0 = ctx.currentTime + (o.at ?? 0);
+    const tRelease = t0 + Math.max(o.duration, o.attack);
+    const end = tRelease + o.release * 1.3;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, t0);
+    env.gain.linearRampToValueAtTime(o.gain, t0 + o.attack);
+    if (o.sustain !== undefined && o.sustain < 1) env.gain.setTargetAtTime(o.gain * o.sustain, t0 + o.attack, o.decay ?? 0.3);
+    env.gain.setTargetAtTime(0, tRelease, o.release / 4);
+
+    let input: AudioNode = env;
+    if (o.filter) {
+      const f = this.filter(o.filter);
+      f.connect(env);
+      input = f;
+    }
+    let vibrato: GainNode | null = null;
+    if (o.vibrato) {
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = o.vibrato.rate;
+      vibrato = ctx.createGain();
+      vibrato.gain.setValueAtTime(0, t0);
+      vibrato.gain.linearRampToValueAtTime(o.vibrato.depth, t0 + 0.35);
+      lfo.connect(vibrato);
+      lfo.start(t0);
+      lfo.stop(end);
+    }
+    for (const cents of o.detune ? [-o.detune, o.detune] : [0]) {
+      const osc = ctx.createOscillator();
+      osc.type = o.type ?? 'sine';
+      osc.frequency.value = o.freq;
+      osc.detune.value = cents;
+      if (vibrato) vibrato.connect(osc.detune);
+      osc.connect(input);
+      osc.start(t0);
+      osc.stop(end);
+    }
+    this.route(env, o);
+  }
+
   /** Ruído filtrado em loop (vento, folhas). Começa mudo. */
   loop(type: BiquadFilterType, freq: number, q: number, bus: Bus, pan = 0): NoiseLoop | null {
     const ctx = this.ctx;
@@ -219,10 +287,7 @@ export class AudioSystem {
     const src = ctx.createBufferSource();
     src.buffer = this.loopNoise;
     src.loop = true;
-    const filter = ctx.createBiquadFilter();
-    filter.type = type;
-    filter.frequency.value = freq;
-    filter.Q.value = q;
+    const filter = this.filter({ type, freq, q });
     const gain = ctx.createGain();
     gain.gain.value = 0;
     const panner = ctx.createStereoPanner();
@@ -301,15 +366,6 @@ export class AudioSystem {
     this.analyser.fftSize = 2048;
     master.connect(comp).connect(this.analyser).connect(ctx.destination);
 
-    const V = CONFIG.audio.buses;
-    const bus = (volume: number) => {
-      const g = ctx.createGain();
-      g.gain.value = volume;
-      g.connect(master);
-      return g;
-    };
-    this.buses = { sfx: bus(V.sfx), ambience: bus(V.ambience), birds: bus(V.birds), steps: bus(V.steps) };
-
     const reverb = ctx.createConvolver();
     reverb.buffer = makeImpulse(ctx, 2.8);
     const wet = ctx.createGain();
@@ -317,8 +373,39 @@ export class AudioSystem {
     this.reverbSend = ctx.createGain();
     this.reverbSend.connect(reverb).connect(wet).connect(master);
 
+    const bus = (name: Bus) => {
+      const g = ctx.createGain();
+      g.gain.value = this.volumes[name];
+      g.connect(master);
+      return g;
+    };
+    this.buses = { sfx: bus('sfx'), ambience: bus('ambience'), birds: bus('birds'), steps: bus('steps'), music: bus('music') };
+
+    // Música: eco suave (delay com realimentação abafada) e um pouco do reverb da mata.
+    const delay = ctx.createDelay(1);
+    delay.delayTime.value = 0.42;
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.28;
+    const damp = this.filter({ type: 'lowpass', freq: 2200 }, ctx);
+    const echo = ctx.createGain();
+    echo.gain.value = 0.3;
+    this.buses.music.connect(delay);
+    delay.connect(damp).connect(feedback).connect(delay);
+    damp.connect(echo).connect(master);
+    const musicSpace = ctx.createGain();
+    musicSpace.gain.value = 0.5;
+    this.buses.music.connect(musicSpace).connect(this.reverbSend);
+
     this.noise = makeNoise(ctx, 2);
     this.loopNoise = makeNoise(ctx, 6);
+  }
+
+  private filter(f: FilterOptions, ctx: BaseAudioContext = this.ctx!): BiquadFilterNode {
+    const node = ctx.createBiquadFilter();
+    node.type = f.type;
+    node.frequency.value = f.freq;
+    node.Q.value = f.q ?? 0.7;
+    return node;
   }
 
   private envelope(t: number, peak: number, attack: number, duration: number): GainNode {
