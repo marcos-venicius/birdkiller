@@ -55,6 +55,8 @@ export const CONFIG = {
     walkSpeed: 5.0,
     runSpeed: 9.0,
     crouchSpeed: 2.6,
+    /** Multiplicador de velocidade enquanto mira. */
+    aimSpeedFactor: 0.55,
     /** Raio do jogador para colisão com troncos e pedras. */
     radius: 0.35,
     eyeHeight: 1.7,
@@ -78,5 +80,38 @@ export const CONFIG = {
 
   weapon: {
     magazineSize: 5,
+    /** Tempo entre disparos: ciclo do ferrolho (s). */
+    boltTime: 1.0,
+    reloadTime: 2.6,
+    /** Tempo para levar a luneta ao olho (s). */
+    aimTime: 0.22,
+    /** FOV com a luneta (~4x). */
+    scopeFov: 18,
+    /** Sensibilidade do mouse na luneta, relativa à normal. */
+    scopeLookScale: 0.3,
+    /** FOV da câmera que desenha a arma. */
+    viewFov: 55,
+    /** Dispersão do tiro (rad, raio do cone). */
+    hipSpread: 0.022,
+    moveSpread: 0.03,
+    scopeSpread: 0.0012,
+    scopeMoveSpread: 0.008,
+    airSpread: 0.05,
+    /** Coice da câmera (rad) e velocidade de retorno. */
+    kickPitch: 0.045,
+    kickYaw: 0.02,
+    kickRecover: 7,
+    /** Velocidade de retorno do coice visual da arma. */
+    recoilRecover: 9,
+    /** Oscilação da respiração na luneta (rad). */
+    sway: 0.0016,
+    swayCrouched: 0.0007,
+    flashTime: 0.06,
+    flashWorldLight: 40,
+    flashViewLight: 1.2,
+  },
+
+  audio: {
+    master: 0.8,
   },
 } as const;

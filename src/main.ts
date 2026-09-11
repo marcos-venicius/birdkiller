@@ -1,10 +1,12 @@
 import './style.css';
 import * as THREE from 'three';
+import { AudioSystem } from './audio/AudioSystem';
 import { CONFIG } from './config';
 import { Engine } from './core/Engine';
 import { Input } from './core/Input';
 import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
+import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
 import { Biome } from './world/Biome';
 import { ChunkManager } from './world/ChunkManager';
@@ -15,6 +17,10 @@ import { windTime } from './world/vegetation/wind';
 const engine = new Engine(document.querySelector<HTMLElement>('#app')!);
 const input = new Input(engine.renderer.domElement);
 const hud = new HUD(document.querySelector<HTMLElement>('#hud')!);
+const audio = new AudioSystem();
+// O navegador só libera o áudio depois de um gesto do usuário.
+window.addEventListener('pointerdown', () => audio.unlock());
+window.addEventListener('keydown', () => audio.unlock());
 
 const biome = new Biome(CONFIG.seed);
 const terrain = new Terrain(CONFIG.seed, biome);
@@ -35,7 +41,7 @@ for (let i = 0; i < 60 && !chunks.isClear(player.position.x, player.position.z, 
 }
 chunks.resolveCollision(player.position, CONFIG.player.radius);
 
-hud.setAmmo(CONFIG.weapon.magazineSize);
+const weapon = new Weapon(engine, input, player, hud, audio, atmosphere.sunDir);
 input.onLockChange = (locked) => hud.setHintVisible(!locked);
 
 const debug = new URLSearchParams(location.search).has('debug');
@@ -51,6 +57,7 @@ engine.renderer.setAnimationLoop(() => {
 
   windTime.value += dt;
   player.update(dt);
+  weapon.update(dt);
   chunks.update(player.position);
   atmosphere.update(player.position, engine.camera);
   engine.render();
@@ -76,5 +83,7 @@ engine.renderer.setAnimationLoop(() => {
 });
 
 if (import.meta.env.DEV) {
-  Object.assign(window, { game: { engine, input, player, terrain, biome, vegetation, chunks, atmosphere, hud } });
+  Object.assign(window, {
+    game: { engine, input, player, terrain, biome, vegetation, chunks, atmosphere, hud, audio, weapon },
+  });
 }

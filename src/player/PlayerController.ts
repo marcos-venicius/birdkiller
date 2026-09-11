@@ -20,13 +20,20 @@ export class PlayerController {
   crouched = false;
   running = false;
   onGround = true;
-  /** Multiplicador de sensibilidade (a mira da Etapa 3 reduz). */
+  /** Multiplicador de sensibilidade (a luneta reduz). */
   lookScale = 1;
+  /** Mirando: anda mais devagar e não corre (definido pela arma). */
+  aiming = false;
+  /** Deslocamento extra do olhar (x = pitch, y = yaw): coice e respiração, definido pela arma. */
+  readonly viewOffset = new THREE.Vector2();
+  /** Movimento do mouse no último quadro (px) — usado pelo balanço da arma. */
+  readonly lookDelta = new THREE.Vector2();
+  /** Intensidade atual do balanço dos passos (0..1). */
+  bobAmount = 0;
   /** Fase dos passos: avança π a cada passo — base para o áudio de passos (Etapa 6). */
   stepPhase = 0;
 
   private eyeHeight: number = CONFIG.player.eyeHeight;
-  private bobAmount = 0;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -47,6 +54,7 @@ export class PlayerController {
     const input = this.input;
 
     const { dx, dy } = input.consumeMouseDelta();
+    this.lookDelta.set(dx, dy);
     const sens = P.mouseSensitivity * this.lookScale;
     this.yaw -= dx * sens;
     this.pitch = THREE.MathUtils.clamp(this.pitch - dy * sens, -MAX_PITCH, MAX_PITCH);
@@ -56,7 +64,7 @@ export class PlayerController {
     const mx = (this.key('KeyD', 'ArrowRight') ? 1 : 0) - (this.key('KeyA', 'ArrowLeft') ? 1 : 0);
     const mz = (this.key('KeyW', 'ArrowUp') ? 1 : 0) - (this.key('KeyS', 'ArrowDown') ? 1 : 0);
     const moving = mx !== 0 || mz !== 0;
-    this.running = moving && this.key('ShiftLeft', 'ShiftRight');
+    this.running = moving && !this.aiming && this.key('ShiftLeft', 'ShiftRight');
     if (this.running) this.crouched = false;
 
     // Direção desejada no plano: frente = (-sin yaw, -cos yaw), direita = (cos yaw, -sin yaw).
@@ -69,7 +77,8 @@ export class PlayerController {
       wx /= len;
       wz /= len;
     }
-    const speed = this.crouched ? P.crouchSpeed : this.running ? P.runSpeed : P.walkSpeed;
+    const speed =
+      (this.crouched ? P.crouchSpeed : this.running ? P.runSpeed : P.walkSpeed) * (this.aiming ? P.aimSpeedFactor : 1);
     const accel = this.onGround ? (moving ? P.accel : P.friction) : P.airAccel;
     const k = 1 - Math.exp(-accel * dt);
     this.velocity.x += (wx * speed - this.velocity.x) * k;
@@ -112,7 +121,7 @@ export class PlayerController {
       this.position.y + this.eyeHeight + bobY,
       this.position.z - sinY * bobX,
     );
-    this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    this.camera.rotation.set(this.pitch + this.viewOffset.x, this.yaw + this.viewOffset.y, 0, 'YXZ');
   }
 
   private key(a: string, b: string): boolean {

@@ -15,7 +15,8 @@ npm run dev          # http://localhost:5173  (adicione ?debug para FPS/draw cal
 npm run build        # checagem de tipos + build em dist/
 npm run preview      # serve dist/ em http://localhost:4173
 ```
-Em modo dev, `window.game` expõe `engine`, `input`, `player`, `terrain`, `atmosphere`, `hud` para depuração.
+Em modo dev, `window.game` expõe `engine`, `input`, `player`, `terrain`, `biome`, `vegetation`, `chunks`,
+`atmosphere`, `hud`, `audio`, `weapon` para depuração.
 
 ### Teste automatizado (Chrome headless, sem dependências)
 ```bash
@@ -25,7 +26,9 @@ node tools/cdp.mjs "http://localhost:5173/?debug" tools/scenarios/stage1.json
 `tools/cdp.mjs` abre o Chrome headless (WebGL via SwiftShader) pelo protocolo CDP, executa as ações do cenário
 (`wait`, `shot`, `eval`, `keyDown`/`keyUp`/`press`), salva capturas em `tools/shots/` e imprime o console da página.
 Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida, teleporte, colisão, custo de geração),
-`smoke.json` (build de produção: sem requisições externas).
+`stage3.json` (arma: estados, mira, dispersão, recarga, poses — botões injetados em `game.input.buttons`/`buttonsPressed`),
+`smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
+`game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
 **Atenção:** com a floresta, o SwiftShader roda a ~1 fps. Não use o headless para medir desempenho nem para testar
 movimento em tempo real — os cenários simulam chamando `game.player.update(1/30)` em laço, com teclas injetadas em
@@ -34,13 +37,13 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 ## Controles
 - Clique no jogo: captura o mouse (pointer lock). Esc solta.
 - WASD / setas: mover · Shift: correr (sem stamina) · C: agachar (alterna) · Espaço: pular.
-- (Etapa 3) Botão esquerdo: atirar · Botão direito: mirar.
+- Botão esquerdo: atirar · Botão direito (segurar): mirar com a luneta (anda mais devagar, não corre).
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
 
 ## Etapas
 - [x] **1. Base** — Vite/TS/Three, Engine, loop, atmosfera de fim de tarde (sol baixo, sombras, névoa, céu em shader), terreno com relevo, PlayerController, HUD esqueleto. Velocidades: andar 5, correr 9, agachado 2,6 m/s.
 - [x] **2. Mundo infinito** — ChunkManager (streaming em etapas + pool), vegetação instanciada por chunk (4 espécies de árvore, arbustos, samambaias, grama, pedras, troncos caídos, tocos, galhos), clareiras/áreas densas via `Biome`, LOD por distância, vento no shader, colisão com troncos/pedras/tocos, spawn em ponto livre.
-- [ ] **3. Arma** — viewmodel Kar98k procedural, sway/bob, ADS (FOV + posição + precisão), tiro com flash/recuo, ferrolho, carregador de 5, recarga automática com "Recarregando...".
+- [x] **3. Arma** — Kar98k procedural com luneta (~4x, "sniper"), renderizada em passada própria; poses quadril/correndo/recarregando/mirando; balanço de passos e do mouse; mira com FOV 75→18°, retículo alemão e respiração; dispersão (quadril ~1°, luneta ~0,005°); coice de câmera e arma; clarão (sprite + luz na mata); ferrolho animado (1 s); carregador de 5 e recarga automática (2,6 s) com "Recarregando..."; sons sintetizados de disparo com eco, ferrolho e recarga.
 - [ ] **4. Pássaros** — malhas low-poly com variações, animação de asas, estados (voar/pousar/parado/fugir), spawn dinâmico fora da visão, pool.
 - [ ] **5. Tiro e morte** — raycast ray-sphere com oclusão, morte com física de queda, pontuação única, limite/tempo de vida dos corpos.
 - [ ] **6. Áudio** — vento, folhas, cantos espaciais, animais distantes, passos, farfalhar, sons da arma.
@@ -51,7 +54,8 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 src/
   main.ts                 bootstrap + loop (dt limitado a CONFIG.maxDt)
   config.ts               todas as constantes ajustáveis
-  core/Engine.ts          renderer (ACES, sombras PCF soft), cena, câmera, resize
+  core/Engine.ts          renderer (ACES, sombras PCF), cena + câmera do mundo; viewScene + viewCamera da arma
+                          (2 passadas: mundo, limpa profundidade, arma); info.reset manual
   core/Input.ts           teclado, mouse, pointer lock (wasPressed limpo em endFrame)
   core/noise.ts, rng.ts   simplex 2D + fbm, mulberry32, hash2 (seed por chunk)
   core/math.ts            TAU, smoothstep
@@ -66,11 +70,23 @@ src/
   world/vegetation/Vegetation.ts  definição das camadas + populate(chunk) + fillGrass(mesh, chunk)
   world/vegetation/wind.ts        applyWind(material): balanço no vertex shader + fade por distância; windTime
   world/Atmosphere.ts     sol direcional + hemisférica + FogExp2 + cúpula do céu; sombra segue o jogador com snap de texel
-  player/PlayerController.ts  movimento, pulo, agachar, head-bob, colisão via CollisionWorld; stepPhase (áudio)
-  ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setDebug
+  player/PlayerController.ts  movimento, pulo, agachar, head-bob, colisão via CollisionWorld; stepPhase (áudio);
+                          aiming, viewOffset (coice/respiração), lookDelta, lookScale — controlados pela arma
+  weapon/Kar98kModel.ts   modelo procedural (coronha = perfil extrudado c/ textura de madeira em canvas, cano,
+                          ferrolho animável, luneta, sprite de clarão); ocular em z=0 e eixo óptico em y=0
+  weapon/Weapon.ts        estados ready/cycling/reloading, mira, disparo com dispersão, poses, coice, luzes da arma;
+                          onFire(origin, dir) = gancho para a detecção de acerto da Etapa 5
+  audio/AudioSystem.ts    AudioContext (desbloqueado no 1º gesto), compressor, reverb de floresta por convolução,
+                          noiseBurst()/tone() com envelope — base para a Etapa 6
+  audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
+  ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setScoped, setCrosshairVisible, flash, setDebug
 ```
 
 ## Notas para as próximas etapas
+- Etapa 5 (tiro): ligar `weapon.onFire = (origin, dir) => ...` — a direção já inclui dispersão, respiração e coice.
+  Na luneta o desvio é ~0,005°, então o raio é praticamente o centro do retículo.
+- Ajustes da arma ficam em `CONFIG.weapon` (tempos, FOV da luneta, dispersão, coice, respiração, clarão) e as poses
+  no topo de `Weapon.ts` (HIP/ADS/SPRINT/RELOAD).
 - Etapa 4 (pássaros): pontos de pouso já existem em `chunk.perches` (topo das copas, escalado). Árvores secas
   (`snag`) são bons poleiros. Colisores (`chunk.colliders`) servem para oclusão do tiro na Etapa 5 (cilindros verticais).
 - Números da Etapa 2 (spawn): ~60 chunks, ~250 draw calls, ~0,5 M triângulos. Custo de geração medido no headless

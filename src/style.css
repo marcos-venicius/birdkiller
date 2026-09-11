@@ -102,6 +102,29 @@ body {
   opacity: 0.65;
 }
 
+/* Luneta: círculo limpo no centro, bordas escurecendo até o preto. */
+.hud-scope {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 38vmin, rgba(0, 0, 0, 0.6) 45vmin, #000 46.5vmin);
+}
+
+.hud-scope svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 93vmin;
+  height: 93vmin;
+  transform: translate(-50%, -50%);
+}
+
+.hud-flash {
+  position: absolute;
+  inset: 0;
+  background: rgb(255, 190, 120);
+  opacity: 0;
+}
+
 .hud-debug {
   position: absolute;
   top: 16px;
