@@ -43,7 +43,8 @@ export class Atmosphere {
   private readonly sky: THREE.Mesh;
   private readonly lightBasis = new THREE.Matrix4();
   private readonly lightBasisInv = new THREE.Matrix4();
-  private readonly texelSize: number;
+  private readonly texelX: number;
+  private readonly texelY: number;
   private readonly tmp = new THREE.Vector3();
 
   constructor(scene: THREE.Scene) {
@@ -60,10 +61,10 @@ export class Atmosphere {
     const shadow = this.sun.shadow;
     shadow.mapSize.set(cfg.shadowMapSize, cfg.shadowMapSize);
     const cam = shadow.camera;
-    cam.left = -cfg.shadowExtent;
-    cam.right = cfg.shadowExtent;
-    cam.top = cfg.shadowExtent;
-    cam.bottom = -cfg.shadowExtent;
+    cam.left = -cfg.shadowExtentX;
+    cam.right = cfg.shadowExtentX;
+    cam.top = cfg.shadowExtentY;
+    cam.bottom = -cfg.shadowExtentY;
     cam.near = 1;
     cam.far = cfg.shadowDistance * 2;
     cam.updateProjectionMatrix();
@@ -74,7 +75,8 @@ export class Atmosphere {
     // Base do espaço da luz — usada para alinhar a sombra à grade de texels (sem tremulação).
     this.lightBasis.lookAt(this.sunDir, new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
     this.lightBasisInv.copy(this.lightBasis).invert();
-    this.texelSize = (cfg.shadowExtent * 2) / cfg.shadowMapSize;
+    this.texelX = (cfg.shadowExtentX * 2) / cfg.shadowMapSize;
+    this.texelY = (cfg.shadowExtentY * 2) / cfg.shadowMapSize;
 
     const skyMat = new THREE.ShaderMaterial({
       vertexShader: SKY_VERTEX,
@@ -100,8 +102,8 @@ export class Atmosphere {
     this.sky.position.copy(camera.position);
 
     const p = this.tmp.copy(focus).applyMatrix4(this.lightBasisInv);
-    p.x = Math.round(p.x / this.texelSize) * this.texelSize;
-    p.y = Math.round(p.y / this.texelSize) * this.texelSize;
+    p.x = Math.round(p.x / this.texelX) * this.texelX;
+    p.y = Math.round(p.y / this.texelY) * this.texelY;
     p.applyMatrix4(this.lightBasis);
     this.sun.target.position.copy(p);
     this.sun.position.copy(p).addScaledVector(this.sunDir, CONFIG.atmosphere.shadowDistance);

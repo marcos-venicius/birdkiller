@@ -5,6 +5,11 @@ import type { Terrain } from '../world/Terrain';
 
 const MAX_PITCH = THREE.MathUtils.degToRad(CONFIG.player.maxPitch);
 
+/** Mundo com obstáculos: empurra um círculo horizontal para fora deles. */
+export interface CollisionWorld {
+  resolveCollision(pos: THREE.Vector3, radius: number): void;
+}
+
 /** Movimento em primeira pessoa: andar, correr (sem stamina), agachar, pular e olhar. */
 export class PlayerController {
   /** Posição dos pés. */
@@ -27,6 +32,7 @@ export class PlayerController {
     private readonly camera: THREE.PerspectiveCamera,
     private readonly input: Input,
     private readonly terrain: Terrain,
+    private readonly world?: CollisionWorld,
   ) {}
 
   spawn(x: number, z: number, yaw = 0): void {
@@ -76,6 +82,7 @@ export class PlayerController {
     }
     this.velocity.y -= P.gravity * dt;
     this.position.addScaledVector(this.velocity, dt);
+    this.world?.resolveCollision(this.position, P.radius);
 
     const ground = this.terrain.heightAt(this.position.x, this.position.z);
     if (this.position.y <= ground) {

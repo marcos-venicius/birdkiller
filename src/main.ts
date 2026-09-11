@@ -3,26 +3,37 @@ import * as THREE from 'three';
 import { CONFIG } from './config';
 import { Engine } from './core/Engine';
 import { Input } from './core/Input';
-import { Atmosphere } from './world/Atmosphere';
-import { Terrain } from './world/Terrain';
 import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
+import { Atmosphere } from './world/Atmosphere';
+import { Biome } from './world/Biome';
+import { ChunkManager } from './world/ChunkManager';
+import { Terrain } from './world/Terrain';
+import { Vegetation } from './world/vegetation/Vegetation';
+import { windTime } from './world/vegetation/wind';
 
 const engine = new Engine(document.querySelector<HTMLElement>('#app')!);
 const input = new Input(engine.renderer.domElement);
 const hud = new HUD(document.querySelector<HTMLElement>('#hud')!);
-const terrain = new Terrain(CONFIG.seed);
+
+const biome = new Biome(CONFIG.seed);
+const terrain = new Terrain(CONFIG.seed, biome);
+const vegetation = new Vegetation(terrain, biome, CONFIG.seed);
+const chunks = new ChunkManager(engine.scene, terrain, vegetation);
 const atmosphere = new Atmosphere(engine.scene);
 
-// Etapa 1: grade fixa de chunks ao redor da origem (a Etapa 2 troca por streaming com ChunkManager).
-const R = CONFIG.world.staticChunkRadius;
-for (let cz = -R; cz < R; cz++) {
-  for (let cx = -R; cx < R; cx++) engine.scene.add(terrain.createChunkMesh(cx, cz));
-}
-
-const player = new PlayerController(engine.camera, input, terrain);
+const player = new PlayerController(engine.camera, input, terrain, chunks);
 // Começa olhando de lado para o sol: a luz rasante fica visível sem ofuscar.
-player.spawn(0, 0, THREE.MathUtils.degToRad(CONFIG.atmosphere.sunAzimuth + 180 - 50));
+const spawnYaw = THREE.MathUtils.degToRad(CONFIG.atmosphere.sunAzimuth + 180 - 50);
+player.spawn(0, 0, spawnYaw);
+chunks.warmup(player.position);
+// Evita começar colado a um tronco: procura em espiral um ponto livre por perto.
+for (let i = 0; i < 60 && !chunks.isClear(player.position.x, player.position.z, 4); i++) {
+  const a = i * 2.4;
+  const r = 2 + i * 1.5;
+  player.spawn(Math.cos(a) * r, Math.sin(a) * r, spawnYaw);
+}
+chunks.resolveCollision(player.position, CONFIG.player.radius);
 
 hud.setAmmo(CONFIG.weapon.magazineSize);
 input.onLockChange = (locked) => hud.setHintVisible(!locked);
@@ -30,30 +41,34 @@ input.onLockChange = (locked) => hud.setHintVisible(!locked);
 const debug = new URLSearchParams(location.search).has('debug');
 let frames = 0;
 let fpsTimer = 0;
-let fps = 0;
 
 let last = performance.now();
 engine.renderer.setAnimationLoop(() => {
   const now = performance.now();
-  const dt = Math.min((now - last) / 1000, CONFIG.maxDt);
+  const realDt = (now - last) / 1000;
+  const dt = Math.min(realDt, CONFIG.maxDt);
   last = now;
 
+  windTime.value += dt;
   player.update(dt);
+  chunks.update(player.position);
   atmosphere.update(player.position, engine.camera);
   engine.render();
   input.endFrame();
 
   if (debug) {
     frames++;
-    fpsTimer += dt;
+    fpsTimer += realDt;
     if (fpsTimer >= 0.5) {
-      fps = Math.round(frames / fpsTimer);
+      const fps = Math.round(frames / fpsTimer);
       frames = 0;
       fpsTimer = 0;
       const info = engine.renderer.info.render;
       const p = player.position;
+      const s = chunks.stats;
       hud.setDebug(
         `${fps} fps\ndraw ${info.calls}  tris ${info.triangles}\n` +
+          `chunks ${s.loaded}  fila ${s.queued}  grama ${s.grass}\n` +
           `pos ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}`,
       );
     }
@@ -61,5 +76,5 @@ engine.renderer.setAnimationLoop(() => {
 });
 
 if (import.meta.env.DEV) {
-  Object.assign(window, { game: { engine, input, player, terrain, atmosphere, hud } });
+  Object.assign(window, { game: { engine, input, player, terrain, biome, vegetation, chunks, atmosphere, hud } });
 }
