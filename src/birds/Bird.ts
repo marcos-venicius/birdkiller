@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { smoothstep, TAU } from '../core/math';
+import { angleDiff, raySphere, smoothstep, TAU } from '../core/math';
 import type { BirdGeometry } from './birdGeometry';
 import type { Species } from './species';
 
@@ -25,27 +25,6 @@ const SINK_TIME = 1.5;
 
 export function rand(a: number, b: number): number {
   return a + Math.random() * (b - a);
-}
-
-function angleDiff(from: number, to: number): number {
-  let d = (to - from) % TAU;
-  if (d > Math.PI) d -= TAU;
-  else if (d < -Math.PI) d += TAU;
-  return d;
-}
-
-/** Distância ao longo do raio (d normalizado) até a esfera, 0 se a origem está dentro, Infinity se não toca. */
-function raySphere(o: THREE.Vector3, d: THREE.Vector3, c: THREE.Vector3, r: number): number {
-  const ox = o.x - c.x;
-  const oy = o.y - c.y;
-  const oz = o.z - c.z;
-  const b = ox * d.x + oy * d.y + oz * d.z;
-  const q = ox * ox + oy * oy + oz * oz - r * r;
-  const disc = b * b - q;
-  if (disc < 0) return Infinity;
-  const s = Math.sqrt(disc);
-  if (-b - s > 0) return -b - s;
-  return -b + s > 0 ? 0 : Infinity;
 }
 
 /** Um pássaro: comportamento (máquina de estados + voo por steering), morte com física e animação das asas. */

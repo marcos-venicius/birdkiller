@@ -44,6 +44,14 @@ export function playBirdHit(a: AudioSystem, distance: number, pos: Vector3): voi
   a.noiseBurst({ at: at + 0.02, duration: 0.25, type: 'bandpass', freq: 3500, q: 1.2, gain: 0.3, attack: 0.01, dest });
 }
 
+/** Bala acertando um animal grande (javali): baque surdo e seco. */
+export function playFleshHit(a: AudioSystem, distance: number, pos: Vector3): void {
+  const at = distance / 343;
+  const dest = a.spatial(pos, 'sfx', 8);
+  a.noiseBurst({ at, duration: 0.1, type: 'lowpass', freq: 400, gain: 0.8, dest });
+  a.noiseBurst({ at, duration: 0.06, type: 'bandpass', freq: 900, q: 1.5, gain: 0.3, dest });
+}
+
 /** Bala acertando madeira, pedra ou terra, vindo do ponto do impacto. */
 export function playImpact(a: AudioSystem, distance: number, kind: 'trunk' | 'rock' | 'terrain', pos: Vector3): void {
   const at = distance / 343;

@@ -4,6 +4,7 @@ import { TAU } from '../core/math';
 import type { PlayerController } from '../player/PlayerController';
 import type { Biome } from '../world/Biome';
 import type { ChunkManager } from '../world/ChunkManager';
+import { inPlayerView } from '../world/spawnRules';
 import type { Terrain } from '../world/Terrain';
 import { Bird, rand, type BirdWorld, type TargetKind } from './Bird';
 import { buildBirdGeometry, type BirdGeometry } from './birdGeometry';
@@ -253,16 +254,7 @@ export class BirdManager implements BirdWorld {
 
   /** O ponto está dentro do campo de visão (com folga) e perto o bastante para ser visto surgindo? */
   private inView(x: number, z: number): boolean {
-    const C = CONFIG.birds;
-    const P = this.player.position;
-    const dx = x - P.x;
-    const dz = z - P.z;
-    const d = Math.hypot(dx, dz);
-    if (d > C.hiddenDistance) return false;
-    const fx = -Math.sin(this.player.yaw);
-    const fz = -Math.cos(this.player.yaw);
-    const halfFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(CONFIG.camera.fov) / 2) * this.camera.aspect);
-    return (dx * fx + dz * fz) / d > Math.cos(halfFov + THREE.MathUtils.degToRad(C.viewMargin));
+    return inPlayerView(this.player, this.camera, x, z, CONFIG.birds.hiddenDistance, CONFIG.birds.viewMargin);
   }
 
   private pickSpecies(): Species | null {

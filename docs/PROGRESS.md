@@ -17,7 +17,7 @@ npm run preview      # serve dist/ em http://localhost:4173
 ```
 Em modo dev, `window.game` expõe `engine`, `input`, `player`, `terrain`, `biome`, `vegetation`, `chunks`,
 `atmosphere`, `hud`, `audio`, `weapon`, `birds`, `particles`, `hunting`, `ambience`, `voices`, `footsteps` e
-`sounds` (todas as funções de som), `music`, `quality` e `setPaused(true|false)` (pausa o loop para benchmarks) para depuração
+`sounds` (todas as funções de som), `music`, `quality`, `boars`, `boarVoices` e `setPaused(true|false)` (pausa o loop para benchmarks) para depuração
 (`game.birds.frozen = true` congela os pássaros; `game.hunting.lastShot` mostra o resultado do último tiro).
 
 ### Teste automatizado (Chrome headless, sem dependências)
@@ -36,6 +36,7 @@ Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida,
 `game.audio.level()`, passos simulados), `stage6-events.json` (asas ao decolar, alarme, baque do corpo),
 `stage6-music.json` (música offline vs. referências, nível ao vivo com/sem música, tecla M),
 `stage7.json` (custo de geração, CPU por quadro, duas sessões longas comparando memória, qualidade adaptativa),
+`stage8-boars.json` (vitrine dos javalis, simulação de 120 s, percepção, tiro vital/ferimento, corpos, sons),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -60,6 +61,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - [x] **6. Áudio** — ouvinte na câmera e sons espaciais (HRTF + distância; longe = mais reverb da mata); grupos de volume (efeitos/ambiente/pássaros/passos); vento em rajadas, folhas estéreo (mais na mata fechada), farfalhar ao andar na grama, grilos em volta; animais ocasionais ao longe (coruja, pica-pau, corvo, galho estalando, bugio); canto próprio de cada espécie vindo do pássaro, alarme ao fugir, bater de asas ao decolar, baque do corpo; passos sincronizados com o balanço (folhas/grama, correndo/agachado, aterrissagem, graveto); impactos do tiro espaciais; áudio pausa com a aba em segundo plano.
 - [x] **6b. Música de fundo** (pedido do usuário) — compositor generativo estilo "RPG de exploração": progressões clássicas (I–V–vi–IV, IV–V–iii–vi...), tônica e andamento (70–84 BPM) novos a cada seção; cordas (pad serra desafinado + passa-baixa), baixo, harpa em arpejos, melodia de flauta/ocarina com vibrato (motivo A, sequência, resposta B, cadência em nota longa) e sininhos; eco + reverb da mata; pausas de 15–35 s às vezes; volume bem baixo (bus `music`); tecla M liga/desliga (preferência salva no navegador).
 - [x] **7. Polimento e desempenho** — qualidade adaptativa (`core/Quality.ts`: 5 níveis de resolução interna + mapa de sombras, desce com FPS < 40 em 2 janelas de 2 s, sobe com FPS > 56 sustentado; `?quality=0..4` fixa); grama gerada escrevendo as matrizes direto no buffer e com volume de culling pelo chunk; dithering no céu, terreno, vegetação, pássaros e partículas (fim do banding); vinheta sutil em CSS; overlay `?debug` com tempo de CPU da lógica e do envio para a GPU e o nível de qualidade; sessões longas sem vazamento; build offline testado; `README.md`.
+- [x] **8. Javalis** (pedido do usuário) — javali low-poly procedural (2 pelagens, cabeça/pernas/rabo animados); estados fuçando/andando/alerta/fuga/morrendo/morto; bandos de 1–3 (máx. 5 vivos) surgem fora da visão, dentro da mata; percebem o jogador de longe (26 m andando, 45 correndo, 11 agachado, 60% disso parado) e o bando foge junto; tiros num raio de 130 m espantam; cabeça/peito = abate, traseira = ferido (grita, foge mais rápido, o próximo tiro mata); desaba de lado e vira corpo inerte (máx. 5); 60 pontos + 1 a cada 10 m; sons espaciais (grunhido, fuçada, bufada, galope, grito, baque). Não atacam o jogador (a spec proíbe sistema de vida).
 
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
@@ -127,6 +129,13 @@ src/
   audio/animalSounds.ts   ANIMALS (coruja, pica-pau, corvo, galho, bugio), cricketChirp
   audio/Footsteps.ts      passos pelo stepPhase do jogador + aterrissagem
   core/Quality.ts         qualidade adaptativa (pixel ratio + mapa de sombras) e ?quality=0..4
+  core/math.ts            + angleDiff, raySphere (compartilhados por pássaros e javalis)
+  world/spawnRules.ts     inPlayerView(): regra "fora do campo de visão" usada por pássaros e javalis
+  animals/boarModel.ts    geometria do javali (corpo+crina, cabeça c/ focinho/presas/orelhas, pata, rabo), paletas
+  animals/Boar.ts         um javali: estados, andar desviando de troncos, galope em zigue-zague, morte, raycast por zona
+  animals/BoarManager.ts  spawn de bandos, percepção do jogador, fuga do bando, hit() (abate/ferido), corpos, pool
+  audio/boarSounds.ts     grunt, snort, squeal, hooves, trot, rooting, heavyThud
+  audio/BoarVoices.ts     sons dos javalis por observação de estado (como o BirdVoices)
   audio/Music.ts          música generativa (seções, frases por motivos, instrumentos via AudioSystem.voice),
                           agendamento com lookahead de 1,2 s; toggle() da tecla M; debugSchedule() p/ testes
   effects/Particles.ts    penas e lascas (um InstancedMesh, pool de 240)

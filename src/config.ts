@@ -148,6 +148,39 @@ export const CONFIG = {
     shotScare: 80,
   },
 
+  boars: {
+    /** Máximo de javalis vivos ao mesmo tempo. */
+    maxActive: 5,
+    /** Bandos já presentes no início. */
+    initialGroups: 1,
+    /** Distâncias de spawn ao redor do jogador (m). */
+    initialMin: 50,
+    spawnMin: 70,
+    spawnMax: 160,
+    /** Além desta distância a névoa esconde o surgimento. */
+    hiddenDistance: 140,
+    /** Folga (graus) além da borda do campo de visão. */
+    viewMargin: 20,
+    /** Intervalo entre tentativas de spawn (s). */
+    spawnInterval: [8, 20],
+    despawnDistance: 230,
+    /** Longe disto, os destinos puxam o bando de volta para a região do jogador. */
+    homeRadius: 110,
+    /** Distância em que percebem o jogador (m) — faro e ouvido bons. Parado, 60% disso. */
+    senseWalk: 26,
+    senseRun: 45,
+    senseCrouch: 11,
+    /** Raio em que um disparo espanta os javalis. */
+    shotScare: 130,
+    walkSpeed: 1.1,
+    fleeSpeed: 8.5,
+    /** Esferas de acerto um pouco maiores que o corpo. */
+    hitboxScale: 1.1,
+    /** Pontos base por abate (mais 1 a cada 10 m). */
+    points: 60,
+    maxCorpses: 5,
+  },
+
   combat: {
     /** Alcance máximo do tiro (m). */
     range: 400,

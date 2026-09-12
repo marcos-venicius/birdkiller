@@ -46,6 +46,8 @@ O carregador tem 5 tiros e recarrega sozinho quando esvazia; a munição é infi
 - **Pássaros**: pardal, sabiá, pisco, gralha-azul, rolinha e gavião, cada um com cores, voo e canto próprios.
   Pousam nas copas e no chão, andam em bando, fogem quando você chega perto ou atira, e surgem sempre fora
   do seu campo de visão.
+- **Javalis**: andam em bandos pela mata, fuçando o chão. Têm faro e ouvido bons — chegue agachado e devagar.
+  Tiro na cabeça ou no peito abate; na traseira ele fica ferido e foge (o próximo tiro mata). Eles não atacam.
 - **Caça**: tiro exato para onde a arma aponta; troncos, pedras e morros bloqueiam. Corpo ou cabeça é abate
   (o pássaro cai de verdade e fica no chão); pegar só a asa é raspão. Pontos por espécie e distância.
 - **Som**: cantos vindos de onde cada pássaro está, vento, folhas, grilos, animais ao longe, passos e uma

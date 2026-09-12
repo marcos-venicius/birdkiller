@@ -1,10 +1,13 @@
 import './style.css';
 import * as THREE from 'three';
+import { BoarManager } from './animals/BoarManager';
 import { Ambience } from './audio/Ambience';
 import * as animalSounds from './audio/animalSounds';
 import { AudioSystem } from './audio/AudioSystem';
 import * as birdSongs from './audio/birdSongs';
 import { BirdVoices } from './audio/BirdVoices';
+import * as boarSounds from './audio/boarSounds';
+import { BoarVoices } from './audio/BoarVoices';
 import { Footsteps } from './audio/Footsteps';
 import { Music } from './audio/Music';
 import * as weaponSounds from './audio/weaponSounds';
@@ -56,10 +59,13 @@ chunks.resolveCollision(player.position, CONFIG.player.radius);
 const weapon = new Weapon(engine, input, player, hud, audio, atmosphere.sunDir);
 const birds = new BirdManager(engine.scene, terrain, biome, chunks, player, engine.camera);
 birds.populate();
+const boars = new BoarManager(engine.scene, terrain, biome, chunks, player, engine.camera);
+boars.populate();
 const particles = new Particles(engine.scene, terrain);
-const hunting = new Hunting(terrain, chunks, birds, particles, hud, audio);
+const hunting = new Hunting(terrain, chunks, birds, boars, particles, hud, audio);
 const ambience = new Ambience(audio, biome);
 const voices = new BirdVoices(audio);
+const boarVoices = new BoarVoices(audio);
 const footsteps = new Footsteps(audio, biome);
 const music = new Music(audio);
 weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
@@ -92,20 +98,23 @@ engine.renderer.setAnimationLoop(() => {
   player.update(dt);
   weapon.update(dt);
   birds.update(dt);
+  boars.update(dt);
   particles.update(dt);
   audio.updateListener(engine.camera);
   ambience.update(dt, player, engine.camera.position);
   voices.update(dt, birds.active, engine.camera.position);
+  boarVoices.update(dt, boars.active, engine.camera.position);
   footsteps.update(dt, player);
   music.update();
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
   chunks.update(player.position);
   atmosphere.update(player.position, engine.camera);
+  // Antes do render: trocar a resolução limpa o canvas, e o quadro precisa ser desenhado já no novo tamanho.
+  quality.update(realDt);
   const t1 = performance.now();
   engine.render();
   const t2 = performance.now();
   input.endFrame();
-  quality.update(realDt);
 
   if (debug) {
     frames++;
@@ -125,7 +134,7 @@ engine.renderer.setAnimationLoop(() => {
       hud.setDebug(
         `${fps} fps  qualidade ${quality.name}\n${cpu}\ndraw ${info.calls}  tris ${info.triangles}\n` +
           `chunks ${s.loaded}  fila ${s.queued}  grama ${s.grass}\n` +
-          `pássaros ${birds.living}  corpos ${birds.active.length - birds.living}  partículas ${particles.count}\n` +
+          `pássaros ${birds.living}  javalis ${boars.living}  corpos ${birds.active.length - birds.living + boars.active.length - boars.living}  partículas ${particles.count}\n` +
           `pos ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}`,
       );
     }
@@ -147,17 +156,19 @@ if (import.meta.env.DEV) {
       audio,
       weapon,
       birds,
+      boars,
       particles,
       hunting,
       ambience,
       voices,
+      boarVoices,
       footsteps,
       music,
       quality,
       setPaused: (value: boolean) => {
         paused = value;
       },
-      sounds: { ...weaponSounds, ...birdSongs, ...animalSounds },
+      sounds: { ...weaponSounds, ...birdSongs, ...animalSounds, ...boarSounds },
     },
   });
 }

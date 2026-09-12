@@ -68,7 +68,11 @@ export class Particles {
 
   /** Nuvem de penas nas cores do pássaro, lançadas na direção do tiro. */
   feathers(point: THREE.Vector3, colors: BirdColors, count: number, dir: THREE.Vector3): void {
-    const palette = [colors.back, colors.belly, colors.wing, colors.breast, colors.back];
+    this.tufts(point, [colors.back, colors.belly, colors.wing, colors.breast, colors.back], count, dir);
+  }
+
+  /** Tufos leves (penas, pelos) nas cores dadas, lançados na direção do tiro e caindo devagar. */
+  tufts(point: THREE.Vector3, palette: readonly number[], count: number, dir: THREE.Vector3): void {
     for (let i = 0; i < count; i++) {
       const p = this.spawn();
       if (!p) return;

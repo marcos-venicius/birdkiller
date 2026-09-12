@@ -1,6 +1,8 @@
 import * as THREE from 'three';
+import type { Boar, HitZone } from '../animals/Boar';
+import type { BoarManager } from '../animals/BoarManager';
 import type { AudioSystem } from '../audio/AudioSystem';
-import { playBirdHit, playImpact } from '../audio/weaponSounds';
+import { playBirdHit, playFleshHit, playImpact } from '../audio/weaponSounds';
 import type { Bird } from '../birds/Bird';
 import type { BirdManager } from '../birds/BirdManager';
 import { CONFIG } from '../config';
@@ -10,7 +12,7 @@ import type { ChunkManager } from '../world/ChunkManager';
 import type { Terrain } from '../world/Terrain';
 
 type BlockKind = 'terrain' | 'trunk' | 'rock' | 'none';
-export type HitKind = BlockKind | 'bird';
+export type HitKind = BlockKind | 'bird' | 'boar';
 
 export interface ShotResult {
   kind: HitKind;
@@ -18,6 +20,9 @@ export interface ShotResult {
   distance: number;
   point: THREE.Vector3;
   bird: Bird | null;
+  boar: Boar | null;
+  /** Zona atingida no javali (cabeça/peito = vital; traseira = ferimento). */
+  zone: HitZone | null;
   lethal: boolean;
   points: number;
 }
@@ -25,8 +30,8 @@ export interface ShotResult {
 const DEBRIS_COLOR = { terrain: 0x5a4631, trunk: 0x6a5038, rock: 0x8a857a } as const;
 
 /**
- * Resolve cada disparo com hitscan exato na direção do tiro: relevo, troncos/pedras e pássaros.
- * Aplica abate ou raspão, efeitos, sons e a pontuação.
+ * Resolve cada disparo com hitscan exato na direção do tiro: relevo, troncos/pedras, pássaros e
+ * javalis. Aplica abate, raspão ou ferimento, efeitos, sons e a pontuação.
  */
 export class Hunting {
   score = 0;
@@ -37,6 +42,7 @@ export class Hunting {
     private readonly terrain: Terrain,
     private readonly chunks: ChunkManager,
     private readonly birds: BirdManager,
+    private readonly boars: BoarManager,
     private readonly particles: Particles,
     private readonly hud: HUD,
     private readonly audio: AudioSystem,
@@ -54,40 +60,72 @@ export class Hunting {
       kind = obstacle.kind;
     }
 
-    // Um obstáculo só bloqueia se estiver claramente antes do pássaro (quem pousa em cima de um tronco, p. ex.).
-    const hit = this.birds.raycast(origin, dir, Math.min(blockT + C.occlusionSlack, C.range));
-    const result: ShotResult = { kind, distance: blockT, point: new THREE.Vector3(), bird: null, lethal: false, points: 0 };
-    if (hit) {
-      result.kind = 'bird';
-      result.distance = hit.t;
-      result.bird = hit.bird;
-      result.lethal = hit.lethal;
-    }
-    if (Number.isFinite(result.distance)) result.point.copy(origin).addScaledVector(dir, result.distance);
+    // Um obstáculo só bloqueia se estiver claramente antes do animal (quem pousa em cima de um tronco, p. ex.).
+    const maxT = Math.min(blockT + C.occlusionSlack, C.range);
+    const birdHit = this.birds.raycast(origin, dir, maxT);
+    const boarHit = this.boars.raycast(origin, dir, birdHit ? birdHit.t : maxT);
+    const result: ShotResult = {
+      kind,
+      distance: blockT,
+      point: new THREE.Vector3(),
+      bird: null,
+      boar: null,
+      zone: null,
+      lethal: false,
+      points: 0,
+    };
 
-    if (hit) {
-      const sp = hit.bird.species;
-      if (hit.lethal) {
-        this.birds.kill(hit.bird, dir);
-        result.points = sp.points + Math.floor(hit.t / 10);
-        this.score += result.points;
-        this.kills++;
-        this.hud.setScore(this.score, this.kills);
-        this.hud.toast(`+${result.points}  ${sp.name} · ${Math.round(hit.t)} m`);
+    if (boarHit) {
+      result.kind = 'boar';
+      result.distance = boarHit.t;
+      result.boar = boarHit.boar;
+      result.zone = boarHit.zone;
+      result.point.copy(origin).addScaledVector(dir, boarHit.t);
+      const outcome = this.boars.hit(boarHit.boar, dir, boarHit.zone !== 'rear', origin);
+      result.lethal = outcome === 'killed';
+      if (result.lethal) {
+        result.points = CONFIG.boars.points + Math.floor(boarHit.t / 10);
+        this.addKill(result.points, `Javali · ${Math.round(boarHit.t)} m`);
+      } else {
+        this.hud.toast('Javali ferido');
+      }
+      const p = boarHit.boar.geo.palette;
+      this.particles.tufts(result.point, [p.fur, p.mane, p.belly], result.lethal ? 12 : 7, dir);
+      playFleshHit(this.audio, boarHit.t, result.point);
+    } else if (birdHit) {
+      result.kind = 'bird';
+      result.distance = birdHit.t;
+      result.bird = birdHit.bird;
+      result.lethal = birdHit.lethal;
+      result.point.copy(origin).addScaledVector(dir, birdHit.t);
+      const sp = birdHit.bird.species;
+      if (birdHit.lethal) {
+        this.birds.kill(birdHit.bird, dir);
+        result.points = sp.points + Math.floor(birdHit.t / 10);
+        this.addKill(result.points, `${sp.name} · ${Math.round(birdHit.t)} m`);
         this.particles.feathers(result.point, sp.colors, 16, dir);
       } else {
         // Raspão na asa: algumas penas e o pássaro foge.
         this.particles.feathers(result.point, sp.colors, 5, dir);
-        hit.bird.scare(origin, this.birds);
+        birdHit.bird.scare(origin, this.birds);
       }
-      playBirdHit(this.audio, hit.t, result.point);
+      playBirdHit(this.audio, birdHit.t, result.point);
     } else if (kind !== 'none') {
+      result.point.copy(origin).addScaledVector(dir, blockT);
       this.particles.debris(result.point, DEBRIS_COLOR[kind], 7);
       playImpact(this.audio, blockT, kind, result.point);
     }
 
     this.birds.scare(origin, CONFIG.birds.shotScare);
+    this.boars.scare(origin, CONFIG.boars.shotScare);
     this.lastShot = result;
     return result;
+  }
+
+  private addKill(points: number, label: string): void {
+    this.score += points;
+    this.kills++;
+    this.hud.setScore(this.score, this.kills);
+    this.hud.toast(`+${points}  ${label}`);
   }
 }
