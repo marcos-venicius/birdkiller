@@ -54,7 +54,6 @@ const SPECIES: Record<'conifer' | 'broadleaf' | 'birch' | 'snag', Species> = {
   snag: { layer: LAYER.snag, radius: 0.34, perch: [0, 8.02, 0], trunkTop: 7.7, minScale: 0.75, maxScale: 1.2 },
 };
 
-const UP = new THREE.Vector3(0, 1, 0);
 const _m = new THREE.Matrix4();
 const _p = new THREE.Vector3();
 const _q = new THREE.Quaternion();
@@ -82,13 +81,13 @@ export class Vegetation {
     private readonly seed: number,
   ) {
     this.forestGrid = new ForestGrid(biome);
-    const solid = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const solid = new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true });
     const treeWind = { strength: 0.22, height: 12 };
-    const tree = applyWind(new THREE.MeshLambertMaterial({ vertexColors: true }), treeWind);
+    const tree = applyWind(new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true }), treeWind);
     const treeDepth = applyWind(new THREE.MeshDepthMaterial(), treeWind);
-    const bush = applyWind(new THREE.MeshLambertMaterial({ vertexColors: true }), { strength: 0.05, height: 1.2 });
+    const bush = applyWind(new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true }), { strength: 0.05, height: 1.2 });
     // Samambaia e grama já trazem as faces de trás na geometria (FrontSide, normais para cima).
-    const plant = applyWind(new THREE.MeshLambertMaterial({ vertexColors: true }), {
+    const plant = applyWind(new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true }), {
       strength: 0.07,
       height: 0.5,
       fadeStart: 45,
@@ -113,7 +112,7 @@ export class Vegetation {
 
     const gd = CONFIG.world.grassDistance;
     this.grassGeometry = G.grassTuft();
-    this.grassMaterial = applyWind(new THREE.MeshLambertMaterial({ vertexColors: true }), {
+    this.grassMaterial = applyWind(new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true }), {
       strength: 0.09,
       height: 0.55,
       fadeStart: gd - 16,
@@ -255,6 +254,10 @@ export class Vegetation {
     const grid = this.forestGrid;
     grid.fill(ox, oz);
     const attempts = CONFIG.vegetation.grassPerChunk;
+    const mat = mesh.instanceMatrix.array as Float32Array;
+    const col = mesh.instanceColor!.array as Float32Array;
+    let minY = Infinity;
+    let maxY = -Infinity;
     let n = 0;
     for (let i = 0; i < attempts; i++) {
       const lx = rand() * size;
@@ -262,15 +265,48 @@ export class Vegetation {
       const open = 1 - grid.at(lx, lz);
       if (rand() > 0.15 + 0.85 * open) continue;
       const s = (0.7 + rand() * 0.6) * (0.85 + open * 0.4);
-      _p.set(ox + lx, this.terrain.meshHeight(ground, lx, lz) - 0.03, oz + lz);
-      _q.setFromAxisAngle(UP, rand() * TAU);
-      _s.set(s, s * (0.8 + rand() * 0.5), s);
-      mesh.setMatrixAt(n, _m.compose(_p, _q, _s));
-      mesh.setColorAt(n, tint(rand, 0.3, 0.12));
+      const yaw = rand() * TAU;
+      const sy = s * (0.8 + rand() * 0.5);
+      const y = this.terrain.meshHeight(ground, lx, lz) - 0.03;
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+      // Matriz escrita direto no buffer (coluna a coluna): translação · rotação em Y · escala.
+      // Bem mais barato que compose() + setMatrixAt() para milhares de tufos.
+      const cs = Math.cos(yaw) * s;
+      const sn = Math.sin(yaw) * s;
+      const o = n * 16;
+      mat[o] = cs;
+      mat[o + 1] = 0;
+      mat[o + 2] = -sn;
+      mat[o + 3] = 0;
+      mat[o + 4] = 0;
+      mat[o + 5] = sy;
+      mat[o + 6] = 0;
+      mat[o + 7] = 0;
+      mat[o + 8] = sn;
+      mat[o + 9] = 0;
+      mat[o + 10] = cs;
+      mat[o + 11] = 0;
+      mat[o + 12] = ox + lx;
+      mat[o + 13] = y;
+      mat[o + 14] = oz + lz;
+      mat[o + 15] = 1;
+      const c = tint(rand, 0.3, 0.12);
+      col[n * 3] = c.r;
+      col[n * 3 + 1] = c.g;
+      col[n * 3 + 2] = c.b;
       n++;
     }
     mesh.count = n;
-    commitInstances(mesh);
+    // Volume de culling pelo próprio chunk, sem percorrer as instâncias.
+    const sphere = (mesh.boundingSphere ??= new THREE.Sphere());
+    if (n > 0) {
+      sphere.center.set(ox + size / 2, (minY + maxY) / 2, oz + size / 2);
+      sphere.radius = Math.hypot(size * 0.71, (maxY - minY) / 2 + 1);
+    } else {
+      sphere.makeEmpty();
+    }
+    commitInstances(mesh, false);
   }
 
   private putRock(chunk: Chunk, rand: () => number, x: number, z: number, s: number): void {

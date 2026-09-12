@@ -19,7 +19,7 @@ const MAX_HEIGHT = 23;
  * usada tanto pelas malhas dos chunks quanto pela física e pela vegetação.
  */
 export class Terrain {
-  readonly material = new THREE.MeshLambertMaterial({ vertexColors: true });
+  readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true });
 
   private readonly hills: Simplex2;
   private readonly detail: Simplex2;

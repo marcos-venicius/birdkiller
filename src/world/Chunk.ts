@@ -3,8 +3,11 @@ import { CONFIG } from '../config';
 import type { Terrain } from './Terrain';
 import type { LayerDef } from './vegetation/Vegetation';
 
-/** Envia ao GPU só a parte usada dos buffers de instância e atualiza o volume de culling. */
-export function commitInstances(mesh: THREE.InstancedMesh): void {
+/**
+ * Envia ao GPU só a parte usada dos buffers de instância e atualiza o volume de culling
+ * (`computeBounds = false` quando quem chama já definiu mesh.boundingSphere).
+ */
+export function commitInstances(mesh: THREE.InstancedMesh, computeBounds = true): void {
   const n = mesh.count;
   mesh.instanceMatrix.clearUpdateRanges();
   mesh.instanceMatrix.addUpdateRange(0, n * 16);
@@ -14,7 +17,7 @@ export function commitInstances(mesh: THREE.InstancedMesh): void {
     mesh.instanceColor.addUpdateRange(0, n * 3);
     mesh.instanceColor.needsUpdate = true;
   }
-  mesh.computeBoundingSphere();
+  if (computeBounds) mesh.computeBoundingSphere();
 }
 
 function createInstanced(geo: THREE.BufferGeometry, mat: THREE.Material, capacity: number): THREE.InstancedMesh {

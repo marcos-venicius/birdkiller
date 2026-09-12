@@ -17,7 +17,7 @@ npm run preview      # serve dist/ em http://localhost:4173
 ```
 Em modo dev, `window.game` expõe `engine`, `input`, `player`, `terrain`, `biome`, `vegetation`, `chunks`,
 `atmosphere`, `hud`, `audio`, `weapon`, `birds`, `particles`, `hunting`, `ambience`, `voices`, `footsteps` e
-`sounds` (todas as funções de som) para depuração
+`sounds` (todas as funções de som), `music`, `quality` e `setPaused(true|false)` (pausa o loop para benchmarks) para depuração
 (`game.birds.frozen = true` congela os pássaros; `game.hunting.lastShot` mostra o resultado do último tiro).
 
 ### Teste automatizado (Chrome headless, sem dependências)
@@ -35,6 +35,7 @@ Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida,
 `stage6.json` (render offline de cada som com pico/RMS/NaN via `game.audio.debugRender`, nível ao vivo via
 `game.audio.level()`, passos simulados), `stage6-events.json` (asas ao decolar, alarme, baque do corpo),
 `stage6-music.json` (música offline vs. referências, nível ao vivo com/sem música, tecla M),
+`stage7.json` (custo de geração, CPU por quadro, duas sessões longas comparando memória, qualidade adaptativa),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -58,7 +59,25 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - [x] **5. Tiro e morte** — hitscan exato (até 400 m) contra relevo (marcha + bisseção), troncos/tocos (cilindros com altura), pedras (esferas) e pássaros (esferas de corpo e cabeça = letal; asa aberta = raspão, foge); obstáculo só bloqueia se estiver antes do pássaro; queda com gravidade, arrasto, giro e quique; corpo deitado no chão, inerte (não pontua de novo); máx. 15 corpos, somem após 4 min; pontos por espécie + 1 a cada 10 m; HUD "Pontos · Abates" + aviso "+18 Sabiá · 32 m"; penas e lascas (terra/casca/pedra) em InstancedMesh com pool; sons de impacto com atraso da distância; mira no botão direito virou alterna (liga/desliga).
 - [x] **6. Áudio** — ouvinte na câmera e sons espaciais (HRTF + distância; longe = mais reverb da mata); grupos de volume (efeitos/ambiente/pássaros/passos); vento em rajadas, folhas estéreo (mais na mata fechada), farfalhar ao andar na grama, grilos em volta; animais ocasionais ao longe (coruja, pica-pau, corvo, galho estalando, bugio); canto próprio de cada espécie vindo do pássaro, alarme ao fugir, bater de asas ao decolar, baque do corpo; passos sincronizados com o balanço (folhas/grama, correndo/agachado, aterrissagem, graveto); impactos do tiro espaciais; áudio pausa com a aba em segundo plano.
 - [x] **6b. Música de fundo** (pedido do usuário) — compositor generativo estilo "RPG de exploração": progressões clássicas (I–V–vi–IV, IV–V–iii–vi...), tônica e andamento (70–84 BPM) novos a cada seção; cordas (pad serra desafinado + passa-baixa), baixo, harpa em arpejos, melodia de flauta/ocarina com vibrato (motivo A, sequência, resposta B, cadência em nota longa) e sininhos; eco + reverb da mata; pausas de 15–35 s às vezes; volume bem baixo (bus `music`); tecla M liga/desliga (preferência salva no navegador).
-- [ ] **7. Polimento e desempenho** — iluminação, perfil de FPS/memória, sessão longa, build offline final.
+- [x] **7. Polimento e desempenho** — qualidade adaptativa (`core/Quality.ts`: 5 níveis de resolução interna + mapa de sombras, desce com FPS < 40 em 2 janelas de 2 s, sobe com FPS > 56 sustentado; `?quality=0..4` fixa); grama gerada escrevendo as matrizes direto no buffer e com volume de culling pelo chunk; dithering no céu, terreno, vegetação, pássaros e partículas (fim do banding); vinheta sutil em CSS; overlay `?debug` com tempo de CPU da lógica e do envio para a GPU e o nível de qualidade; sessões longas sem vazamento; build offline testado; `README.md`.
+
+## Requisitos do CLAUDE.md — auditoria final
+| § | Requisito | Onde |
+| --- | --- | --- |
+| 1 | Navegador, offline, recursos locais, sem tela de título | Vite/`dist/`, tudo procedural, só a dica "Clique para controlar" |
+| 2 | Andar, correr, agachar, olhar, mirar, atirar, recarga automática; sem stamina/fome/etc. | `PlayerController`, `Weapon` |
+| 3 | Floresta variada, fim de tarde, sombras | `Vegetation`, `Biome`, `Atmosphere` |
+| 4 | Mundo infinito por chunks | `ChunkManager` (streaming + pool) |
+| 5 | Pássaros com spawn dinâmico fora da visão, comportamentos e variações | `BirdManager`, `Bird`, `species.ts` |
+| 6–7 | Caça livre, morte com queda física, corpo inerte, remoção de corpos antigos | `Hunting`, `Bird` (falling/dead), `CONFIG.combat` |
+| 8 | Pontuação discreta, sem loja/níveis/progressão | HUD "Pontos · Abates" |
+| 9–10 | Kar98k visível, tiro com efeito e som, luneta, carregador limitado, munição infinita, "Recarregando..." | `Kar98kModel`, `Weapon`, `weaponSounds` |
+| 11 | Hit detection exato, sem pontuar duas vezes | `Hunting.shoot` (hitscan + oclusão), só pássaros vivos são alvo |
+| 12 | HUD mínima | `HUD.ts` |
+| 13 | Áudio ambiente, pássaros espaciais, passos, arma | `audio/*` |
+| 14 | Atmosfera contemplativa | luz baixa, névoa, vento, grilos, música bem baixa |
+| 15 | Sem começo/fim | não há game over nem condição de término |
+| 16 | Chunking, pooling, LOD, frustum culling, instancing, descarregamento, limites | chunks/pássaros/partículas/grama em pool; LOD por distância; InstancedMesh com bounding spheres; máx. 20 pássaros e 15 corpos |
 
 ## Estrutura atual
 ```
@@ -107,12 +126,20 @@ src/
   audio/birdSongs.ts      SONGS[espécie](a, dest, alarme), wingFlutter, corpseThud
   audio/animalSounds.ts   ANIMALS (coruja, pica-pau, corvo, galho, bugio), cricketChirp
   audio/Footsteps.ts      passos pelo stepPhase do jogador + aterrissagem
+  core/Quality.ts         qualidade adaptativa (pixel ratio + mapa de sombras) e ?quality=0..4
   audio/Music.ts          música generativa (seções, frases por motivos, instrumentos via AudioSystem.voice),
                           agendamento com lookahead de 1,2 s; toggle() da tecla M; debugSchedule() p/ testes
   effects/Particles.ts    penas e lascas (um InstancedMesh, pool de 240)
   birds/Bird.ts           + estados falling/dead, kill(), raycast() (esferas), sink() e corpseAge
   birds/BirdManager.ts    + raycast(), kill() com limite de corpos, living (vivos)
 ```
+
+## Desempenho medido (Etapa 7, headless com a renderização pausada)
+- Geração por etapa (uma por quadro, orçamento 4 ms): grama ~3,9 ms, terreno ~2,2 ms, vegetação ~1,3 ms.
+- CPU da lógica por quadro correndo: média 0,22 ms, p95 0,4 ms, p99 4,4 ms (quadros com geração de chunk).
+- Duas sessões longas seguidas (~9 km e ~160 abates cada): heap 29,4 → 29,5 MB, geometrias 79 → 79 — sem vazamento.
+- O custo de GPU real não dá para medir no headless (SwiftShader): use `?debug` numa máquina de verdade.
+  No headless a qualidade adaptativa cai sozinha (1 fps) — normal.
 
 ## Notas para as próximas etapas
 - Tiro: `weapon.onFire` → `hunting.shoot()`. Ajustes em `CONFIG.combat` (alcance, `hitboxScale` 1,35 — as esferas

@@ -31,8 +31,8 @@ export class BirdManager implements BirdWorld {
 
   private readonly pools = new Map<Species, Bird[]>();
   private readonly geometries = new Map<Species, BirdGeometry>();
-  private readonly bodyMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  private readonly wingMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  private readonly bodyMat = new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true });
+  private readonly wingMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, dithering: true });
   /** Poleiros ocupados ou reservados (um pássaro por copa). */
   private readonly occupied = new Set<string>();
   private spawnTimer = 1;

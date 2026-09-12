@@ -13,6 +13,7 @@ import { Hunting } from './combat/Hunting';
 import { Particles } from './effects/Particles';
 import { CONFIG } from './config';
 import { Engine } from './core/Engine';
+import { Quality } from './core/Quality';
 import { Input } from './core/Input';
 import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
@@ -37,6 +38,7 @@ const terrain = new Terrain(CONFIG.seed, biome);
 const vegetation = new Vegetation(terrain, biome, CONFIG.seed);
 const chunks = new ChunkManager(engine.scene, terrain, vegetation);
 const atmosphere = new Atmosphere(engine.scene);
+const quality = new Quality(engine.renderer, atmosphere.sun);
 
 const player = new PlayerController(engine.camera, input, terrain, chunks);
 // Começa olhando de lado para o sol: a luz rasante fica visível sem ofuscar.
@@ -69,14 +71,23 @@ input.onLockChange = (locked) => {
 const debug = new URLSearchParams(location.search).has('debug');
 let frames = 0;
 let fpsTimer = 0;
+let cpuUpdate = 0;
+let cpuRender = 0;
 
+/** Depuração: pausa o loop (benchmarks sem a renderização disputando a CPU). */
+let paused = false;
 let last = performance.now();
 engine.renderer.setAnimationLoop(() => {
+  if (paused) {
+    last = performance.now();
+    return;
+  }
   const now = performance.now();
   const realDt = (now - last) / 1000;
   const dt = Math.min(realDt, CONFIG.maxDt);
   last = now;
 
+  const t0 = performance.now();
   windTime.value += dt;
   player.update(dt);
   weapon.update(dt);
@@ -90,21 +101,29 @@ engine.renderer.setAnimationLoop(() => {
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
   chunks.update(player.position);
   atmosphere.update(player.position, engine.camera);
+  const t1 = performance.now();
   engine.render();
+  const t2 = performance.now();
   input.endFrame();
+  quality.update(realDt);
 
   if (debug) {
     frames++;
     fpsTimer += realDt;
+    cpuUpdate += t1 - t0;
+    cpuRender += t2 - t1;
     if (fpsTimer >= 0.5) {
       const fps = Math.round(frames / fpsTimer);
+      const cpu = `cpu: lógica ${(cpuUpdate / frames).toFixed(1)} ms  envio p/ GPU ${(cpuRender / frames).toFixed(1)} ms`;
       frames = 0;
       fpsTimer = 0;
+      cpuUpdate = 0;
+      cpuRender = 0;
       const info = engine.renderer.info.render;
       const p = player.position;
       const s = chunks.stats;
       hud.setDebug(
-        `${fps} fps\ndraw ${info.calls}  tris ${info.triangles}\n` +
+        `${fps} fps  qualidade ${quality.name}\n${cpu}\ndraw ${info.calls}  tris ${info.triangles}\n` +
           `chunks ${s.loaded}  fila ${s.queued}  grama ${s.grass}\n` +
           `pássaros ${birds.living}  corpos ${birds.active.length - birds.living}  partículas ${particles.count}\n` +
           `pos ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}`,
@@ -134,6 +153,10 @@ if (import.meta.env.DEV) {
       voices,
       footsteps,
       music,
+      quality,
+      setPaused: (value: boolean) => {
+        paused = value;
+      },
       sounds: { ...weaponSounds, ...birdSongs, ...animalSounds },
     },
   });

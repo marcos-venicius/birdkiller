@@ -38,7 +38,7 @@ export class Particles {
     scene: THREE.Scene,
     private readonly terrain: Terrain,
   ) {
-    const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
+    const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, dithering: true });
     this.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), mat, CAPACITY);
     this.mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
     this.mesh.count = 0;

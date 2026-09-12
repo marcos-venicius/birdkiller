@@ -18,9 +18,25 @@ const chrome = spawn('google-chrome', [
   '--headless=new', `--remote-debugging-port=${port}`, '--window-size=1280,720',
   '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist',
   '--autoplay-policy=no-user-gesture-required',
+  '--js-flags=--expose-gc', '--enable-precise-memory-info',
   '--no-first-run', '--no-default-browser-check', `--user-data-dir=${join(here, '.chrome-profile')}`,
   'about:blank',
 ], { stdio: 'ignore' });
+// Garante que o Chrome não fique órfão (ex.: script interrompido por `timeout`).
+const killChrome = () => {
+  try {
+    chrome.kill('SIGKILL');
+  } catch {
+    // já encerrado
+  }
+};
+process.on('exit', killChrome);
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    killChrome();
+    process.exit(1);
+  });
+}
 
 let targets;
 for (let i = 0; i < 50; i++) {

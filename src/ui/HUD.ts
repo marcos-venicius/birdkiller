@@ -16,6 +16,7 @@ export class HUD {
     // O centro fica aberto (o poste termina logo abaixo) para não cobrir pássaros pequenos;
     // o ponto minúsculo marca exatamente para onde vai o tiro.
     root.innerHTML = `
+      <div class="hud-vignette"></div>
       <div class="hud-scope" hidden>
         <svg viewBox="-50 -50 100 100" aria-hidden="true">
           <g fill="#060606" stroke="rgba(255,240,220,0.25)" stroke-width="0.12">

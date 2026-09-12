@@ -10,6 +10,8 @@ const SKY_VERTEX = /* glsl */ `
 `;
 
 const SKY_FRAGMENT = /* glsl */ `
+  #include <common>
+  #include <dithering_pars_fragment>
   uniform vec3 uTop;
   uniform vec3 uHorizon;
   uniform vec3 uFog;
@@ -32,6 +34,7 @@ const SKY_FRAGMENT = /* glsl */ `
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
+    #include <dithering_fragment>
   }
 `;
 
@@ -43,8 +46,6 @@ export class Atmosphere {
   private readonly sky: THREE.Mesh;
   private readonly lightBasis = new THREE.Matrix4();
   private readonly lightBasisInv = new THREE.Matrix4();
-  private readonly texelX: number;
-  private readonly texelY: number;
   private readonly tmp = new THREE.Vector3();
 
   constructor(scene: THREE.Scene) {
@@ -75,8 +76,6 @@ export class Atmosphere {
     // Base do espaço da luz — usada para alinhar a sombra à grade de texels (sem tremulação).
     this.lightBasis.lookAt(this.sunDir, new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
     this.lightBasisInv.copy(this.lightBasis).invert();
-    this.texelX = (cfg.shadowExtentX * 2) / cfg.shadowMapSize;
-    this.texelY = (cfg.shadowExtentY * 2) / cfg.shadowMapSize;
 
     const skyMat = new THREE.ShaderMaterial({
       vertexShader: SKY_VERTEX,
@@ -91,6 +90,8 @@ export class Atmosphere {
       side: THREE.BackSide,
       depthWrite: false,
       fog: false,
+      // Ruído sutil no degradê do céu: elimina as faixas de 8 bits.
+      dithering: true,
     });
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.camera.far * 0.9, 32, 16), skyMat);
     this.sky.frustumCulled = false;
@@ -101,9 +102,13 @@ export class Atmosphere {
   update(focus: THREE.Vector3, camera: THREE.Camera): void {
     this.sky.position.copy(camera.position);
 
+    // Tamanho do texel lido a cada quadro: a qualidade adaptativa pode trocar o mapa de sombras.
+    const cfg = CONFIG.atmosphere;
+    const texelX = (cfg.shadowExtentX * 2) / this.sun.shadow.mapSize.x;
+    const texelY = (cfg.shadowExtentY * 2) / this.sun.shadow.mapSize.y;
     const p = this.tmp.copy(focus).applyMatrix4(this.lightBasisInv);
-    p.x = Math.round(p.x / this.texelX) * this.texelX;
-    p.y = Math.round(p.y / this.texelY) * this.texelY;
+    p.x = Math.round(p.x / texelX) * texelX;
+    p.y = Math.round(p.y / texelY) * texelY;
     p.applyMatrix4(this.lightBasis);
     this.sun.target.position.copy(p);
     this.sun.position.copy(p).addScaledVector(this.sunDir, CONFIG.atmosphere.shadowDistance);
