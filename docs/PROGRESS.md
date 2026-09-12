@@ -37,6 +37,7 @@ Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida,
 `stage6-music.json` (música offline vs. referências, nível ao vivo com/sem música, tecla M),
 `stage7.json` (custo de geração, CPU por quadro, duas sessões longas comparando memória, qualidade adaptativa),
 `stage8-boars.json` (vitrine dos javalis, simulação de 120 s, percepção, tiro vital/ferimento, corpos, sons),
+`stage8b-reload.json` (recarga manual com R: tempos, carregador cheio, durante o ferrolho, mira, som),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -49,6 +50,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - WASD / setas: mover · Shift: correr (sem stamina) · C: agachar (alterna) · Espaço: pular.
 - Botão esquerdo: atirar · Botão direito: liga/desliga a luneta (anda mais devagar, não corre).
   Shift, a recarga automática e soltar o mouse (Esc) desligam a mira.
+- R: recarga manual quando falta munição (cartucho a cartucho: 0,7 s + 0,4 s por cartucho). Vazio = automática (2,6 s).
 - M: liga/desliga a música de fundo (lembra a escolha).
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
 

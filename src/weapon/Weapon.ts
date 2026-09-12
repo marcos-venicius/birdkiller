@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { AudioSystem } from '../audio/AudioSystem';
-import { playBoltClose, playBoltOpen, playGunshot, playReload } from '../audio/weaponSounds';
+import { playBoltClose, playBoltOpen, playGunshot, playReload, playTopUp } from '../audio/weaponSounds';
 import { CONFIG } from '../config';
 import type { Engine } from '../core/Engine';
 import type { Input } from '../core/Input';
@@ -53,6 +53,8 @@ export class Weapon {
 
   private readonly model: Kar98kModel;
   private timer = 0;
+  /** Duração da recarga em andamento (pente inteiro ou cartucho a cartucho). */
+  private reloadDuration: number = CONFIG.weapon.reloadTime;
   private recoil = 0;
   private readonly kick = new THREE.Vector2();
   private sprint = 0;
@@ -102,12 +104,15 @@ export class Weapon {
 
     if (this.state === 'cycling' && this.timer >= W.boltTime) {
       this.setState('ready');
-    } else if (this.state === 'reloading' && this.timer >= W.reloadTime) {
+    } else if (this.state === 'reloading' && this.timer >= this.reloadDuration) {
       this.magazine = W.magazineSize;
       this.hud.setAmmo(this.magazine);
       this.hud.setReloading(false);
       this.setState('ready');
     }
+
+    // R: recarga manual quando falta munição (a automática continua quando o carregador esvazia).
+    if (this.input.wasPressed('KeyR') && this.state !== 'reloading' && this.magazine < W.magazineSize) this.startReload();
 
     // Mira: o botão direito liga/desliga. Shift (para correr) e a recarga desligam; mirar impede correr.
     if (this.input.wasMousePressed(2) && this.state !== 'reloading') this.aimToggled = !this.aimToggled;
@@ -195,10 +200,23 @@ export class Weapon {
       playBoltOpen(this.audio, 0.32);
       playBoltClose(this.audio, 0.62);
     } else {
-      this.setState('reloading');
-      this.hud.setReloading(true);
-      playReload(this.audio, W.reloadTime);
+      this.startReload();
     }
+  }
+
+  /**
+   * Recarga: com o carregador vazio entra o pente inteiro (reloadTime); com balas ainda dentro,
+   * o pente não cabe e os cartuchos que faltam são empurrados um a um.
+   */
+  private startReload(): void {
+    const W = CONFIG.weapon;
+    const missing = W.magazineSize - this.magazine;
+    const fullClip = this.magazine === 0;
+    this.reloadDuration = fullClip ? W.reloadTime : W.topUpBase + missing * W.topUpPerRound;
+    this.setState('reloading');
+    this.hud.setReloading(true);
+    if (fullClip) playReload(this.audio, this.reloadDuration);
+    else playTopUp(this.audio, missing, this.reloadDuration);
   }
 
   /** [rotação, recuo] do ferrolho em 0..1 conforme o estado e o tempo nele. */
@@ -208,7 +226,7 @@ export class Weapon {
       return [smoothstep(0.3, 0.4, t) - smoothstep(0.78, 0.88, t), smoothstep(0.42, 0.55, t) - smoothstep(0.62, 0.75, t)];
     }
     if (this.state === 'reloading') {
-      const e = CONFIG.weapon.reloadTime;
+      const e = this.reloadDuration;
       return [
         smoothstep(0.15, 0.28, t) - smoothstep(e - 0.4, e - 0.3, t),
         smoothstep(0.28, 0.42, t) - smoothstep(e - 0.58, e - 0.45, t),
@@ -222,7 +240,7 @@ export class Weapon {
     const W = CONFIG.weapon;
     const m = this.model;
     this.sprint = approach(this.sprint, P.running ? 1 : 0, dt * 4);
-    const reloading = this.state === 'reloading' && this.timer < W.reloadTime - 0.3;
+    const reloading = this.state === 'reloading' && this.timer < this.reloadDuration - 0.3;
     this.reloadPose = approach(this.reloadPose, reloading ? 1 : 0, dt * 3.5);
     this.recoil *= Math.exp(-W.recoilRecover * dt);
 

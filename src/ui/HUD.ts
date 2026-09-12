@@ -39,7 +39,7 @@ export class HUD {
       <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
       <div class="hud-hint">
         Clique para controlar
-        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · M música · Esc soltar o mouse</small>
+        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · Esc soltar o mouse</small>
       </div>
       <div class="hud-debug" hidden></div>
     `;

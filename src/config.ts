@@ -82,7 +82,11 @@ export const CONFIG = {
     magazineSize: 5,
     /** Tempo entre disparos: ciclo do ferrolho (s). */
     boltTime: 1.0,
+    /** Recarga com o carregador vazio (pente inteiro, automática). */
     reloadTime: 2.6,
+    /** Recarga manual (R) com balas ainda no carregador: base + por cartucho que falta (s). */
+    topUpBase: 0.7,
+    topUpPerRound: 0.4,
     /** Tempo para levar a luneta ao olho (s). */
     aimTime: 0.22,
     /** FOV com a luneta (~4x). */

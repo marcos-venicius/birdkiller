@@ -66,6 +66,18 @@ export function playImpact(a: AudioSystem, distance: number, kind: 'trunk' | 'ro
   }
 }
 
+/** Recarga parcial: abre o ferrolho, empurra os cartuchos que faltam um a um e fecha no fim. */
+export function playTopUp(a: AudioSystem, rounds: number, duration: number): void {
+  playBoltOpen(a, 0.15);
+  const step = (duration - 1.0) / Math.max(rounds, 1);
+  for (let i = 0; i < rounds; i++) {
+    const t = 0.45 + i * step;
+    slide(a, t, 0.09, 1300, 2300, 0.2);
+    click(a, t + 0.08, 2300 + Math.random() * 300, 0.25);
+  }
+  playBoltClose(a, duration - 0.5);
+}
+
 /** Recarga com pente: abre o ferrolho, encaixa o pente, empurra os 5 cartuchos e fecha no fim. */
 export function playReload(a: AudioSystem, duration: number): void {
   playBoltOpen(a, 0.15);

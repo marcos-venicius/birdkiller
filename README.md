@@ -33,10 +33,12 @@ Clique na tela para controlar (o navegador também libera o som nesse clique).
 | Pular | Espaço |
 | Mirar com a luneta (liga/desliga) | Botão direito |
 | Atirar | Botão esquerdo |
+| Recarregar (quando faltar munição) | R |
 | Música de fundo (liga/desliga) | M |
 | Soltar o mouse | Esc |
 
-O carregador tem 5 tiros e recarrega sozinho quando esvazia; a munição é infinita.
+O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho
+a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 
 ## O que tem
 
