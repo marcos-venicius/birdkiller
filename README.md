@@ -6,6 +6,8 @@ comportamento próprio. Sem menus, sem missões, sem fim: entre, explore, observ
 
 Tudo é gerado por código — geometria, texturas, sons e música. Não há nenhum arquivo de mídia.
 
+**Jogar online:** https://marcos-venicius.github.io/birdkiller/
+
 ## Como jogar
 
 ```bash
@@ -54,6 +56,13 @@ O carregador tem 5 tiros e recarrega sozinho quando esvazia; a munição é infi
 A qualidade se ajusta sozinha: se o FPS cair, o jogo reduz a resolução interna e o mapa de sombras, e volta a
 subir quando sobra folga. Para fixar um nível, use `?quality=0` (alta) até `?quality=4` (econômica) na URL.
 `?debug` mostra FPS, qualidade, tempo de CPU, draw calls, chunks e pássaros.
+
+## Deploy (GitHub Pages)
+
+O workflow `.github/workflows/deploy.yml` gera o build e publica no GitHub Pages a cada push na `main`
+(ou manualmente pela aba **Actions**). Configuração única no repositório: **Settings → Pages → Source:
+GitHub Actions**. Os caminhos do build são relativos (`base: './'` no Vite), então funciona em
+`https://<usuário>.github.io/<repositório>/` sem ajustes.
 
 ## Para desenvolver
 

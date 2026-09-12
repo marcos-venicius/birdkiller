@@ -134,6 +134,14 @@ src/
   birds/BirdManager.ts    + raycast(), kill() com limite de corpos, living (vivos)
 ```
 
+## Deploy (GitHub Pages)
+- `.github/workflows/deploy.yml`: Node 22, `npm ci`, `npm run build`, publica `dist/` com
+  `actions/upload-pages-artifact` + `actions/deploy-pages`. Dispara em push na `main` e manualmente.
+- Pré-requisito único: Settings → Pages → Source = GitHub Actions (ou
+  `gh api -X POST repos/<dono>/<repo>/pages -f build_type=workflow`).
+- Build testado servido em subpasta (`/birdkiller/`, como no Pages): assets 200, sem requisições externas.
+- URL esperada: https://marcos-venicius.github.io/birdkiller/ (Pages gratuito exige repositório público).
+
 ## Desempenho medido (Etapa 7, headless com a renderização pausada)
 - Geração por etapa (uma por quadro, orçamento 4 ms): grama ~3,9 ms, terreno ~2,2 ms, vegetação ~1,3 ms.
 - CPU da lógica por quadro correndo: média 0,22 ms, p95 0,4 ms, p99 4,4 ms (quadros com geração de chunk).
