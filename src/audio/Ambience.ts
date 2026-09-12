@@ -36,6 +36,8 @@ export class Ambience {
   animalsPlayed = 0;
   private loops: Loops | null = null;
   private time = 0;
+  /** 0 = dia, 1 = noite: mais grilos e corujas, menos pica-paus e corvos. */
+  private night = 0;
   private control = 0;
   private nextAnimal = r(6, 14);
   private readonly crickets: Cricket[] = Array.from({ length: 4 }, () => ({
@@ -51,9 +53,10 @@ export class Ambience {
     private readonly biome: Biome,
   ) {}
 
-  update(dt: number, player: PlayerController, listener: THREE.Vector3): void {
+  update(dt: number, player: PlayerController, listener: THREE.Vector3, night = 0): void {
     const a = this.audio;
     if (!a.ready) return;
+    this.night = night;
     const loops = this.loops ?? this.start();
     if (!loops) return;
     this.time += dt;
@@ -113,15 +116,20 @@ export class Ambience {
         c.next = now + r(0, c.period);
       }
       if (now >= c.next) {
-        if (now - c.next < 0.3) cricketChirp(this.audio, this.audio.spatial(c.pos, 'ambience', 3), c.pitch);
+        if (now - c.next < 0.3) {
+          cricketChirp(this.audio, this.audio.spatial(c.pos, 'ambience', 3), c.pitch, 0.12 * (1 + this.night * 1.5));
+        }
         c.next = now + c.period * r(0.85, 1.15);
       }
     }
   }
 
   private playAnimal(listener: THREE.Vector3): void {
-    let pick = Math.random() * ANIMALS.reduce((s, an) => s + an.weight, 0);
-    const animal = ANIMALS.find((an) => (pick -= an.weight) <= 0) ?? ANIMALS[0];
+    // À noite: corujas bem mais frequentes; pica-paus e corvos quase somem.
+    const weight = (name: string, base: number) =>
+      base * (name === 'coruja' ? 1 + this.night * 4 : name === 'pica-pau' || name === 'corvo' ? 1 - this.night * 0.85 : 1);
+    let pick = Math.random() * ANIMALS.reduce((s, an) => s + weight(an.name, an.weight), 0);
+    const animal = ANIMALS.find((an) => (pick -= weight(an.name, an.weight)) <= 0) ?? ANIMALS[0];
     const ang = Math.random() * TAU;
     const d = r(animal.dist[0], animal.dist[1]);
     _pos.set(listener.x + Math.cos(ang) * d, listener.y + (animal.name === 'galho' ? -1 : 5), listener.z + Math.sin(ang) * d);

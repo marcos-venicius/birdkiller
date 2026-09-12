@@ -7,6 +7,7 @@ import type { Input } from '../core/Input';
 import { smoothstep, TAU } from '../core/math';
 import type { PlayerController } from '../player/PlayerController';
 import type { HUD } from '../ui/HUD';
+import type { Atmosphere } from '../world/Atmosphere';
 import { buildKar98k, type Kar98kModel } from './Kar98kModel';
 
 interface Pose {
@@ -75,7 +76,7 @@ export class Weapon {
     private readonly player: PlayerController,
     private readonly hud: HUD,
     private readonly audio: AudioSystem,
-    private readonly sunDir: THREE.Vector3,
+    private readonly atmosphere: Atmosphere,
   ) {
     const A = CONFIG.atmosphere;
     this.model = buildKar98k();
@@ -290,9 +291,15 @@ export class Weapon {
       this.worldFlash.position.copy(cam.position).addScaledVector(_dir, 1.5);
     }
 
-    // Luzes da arma no referencial da câmera: sol e céu continuam coerentes ao girar.
+    // Luzes da arma no referencial da câmera, com a luz do mundo agora (sol de dia, lua à noite).
+    const atm = this.atmosphere;
     _q.copy(cam.quaternion).invert();
-    this.vmSun.position.copy(this.sunDir).applyQuaternion(_q);
+    this.vmSun.position.copy(atm.lightDir).applyQuaternion(_q);
+    this.vmSun.color.copy(atm.keyColor);
+    this.vmSun.intensity = atm.keyIntensity * 0.55;
     this.vmHemi.position.set(0, 1, 0).applyQuaternion(_q);
+    this.vmHemi.color.copy(atm.hemi.color);
+    this.vmHemi.groundColor.copy(atm.hemi.groundColor);
+    this.vmHemi.intensity = atm.hemi.intensity * 0.9;
   }
 }

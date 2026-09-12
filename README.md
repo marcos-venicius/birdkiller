@@ -44,7 +44,9 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 
 - **Floresta infinita**: carregada em blocos ao redor do jogador, com coníferas, árvores de copa, bétulas,
   árvores secas, arbustos, samambaias, grama, pedras, troncos caídos, clareiras e matas fechadas.
-- **Fim de tarde**: sol baixo e quente, sombras longas, névoa, céu em degradê, vento na vegetação.
+- **Dia e noite**: começa no fim de tarde (sol baixo e quente, sombras longas, névoa, vento na vegetação) e o
+  tempo passa: o sol se põe, surgem a lua e as estrelas, amanhece e o ciclo continua (~42 min por dia). À noite
+  há menos pássaros, mais grilos e corujas. Para começar em outra hora: `?hora=22` no endereço.
 - **Pássaros**: pardal, sabiá, pisco, gralha-azul, rolinha e gavião, cada um com cores, voo e canto próprios.
   Pousam nas copas e no chão, andam em bando, fogem quando você chega perto ou atira, e surgem sempre fora
   do seu campo de visão.

@@ -38,6 +38,8 @@ Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida,
 `stage7.json` (custo de geração, CPU por quadro, duas sessões longas comparando memória, qualidade adaptativa),
 `stage8-boars.json` (vitrine dos javalis, simulação de 120 s, percepção, tiro vital/ferimento, corpos, sons),
 `stage8b-reload.json` (recarga manual com R: tempos, carregador cheio, durante o ferrolho, mira, som),
+`stage9-daynight.json` (início igual ao fim de tarde original, saltos de luz em 24 h, duração das fases,
+capturas às 17h, pôr do sol, lua nascendo, noite, amanhecer e meio-dia),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -52,6 +54,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   Shift, a recarga automática e soltar o mouse (Esc) desligam a mira.
 - R: recarga manual quando falta munição (cartucho a cartucho: 0,7 s + 0,4 s por cartucho). Vazio = automática (2,6 s).
 - M: liga/desliga a música de fundo (lembra a escolha).
+- `?hora=22` (ou `?hora=5.5`) na URL começa em outra hora; o padrão é 17h. `?debug` mostra o relógio.
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
 
 ## Etapas
@@ -64,13 +67,22 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - [x] **6b. Música de fundo** (pedido do usuário) — compositor generativo estilo "RPG de exploração": progressões clássicas (I–V–vi–IV, IV–V–iii–vi...), tônica e andamento (70–84 BPM) novos a cada seção; cordas (pad serra desafinado + passa-baixa), baixo, harpa em arpejos, melodia de flauta/ocarina com vibrato (motivo A, sequência, resposta B, cadência em nota longa) e sininhos; eco + reverb da mata; pausas de 15–35 s às vezes; volume bem baixo (bus `music`); tecla M liga/desliga (preferência salva no navegador).
 - [x] **7. Polimento e desempenho** — qualidade adaptativa (`core/Quality.ts`: 5 níveis de resolução interna + mapa de sombras, desce com FPS < 40 em 2 janelas de 2 s, sobe com FPS > 56 sustentado; `?quality=0..4` fixa); grama gerada escrevendo as matrizes direto no buffer e com volume de culling pelo chunk; dithering no céu, terreno, vegetação, pássaros e partículas (fim do banding); vinheta sutil em CSS; overlay `?debug` com tempo de CPU da lógica e do envio para a GPU e o nível de qualidade; sessões longas sem vazamento; build offline testado; `README.md`.
 - [x] **8. Javalis** (pedido do usuário) — javali low-poly procedural (2 pelagens, cabeça/pernas/rabo animados); estados fuçando/andando/alerta/fuga/morrendo/morto; bandos de 1–3 (máx. 5 vivos) surgem fora da visão, dentro da mata; percebem o jogador de longe (26 m andando, 45 correndo, 11 agachado, 60% disso parado) e o bando foge junto; tiros num raio de 130 m espantam; cabeça/peito = abate, traseira = ferido (grita, foge mais rápido, o próximo tiro mata); desaba de lado e vira corpo inerte (máx. 5); 60 pontos + 1 a cada 10 m; sons espaciais (grunhido, fuçada, bufada, galope, grito, baque). Não atacam o jogador (a spec proíbe sistema de vida).
+- [x] **8b. Recarga manual** (pedido do usuário) — tecla R completa o carregador cartucho a cartucho.
+- [x] **9. Ciclo dia/noite** (pedido do usuário — **substitui o "fim de tarde constante" da spec §3/§14**) — começa às
+  17h com exatamente a aparência original (sol a ~13°) e o relógio anda: pôr do sol ~6,5 min, noite fechada ~9 min,
+  noite ~14 min, ciclo completo ~42 min (`CONFIG.dayNight`: o tempo anda devagar perto do horizonte e mais rápido
+  de madrugada). Aparência interpolada por elevação do sol (`LOOKS` em `Atmosphere.ts`: céu, névoa, luz, hemisférica,
+  exposição, estrelas); a luz principal é o sol de dia e a lua à noite (lua oposta ao sol; a intensidade passa por
+  zero no horizonte, sem salto); céu com estrelas cintilando e disco da lua com halo; exposição sobe à noite para a
+  mata continuar legível; sombra ajusta o volume à altura da luz; luzes da arma seguem a luz do mundo. À noite:
+  menos pássaros (`birds.activity`) e quase sem canto, grilos mais altos, mais corujas, sem pica-pau/corvo.
 
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
 | --- | --- | --- |
 | 1 | Navegador, offline, recursos locais, sem tela de título | Vite/`dist/`, tudo procedural, só a dica "Clique para controlar" |
 | 2 | Andar, correr, agachar, olhar, mirar, atirar, recarga automática; sem stamina/fome/etc. | `PlayerController`, `Weapon` |
-| 3 | Floresta variada, fim de tarde, sombras | `Vegetation`, `Biome`, `Atmosphere` |
+| 3 | Floresta variada, fim de tarde, sombras | `Vegetation`, `Biome`, `Atmosphere` (começa no fim de tarde; o ciclo dia/noite foi pedido pelo usuário) |
 | 4 | Mundo infinito por chunks | `ChunkManager` (streaming + pool) |
 | 5 | Pássaros com spawn dinâmico fora da visão, comportamentos e variações | `BirdManager`, `Bird`, `species.ts` |
 | 6–7 | Caça livre, morte com queda física, corpo inerte, remoção de corpos antigos | `Hunting`, `Bird` (falling/dead), `CONFIG.combat` |
@@ -103,7 +115,8 @@ src/
   world/vegetation/geometries.ts  geometrias low-poly procedurais (LOD0/LOD1) com cores por vértice
   world/vegetation/Vegetation.ts  definição das camadas + populate(chunk) + fillGrass(mesh, chunk)
   world/vegetation/wind.ts        applyWind(material): balanço no vertex shader + fade por distância; windTime
-  world/Atmosphere.ts     sol direcional + hemisférica + FogExp2 + cúpula do céu; sombra segue o jogador com snap de texel
+  world/Atmosphere.ts     ciclo dia/noite (hour, setHour, clock, night 0..1, exposure); luz principal sol/lua +
+                          hemisférica + FogExp2 + cúpula do céu (sol, lua, estrelas); sombra segue o jogador com snap de texel
   player/PlayerController.ts  movimento, pulo, agachar, head-bob, colisão via CollisionWorld; stepPhase (áudio);
                           aiming, viewOffset (coice/respiração), lookDelta, lookScale — controlados pela arma
   weapon/Kar98kModel.ts   modelo procedural (coronha = perfil extrudado c/ textura de madeira em canvas, cano,

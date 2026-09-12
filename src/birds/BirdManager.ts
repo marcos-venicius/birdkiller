@@ -27,6 +27,8 @@ export class BirdManager implements BirdWorld {
   readonly speciesList = SPECIES;
   /** Depuração: congela todos os pássaros (capturas de tela). */
   frozen = false;
+  /** Atividade (1 de dia, menor à noite): limita quantos pássaros aparecem. */
+  activity = 1;
   /** Depuração/testes: chamado a cada pássaro criado. */
   onSpawn?: (bird: Bird, initial: boolean) => void;
 
@@ -83,7 +85,7 @@ export class BirdManager implements BirdWorld {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = rand(C.spawnInterval[0], C.spawnInterval[1]);
-      if (this.living < C.maxActive) this.trySpawn(false);
+      if (this.living < C.maxActive * (0.35 + 0.65 * this.activity)) this.trySpawn(false);
     }
   }
 

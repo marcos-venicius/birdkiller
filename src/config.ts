@@ -51,6 +51,20 @@ export const CONFIG = {
     shadowDistance: 160,
   },
 
+  dayNight: {
+    /** Hora inicial: 17h é o fim de tarde original (sol a ~13°). `?hora=22` na URL começa em outra hora. */
+    startHour: 17,
+    /** Horas do jogo por minuto real durante o dia (sol alto). */
+    hoursPerMinute: 0.75,
+    /** Multiplicador perto do horizonte: o entardecer e o amanhecer duram mais (~6 min até o pôr do sol). */
+    twilightSpeed: 0.2,
+    /** Multiplicador na noite fechada: a madrugada passa mais rápido. */
+    nightSpeed: 1.6,
+    /** Elevação do sol ao meio-dia (graus) e direção (azimute) dele ao meio-dia. */
+    maxElevation: 50,
+    noonAzimuth: 160,
+  },
+
   player: {
     walkSpeed: 5.0,
     runSpeed: 9.0,

@@ -56,7 +56,7 @@ for (let i = 0; i < 60 && !chunks.isClear(player.position.x, player.position.z, 
 }
 chunks.resolveCollision(player.position, CONFIG.player.radius);
 
-const weapon = new Weapon(engine, input, player, hud, audio, atmosphere.sunDir);
+const weapon = new Weapon(engine, input, player, hud, audio, atmosphere);
 const birds = new BirdManager(engine.scene, terrain, biome, chunks, player, engine.camera);
 birds.populate();
 const boars = new BoarManager(engine.scene, terrain, biome, chunks, player, engine.camera);
@@ -97,18 +97,21 @@ engine.renderer.setAnimationLoop(() => {
   windTime.value += dt;
   player.update(dt);
   weapon.update(dt);
+  // À noite aparecem menos pássaros (e eles quase não cantam).
+  birds.activity = 1 - atmosphere.night * 0.65;
   birds.update(dt);
   boars.update(dt);
   particles.update(dt);
   audio.updateListener(engine.camera);
-  ambience.update(dt, player, engine.camera.position);
-  voices.update(dt, birds.active, engine.camera.position);
+  ambience.update(dt, player, engine.camera.position, atmosphere.night);
+  voices.update(dt, birds.active, engine.camera.position, atmosphere.night);
   boarVoices.update(dt, boars.active, engine.camera.position);
   footsteps.update(dt, player);
   music.update();
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
   chunks.update(player.position);
-  atmosphere.update(player.position, engine.camera);
+  atmosphere.update(player.position, engine.camera, dt);
+  engine.renderer.toneMappingExposure = atmosphere.exposure;
   // Antes do render: trocar a resolução limpa o canvas, e o quadro precisa ser desenhado já no novo tamanho.
   quality.update(realDt);
   const t1 = performance.now();
@@ -132,7 +135,7 @@ engine.renderer.setAnimationLoop(() => {
       const p = player.position;
       const s = chunks.stats;
       hud.setDebug(
-        `${fps} fps  qualidade ${quality.name}\n${cpu}\ndraw ${info.calls}  tris ${info.triangles}\n` +
+        `${fps} fps  qualidade ${quality.name}  hora ${atmosphere.clock}\n${cpu}\ndraw ${info.calls}  tris ${info.triangles}\n` +
           `chunks ${s.loaded}  fila ${s.queued}  grama ${s.grass}\n` +
           `pássaros ${birds.living}  javalis ${boars.living}  corpos ${birds.active.length - birds.living + boars.active.length - boars.living}  partículas ${particles.count}\n` +
           `pos ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}`,

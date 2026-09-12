@@ -80,6 +80,6 @@ export const ANIMALS: AnimalSound[] = [
 ];
 
 /** Um "cri-cri-cri" de grilo. */
-export function cricketChirp(a: AudioSystem, dest: Dest, pitch: number): void {
-  for (let i = 0; i < 3; i++) a.tone({ at: i * 0.045, duration: 0.02, freq: pitch, gain: 0.12, attack: 0.003, dest });
+export function cricketChirp(a: AudioSystem, dest: Dest, pitch: number, gain = 0.12): void {
+  for (let i = 0; i < 3; i++) a.tone({ at: i * 0.045, duration: 0.02, freq: pitch, gain, attack: 0.003, dest });
 }

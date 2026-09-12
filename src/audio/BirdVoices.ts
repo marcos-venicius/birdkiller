@@ -39,7 +39,8 @@ export class BirdVoices {
 
   constructor(private readonly audio: AudioSystem) {}
 
-  update(dt: number, birds: readonly Bird[], listener: THREE.Vector3): void {
+  /** `night` (0..1): à noite os pássaros quase não cantam. */
+  update(dt: number, birds: readonly Bird[], listener: THREE.Vector3, night = 0): void {
     const a = this.audio;
     if (!a.ready) return;
     const now = a.now;
@@ -58,7 +59,7 @@ export class BirdVoices {
       t -= dt;
       if (t <= 0) {
         t = r(v.gap[0], v.gap[1]) * (state === 'perched' ? 1 : 2.5);
-        if (d < v.range && this.busyUntil.length < MAX_VOICES) this.sing(bird, v, false);
+        if (d < v.range && this.busyUntil.length < MAX_VOICES && Math.random() >= night * 0.85) this.sing(bird, v, false);
       }
       this.timers.set(bird, t);
     }
