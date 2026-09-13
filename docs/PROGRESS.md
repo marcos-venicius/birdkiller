@@ -179,7 +179,9 @@ src/
   `species.ts`. Folhagem não bloqueia o tiro (só troncos, pedras e relevo). Custo ~0,4 ms por tiro.
 - Áudio: sem arquivos — tudo sintetizado (ruído filtrado + osciladores com envelope). Volumes em
   `CONFIG.audio` (master e buses). Níveis de referência (render offline): disparo ~0,40 de pico, cantos a 15 m
-  0,05–0,14, ambiente ao vivo ~0,05. `BirdVoices` detecta transições de estado observando os pássaros, sem acoplar
+  0,05–0,14, ambiente ao vivo ~0,05, passo correndo na grama ~0,027 de pico (era 0,053: o usuário achou a
+  corrida na grama alta demais — baixei o ganho do passo correndo 0,8→0,6, o "swish" da grama 0,3→0,22 e o
+  farfalhar contínuo da vegetação 0,085→0,042 na clareira). `BirdVoices` detecta transições de estado observando os pássaros, sem acoplar
   áudio ao comportamento. Na simulação do headless o relógio do áudio não anda (vozes ficam "ocupadas").
 - Música: volume do bus `music` = 0,12 → RMS ~0,009, cerca de metade do ambiente ao vivo (RMS ~0,016), para
   ficar "bem baixo" no fundo. Com 0,35 ela ficava mais alta que o vento/folhas.

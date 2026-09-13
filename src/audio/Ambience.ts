@@ -81,7 +81,7 @@ export class Ambience {
       // Andar pela vegetação: a grama alta das clareiras farfalha mais; agachado é mais silencioso.
       const speed = Math.hypot(player.velocity.x, player.velocity.z);
       const move = player.onGround ? Math.min(speed / 9, 1) : 0;
-      set(loops.rustle.gain, move * (0.015 + 0.07 * (1 - forest)) * (player.crouched ? 0.5 : 1), now, 0.08);
+      set(loops.rustle.gain, move * (0.012 + 0.03 * (1 - forest)) * (player.crouched ? 0.5 : 1), now, 0.08);
       set(loops.rustle.freq, 2200 + speed * 150, now, 0.1);
     }
 

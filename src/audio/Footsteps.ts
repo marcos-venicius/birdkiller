@@ -35,7 +35,7 @@ export class Footsteps {
     if (!landed && !(newStep && player.onGround && speed > 0.6)) return;
     const litter = this.biome.forest(player.position.x, player.position.z);
     if (landed) this.play(1.1, litter, true);
-    else this.play(player.running ? 0.8 : player.crouched ? 0.2 : 0.45, litter, false);
+    else this.play(player.running ? 0.6 : player.crouched ? 0.2 : 0.45, litter, false);
   }
 
   private play(gain: number, litter: number, landing: boolean): void {
@@ -48,11 +48,11 @@ export class Footsteps {
       a.noiseBurst({ at: i * 0.014 + r(0, 0.01), duration: 0.03, type: 'bandpass', freq: r(1500, 4200), q: 1.5, gain: g * (0.15 + 0.2 * litter), bus: 'steps' });
     }
     // Grama: um "swish".
-    a.noiseBurst({ duration: 0.13, type: 'bandpass', freq: r(2200, 3200), q: 0.8, gain: g * 0.3 * (1 - litter) + 0.001, attack: 0.02, bus: 'steps' });
+    a.noiseBurst({ duration: 0.13, type: 'bandpass', freq: r(2200, 3200), q: 0.8, gain: g * 0.22 * (1 - litter) + 0.001, attack: 0.02, bus: 'steps' });
     // Baque do pé.
     a.noiseBurst({ duration: landing ? 0.14 : 0.07, type: 'lowpass', freq: landing ? 140 : 190, gain: g * (landing ? 1.2 : 0.7), bus: 'steps' });
     // Correndo na mata, às vezes quebra um graveto.
-    if (!landing && gain > 0.6 && litter > 0.5 && Math.random() < 0.08) {
+    if (!landing && gain > 0.45 && litter > 0.5 && Math.random() < 0.08) {
       a.noiseBurst({ at: 0.03, duration: 0.03, type: 'highpass', freq: 1800, gain: 0.35, bus: 'steps' });
     }
   }
