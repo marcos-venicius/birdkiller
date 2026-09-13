@@ -1,0 +1,16 @@
+[
+  { "wait": 4000 },
+  { "eval": "(() => { const g = game, W = g.weather, A = g.atmosphere; return { chuvaInicial: +W.rain.toFixed(2), nublado: +W.cloud.toFixed(2), neblina: +W.mist.toFixed(2), densidadeNevoa: +g.engine.scene.fog.density.toFixed(5), luz: +A.keyIntensity.toFixed(2), gotasNaCena: g.engine.scene.children.filter(c => c.type === 'LineSegments').length }; })()", "label": "começa com tempo bom (sem ?chuva)" },
+  { "eval": "(() => { const g = game, W = g.weather, A = g.atmosphere; const luzSeca = A.keyIntensity, nevoaSeca = g.engine.scene.fog.density; W.state = 'rain'; W.target = 1; W.timer = 600; for (let i = 0; i < 3000; i++) { W.update(1 / 30, g.engine.camera, A); A.setHour(A.hour); } return { chuva: +W.rain.toFixed(2), nublado: +W.cloud.toFixed(2), luzAntes: +luzSeca.toFixed(2), luzNaChuva: +A.keyIntensity.toFixed(2), nevoaAntes: +nevoaSeca.toFixed(5), nevoaNaChuva: +g.engine.scene.fog.density.toFixed(5), corDaNevoa: g.engine.scene.fog.color.getHexString(), gotasVisiveis: g.scene ? null : g.engine.scene.children.find(c => c.type === 'LineSegments').visible }; })()", "label": "100 s de chuva forte" },
+  { "eval": "(() => { const g = game, A = g.atmosphere, p = g.player; A.setHour(17); p.position.set(-29, g.terrain.heightAt(-29, -28), -28); p.velocity.set(0, 0, 0); p.yaw = 1.0; p.pitch = -0.04; g.chunks.warmup(p.position); return A.clock; })()" },
+  { "wait": 4000 },
+  { "shot": "s14-01-chuva" },
+  { "eval": "(() => { const g = game, W = g.weather, A = g.atmosphere; W.state = 'clear'; W.target = 0; W.timer = 600; for (let i = 0; i < 4000; i++) W.update(1 / 30, g.engine.camera, A); A.setHour(17); return { chuva: +W.rain.toFixed(2), nublado: +W.cloud.toFixed(2), luz: +A.keyIntensity.toFixed(2), nevoa: +g.engine.scene.fog.density.toFixed(5), corDaNevoa: g.engine.scene.fog.color.getHexString() }; })()", "label": "tempo abrindo de novo" },
+  { "wait": 3000 },
+  { "shot": "s14-02-depois" },
+  { "eval": "(() => { const g = game, W = g.weather, A = g.atmosphere; const out = {}; for (const h of [4.5, 5.5, 6.5, 8, 12]) { A.setHour(h); W.update(0.5, g.engine.camera, A); out['h' + h] = { neblina: +W.mist.toFixed(2), nevoa: +g.engine.scene.fog.density.toFixed(5) }; } A.setHour(17); return out; })()", "label": "neblina de madrugada" },
+  { "eval": "(() => { const g = game, A = g.atmosphere, p = g.player; A.setHour(5.6); g.weather.update(0.5, g.engine.camera, A); p.pitch = -0.02; return { hora: A.clock, neblina: +g.weather.mist.toFixed(2) }; })()" },
+  { "wait": 4000 },
+  { "shot": "s14-03-neblina" },
+  { "eval": "(() => { const g = game, W = g.weather, A = g.atmosphere; let fechou = 0, choveu = 0, t = 0; const dt = 0.5; const amostra = []; for (let i = 0; i < 20000; i++) { W.update(dt, g.engine.camera, A); t += dt; if (i % 1200 === 0) amostra.push(+W.rain.toFixed(2)); if (W.state === 'closing' && W.timer > 39) fechou++; if (W.state === 'rain' && W.rain > 0.5) choveu++; } return { minutosSimulados: +(t / 60).toFixed(0), vezesQueFechouOTempo: fechou, quadrosChovendoForte: choveu, fracaoDoTempoChovendo: +(choveu * dt / t).toFixed(2), amostras: amostra.slice(0, 12) }; })()", "label": "ciclo do tempo em ~2,8 h simuladas" }
+]

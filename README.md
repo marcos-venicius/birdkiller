@@ -48,6 +48,9 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 - **Dia e noite**: começa no fim de tarde (sol baixo e quente, sombras longas, névoa, vento na vegetação) e o
   tempo passa: o sol se põe, surgem a lua e as estrelas, amanhece e o ciclo continua (~42 min por dia). À noite
   há menos pássaros, mais grilos e corujas. Para começar em outra hora: `?hora=22` no endereço.
+- **Chuva e neblina**: o tempo fecha e abre sozinho. Nublado a luz some, o céu fica cinza e a floresta some na
+  bruma; chovendo, os riscos d'água cruzam a tela, o lago fica picado e os grilos calam. De madrugada baixa uma
+  neblina que o sol desfaz. Nada disso atrapalha o tiro — é só clima.
 - **Pássaros**: pardal, sabiá, pisco, gralha-azul, rolinha e gavião, cada um com cores, voo e canto próprios.
   Pousam nas copas e no chão, andam em bando, fogem quando você chega perto ou atira, e surgem sempre fora
   do seu campo de visão.

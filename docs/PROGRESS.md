@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage14-weather.json` (começa com tempo bom, 100 s de chuva forte com luz/névoa medidas, o tempo abrindo de
+volta ao original, neblina por hora do dia, ~2,8 h de ciclo e capturas),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -124,10 +126,6 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 ## A fazer (combinado com o usuário, nesta ordem)
 Depois da etapa dos veados o usuário escolheu, de uma lista de sugestões, seguir com:
 
-- [ ] **13. Chuva e neblina** — clima passageiro só como atmosfera: chuva riscando a luz, pingos batendo no lago,
-  som da chuva, neblina baixa de madrugada. **Não pode prejudicar o jogador** (a spec §2 proíbe clima que atrapalhe):
-  no máximo muda a visibilidade e o humor da cena. Encaixa em `Atmosphere` (densidade/cor da névoa já são
-  interpoladas por elevação do sol) + um sistema de partículas de chuva + `Ambience`.
 - [ ] **14. Queda da bala, com rastro visível** — trocar o hitscan por tiro com tempo de voo e gravidade, para o tiro
   longo com a luneta virar perícia. O usuário pediu explicitamente: **é preciso ver o "rastro" da bala** para saber
   onde ela está batendo (um traço/risco curto acompanhando o projétil). Mexe em `Hunting.shoot` (hoje resolve tudo
@@ -137,6 +135,16 @@ Sugestões que ficaram de fora por ora (o usuário pode retomar): **apito de ca�
 atrai a bicharada por alguns segundos) e **rastros/sinais** (pegadas de javali, penas, grama amassada, dizendo
 que passou algo por ali há pouco). O usuário recusou minimapa: um mapa de floresta infinita não ajuda a se
 orientar e mostrar bichos acabaria com a caça — por isso a bússola.
+
+- [x] **13. Chuva e neblina** (pedido do usuário) — `world/Weather.ts`: o tempo fecha e abre sozinho (bom por
+  7–18 min, chuva de 2–5 min, transições de 40–80 s; 70% das vezes que fecha vira chuva, senão fica só nublado).
+  Nublado abafa a luz principal (−80%), acinzenta céu/névoa/horizonte, esconde sol, lua e estrelas e sobe um
+  pouco a exposição; a chuva engrossa a névoa (3,7× a densidade), pica a superfície dos lagos e cala os grilos.
+  Chuva desenhada num só `LineSegments` de 2600 riscos com shader (cilindro de 16 m que segue a câmera, gota
+  posicionada no vertex shader por fase — custo de CPU zero, 1 draw call). Som: chiado parelho + tamborilar nas
+  folhas (mais forte na mata). Neblina de madrugada entre ~4h e o nascer do sol, independente da chuva.
+  **Não atrapalha o jogador** (spec §2): não mexe em velocidade, pontaria nem alcance do tiro — só na visibilidade
+  e no humor. Menos pássaros na chuva (`birds.activity`). `?chuva=1` na URL começa chovendo (testes).
 
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
@@ -180,6 +188,7 @@ src/
   world/Lakes.ts          lagos procedurais: sítios por célula, escavação da bacia (shape), consultas (at, depthAt,
                           waterHeight/dry, shoreDistance, near), block() do jogador e clampInside() dos patos
   world/Water.ts          lâmina de água: um disco por lago com shader (ondas, Fresnel, brilho, névoa), cores da atmosfera
+  world/Weather.ts        chuva e neblina passageiras: máquina de estados + chuva em shader; ajusta a atmosfera
   world/Atmosphere.ts     ciclo dia/noite (hour, setHour, clock, night 0..1, exposure); luz principal sol/lua +
                           hemisférica + FogExp2 + cúpula do céu (sol, lua, estrelas); sombra segue o jogador com snap de texel
   player/PlayerController.ts  movimento, pulo, agachar, head-bob, colisão via CollisionWorld; stepPhase (áudio);
@@ -271,6 +280,10 @@ src/
   `wadeDepth`, distância de render). Cada lago cabe inteiro na sua célula, então consultar a célula do ponto basta —
   `heightAt` não ficou mais caro de forma mensurável (~0,7 µs por chamada, igual ao relevo puro). A água é um disco
   por lago com material próprio (poucos em cena); o disco tem 98,5% do raio da bacia para a beira não brigar com a margem.
+- Tempo: `CONFIG.weather` (durações, chance de chuva, gotas/raio/altura/velocidade, multiplicadores de névoa).
+  `Atmosphere.cloud` e `Atmosphere.fogFactor` são as duas alavancas que o Weather usa — nada mais no mundo
+  precisa saber que está chovendo, tirando a água (uniform `uRain`) e o ambiente (som).
+  Níveis medidos: ambiente parado 0,0066 de pico; chuva forte 0,046 (vento em rajada forte: 0,029).
 - Sede: `CONFIG.<espécie>.drinkInterval/drinkTime/drinkRange`. O alvo fica a 94% do raio do lago (dentro d'água):
   o bicho para ~1,5 m antes dele e fica na beira; a parte funda continua barrada pelo `Lakes.block`.
 - Quadrúpedes: uma espécie nova = um `*Model.ts` (geometria + pivôs + zonas) e uma entrada em `kinds.ts`

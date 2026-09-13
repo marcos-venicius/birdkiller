@@ -34,6 +34,7 @@ const WATER_FRAGMENT = /* glsl */ `
   uniform float uLight;
   uniform float uDepth;
   uniform float uTime;
+  uniform float uRain;
   varying vec3 vWorld;
   varying float vR;
 
@@ -49,6 +50,12 @@ const WATER_FRAGMENT = /* glsl */ `
            + wave(p, vec2(-0.5, 0.87), 0.9, 1.55, 0.018)
            + wave(p, vec2(0.2, -0.98), 1.9, 2.3, 0.008)
            + wave(p, vec2(-0.87, -0.5), 3.7, 3.1, 0.0035);
+    // Chuva: muitas ondinhas curtas por cima das ondas normais.
+    if (uRain > 0.01) {
+      w += (wave(p, vec2(0.7, 0.71), 8.3, 7.0, 0.0012)
+          + wave(p, vec2(-0.71, 0.7), 12.7, 9.4, 0.0008)
+          + wave(p, vec2(0.31, -0.95), 19.3, 12.6, 0.0005)) * uRain;
+    }
     vec3 n = normalize(vec3(-w.y, 1.0, -w.z));
 
     vec3 v = normalize(cameraPosition - vWorld);
@@ -66,6 +73,9 @@ const WATER_FRAGMENT = /* glsl */ `
     vec3 h = normalize(uLightDir + v);
     col += uLightColor * pow(max(dot(n, h), 0.0), 90.0) * 1.6 * uLight;
     col += uLightColor * pow(max(dot(n, h), 0.0), 12.0) * 0.05 * uLight;
+
+    // Água picada de chuva fica mais opaca e clara.
+    col = mix(col, col * 1.06 + vec3(0.015), uRain * 0.6);
 
     // Beira um pouco mais clara, onde a água lambe a margem.
     col = mix(col, mix(col, (uShallow * 0.5 + vec3(0.05)) * uLight, 0.3), smoothstep(0.96, 1.0, vR));
@@ -112,13 +122,14 @@ export class Water {
           uLight: { value: 1 },
           uDepth: { value: 3 },
           uTime: { value: 0 },
+          uRain: { value: 0 },
         },
       ]),
     });
   }
 
   /** Mantém um disco por lago a até `viewDistance` e atualiza a ondulação e as cores. */
-  update(focus: THREE.Vector3, atmosphere: Atmosphere, dt: number): void {
+  update(focus: THREE.Vector3, atmosphere: Atmosphere, dt: number, rain = 0): void {
     this.time += dt;
     this.lakes.near(focus.x, focus.z, CONFIG.lakes.viewDistance, this.found);
 
@@ -142,6 +153,7 @@ export class Water {
       (u.uLightColor.value as THREE.Color).copy(atmosphere.keyColor);
       (u.uLightDir.value as THREE.Vector3).copy(atmosphere.lightDir);
       u.uLight.value = light;
+      u.uRain.value = rain;
     }
   }
 

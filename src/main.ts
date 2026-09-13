@@ -26,6 +26,7 @@ import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
 import type { Lake } from './world/Lakes';
 import { Water } from './world/Water';
+import { Weather } from './world/Weather';
 import { Biome } from './world/Biome';
 import { ChunkManager } from './world/ChunkManager';
 import { Terrain } from './world/Terrain';
@@ -46,6 +47,7 @@ const vegetation = new Vegetation(terrain, biome, CONFIG.seed);
 const chunks = new ChunkManager(engine.scene, terrain, vegetation);
 const atmosphere = new Atmosphere(engine.scene);
 const water = new Water(engine.scene, terrain.lakes);
+const weather = new Weather(engine.scene);
 const quality = new Quality(engine.renderer, atmosphere.sun);
 
 const player = new PlayerController(engine.camera, input, terrain, chunks);
@@ -118,14 +120,14 @@ engine.renderer.setAnimationLoop(() => {
   windTime.value += dt;
   player.update(dt);
   weapon.update(dt);
-  // À noite aparecem menos pássaros (e eles quase não cantam).
-  birds.activity = 1 - atmosphere.night * 0.65;
+  // À noite (e na chuva) aparecem menos pássaros — e eles quase não cantam.
+  birds.activity = (1 - atmosphere.night * 0.65) * (1 - weather.rain * 0.5);
   birds.update(dt);
   boars.update(dt);
   deer.update(dt);
   particles.update(dt);
   audio.updateListener(engine.camera);
-  ambience.update(dt, player, engine.camera.position, atmosphere.night);
+  ambience.update(dt, player, engine.camera.position, atmosphere.night, weather.rain);
   voices.update(dt, birds.active, engine.camera.position, atmosphere.night);
   boarVoices.update(dt, boars.active, engine.camera.position);
   deerVoices.update(dt, deer.active, engine.camera.position);
@@ -161,8 +163,9 @@ engine.renderer.setAnimationLoop(() => {
     hud.setCompass((THREE.MathUtils.radToDeg(-player.yaw) + 360) % 360, compassMarks);
   }
   chunks.update(player.position);
+  weather.update(dt, engine.camera, atmosphere);
   atmosphere.update(player.position, engine.camera, dt);
-  water.update(player.position, atmosphere, dt);
+  water.update(player.position, atmosphere, dt, weather.rain);
   engine.renderer.toneMappingExposure = atmosphere.exposure;
   // Antes do render: trocar a resolução limpa o canvas, e o quadro precisa ser desenhado já no novo tamanho.
   quality.update(realDt);
@@ -187,7 +190,7 @@ engine.renderer.setAnimationLoop(() => {
       const p = player.position;
       const s = chunks.stats;
       hud.setDebug(
-        `${fps} fps  qualidade ${quality.name}  hora ${atmosphere.clock}\n${cpu}\ndraw ${info.calls}  tris ${info.triangles}\n` +
+        `${fps} fps  qualidade ${quality.name}  hora ${atmosphere.clock}  chuva ${Math.round(weather.rain * 100)}%  neblina ${Math.round(weather.mist * 100)}%\n${cpu}\ndraw ${info.calls}  tris ${info.triangles}\n` +
           `chunks ${s.loaded}  fila ${s.queued}  grama ${s.grass}\n` +
           `pássaros ${birds.living}  javalis ${boars.living}  veados ${deer.living}  corpos ${birds.active.length - birds.living + boars.active.length - boars.living + deer.active.length - deer.living}  partículas ${particles.count}\n` +
           `pos ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}`,
@@ -208,6 +211,7 @@ if (import.meta.env.DEV) {
       chunks,
       atmosphere,
       water,
+      weather,
       hud,
       audio,
       weapon,

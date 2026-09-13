@@ -23,6 +23,8 @@ interface Loops {
   leavesR: NoiseLoop;
   rustle: NoiseLoop;
   water: NoiseLoop;
+  rainHiss: NoiseLoop;
+  rainLeaves: NoiseLoop;
 }
 
 function set(p: AudioParam, value: number, now: number, timeConstant: number): void {
@@ -40,6 +42,8 @@ export class Ambience {
   private time = 0;
   /** 0 = dia, 1 = noite: mais grilos e corujas, menos pica-paus e corvos. */
   private night = 0;
+  /** 0..1: chuva — chiado no ar, tamborilar nas folhas e grilo nenhum. */
+  private rain = 0;
   private control = 0;
   private nextAnimal = r(6, 14);
   private readonly crickets: Cricket[] = Array.from({ length: 4 }, () => ({
@@ -56,10 +60,11 @@ export class Ambience {
     private readonly lakes: Lakes,
   ) {}
 
-  update(dt: number, player: PlayerController, listener: THREE.Vector3, night = 0): void {
+  update(dt: number, player: PlayerController, listener: THREE.Vector3, night = 0, rain = 0): void {
     const a = this.audio;
     if (!a.ready) return;
     this.night = night;
+    this.rain = rain;
     const loops = this.loops ?? this.start();
     if (!loops) return;
     this.time += dt;
@@ -91,6 +96,10 @@ export class Ambience {
       const water = (1 - smoothstepFn(2, 45, shore)) * (0.55 + 0.45 * gust);
       set(loops.water.gain, water * 0.05, now, 0.5);
       set(loops.water.freq, 700 + 500 * gust, now, 0.6);
+      // Chuva: chiado parelho no ar + tamborilar nas folhas (mais forte na mata fechada).
+      set(loops.rainHiss.gain, this.rain * 0.062, now, 0.8);
+      set(loops.rainHiss.freq, 1400 + 700 * this.rain, now, 1);
+      set(loops.rainLeaves.gain, this.rain * 0.045 * (0.35 + 0.65 * forest), now, 0.8);
     }
 
     this.updateCrickets(now, listener);
@@ -109,8 +118,10 @@ export class Ambience {
     const leavesR = a.loop('bandpass', 3200, 0.8, 'ambience', 0.6);
     const rustle = a.loop('bandpass', 2600, 1, 'ambience');
     const water = a.loop('bandpass', 900, 0.7, 'ambience');
-    if (!wind || !leavesL || !leavesR || !rustle || !water) return null;
-    this.loops = { wind, leavesL, leavesR, rustle, water };
+    const rainHiss = a.loop('lowpass', 1600, 0.5, 'ambience');
+    const rainLeaves = a.loop('bandpass', 3800, 0.9, 'ambience');
+    if (!wind || !leavesL || !leavesR || !rustle || !water || !rainHiss || !rainLeaves) return null;
+    this.loops = { wind, leavesL, leavesR, rustle, water, rainHiss, rainLeaves };
     return this.loops;
   }
 
@@ -126,7 +137,9 @@ export class Ambience {
       }
       if (now >= c.next) {
         if (now - c.next < 0.3) {
-          cricketChirp(this.audio, this.audio.spatial(c.pos, 'ambience', 3), c.pitch, 0.12 * (1 + this.night * 1.5));
+          // Na chuva os grilos calam.
+          const gain = 0.12 * (1 + this.night * 1.5) * (1 - this.rain);
+          if (gain > 0.01) cricketChirp(this.audio, this.audio.spatial(c.pos, 'ambience', 3), c.pitch, gain);
         }
         c.next = now + c.period * r(0.85, 1.15);
       }

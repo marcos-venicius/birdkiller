@@ -69,6 +69,26 @@ export const CONFIG = {
     shadowDistance: 160,
   },
 
+  weather: {
+    /** Minutos reais de tempo bom e de chuva, e a transição entre eles (s). */
+    clearMinutes: [7, 18],
+    rainMinutes: [2, 5],
+    transition: [40, 80],
+    /** Chance de o tempo fechado virar chuva (senão fica só nublado). */
+    rainChance: 0.7,
+    /** Gotas desenhadas em volta da câmera, e o cilindro onde elas caem. */
+    drops: 2600,
+    radius: 16,
+    height: 18,
+    fallSpeed: 26,
+    /** Quanto cada efeito engrossa a névoa (multiplicador somado a 1). */
+    fogRain: 2.2,
+    fogCloud: 0.5,
+    fogMist: 2.6,
+    /** Força máxima da neblina de madrugada. */
+    mist: 1,
+  },
+
   dayNight: {
     /** Hora inicial: 17h é o fim de tarde original (sol a ~13°). `?hora=22` na URL começa em outra hora. */
     startHour: 17,

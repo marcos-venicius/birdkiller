@@ -152,6 +152,10 @@ export class Atmosphere {
   night = 0;
   /** Exposição sugerida para o tone mapping (sobe no escuro, como o olho se adaptando). */
   exposure: number = CONFIG.render.exposure;
+  /** Tempo fechado (0..1): abafa a luz principal, cinza o céu e engrossa a névoa. Definido pelo Weather. */
+  cloud = 0;
+  /** Multiplicador da densidade da névoa (chuva e neblina de madrugada). */
+  fogFactor = 1;
 
   private readonly fog: THREE.FogExp2;
   private readonly sky: THREE.Mesh;
@@ -159,6 +163,9 @@ export class Atmosphere {
   private readonly lightBasis = new THREE.Matrix4();
   private readonly lightBasisInv = new THREE.Matrix4();
   private readonly tmp = new THREE.Vector3();
+  /** Cor para onde o céu e a névoa puxam com o tempo fechado. */
+  private readonly overcast = new THREE.Color(0x77797d);
+  private readonly grayed = new THREE.Color();
   private readonly look = {
     top: new THREE.Color(),
     horizon: new THREE.Color(),
@@ -297,22 +304,28 @@ export class Atmosphere {
       this.lightDir.copy(this.moonDir);
       this.keyIntensity = L.keyI * smoothstep(0, -6, elev);
     }
+    // Tempo fechado: o sol some atrás das nuvens, o céu perde a cor e a luz do céu compensa um pouco.
+    const c = this.cloud;
+    const gray = (from: THREE.Color): THREE.Color => this.grayed.copy(from).lerp(this.overcast, c * 0.88 * (0.35 + 0.65 * smoothstep(-6, 6, elev)));
+    this.keyIntensity *= 1 - 0.8 * c;
     this.keyColor.copy(L.key);
     this.sun.color.copy(L.key);
     this.sun.intensity = this.keyIntensity;
-    this.hemi.color.copy(L.hemiSky);
+    this.hemi.color.copy(gray(L.hemiSky));
     this.hemi.groundColor.copy(L.hemiGround);
-    this.hemi.intensity = L.hemiI;
-    this.fog.color.copy(L.fog);
-    this.exposure = L.exposure;
+    this.hemi.intensity = L.hemiI * (1 + 0.2 * c);
+    this.fog.color.copy(gray(L.fog));
+    this.fog.density = CONFIG.atmosphere.fogDensity * this.fogFactor;
+    this.exposure = L.exposure * (1 + 0.1 * c);
 
     const U = this.skyUniforms;
-    (U.uTop.value as THREE.Color).copy(L.top);
-    (U.uHorizon.value as THREE.Color).copy(L.horizon);
-    (U.uFog.value as THREE.Color).copy(L.fog);
-    (U.uSunColor.value as THREE.Color).copy(elev >= 0 ? L.key : LOOK_COLORS[2].key);
-    U.uMoon.value = 1 - smoothstep(0, 15, elev);
-    U.uStars.value = L.stars;
+    (U.uTop.value as THREE.Color).copy(gray(L.top));
+    (U.uHorizon.value as THREE.Color).copy(gray(L.horizon));
+    (U.uFog.value as THREE.Color).copy(gray(L.fog));
+    // Com o tempo fechado o disco do sol e o brilho dele somem atrás das nuvens.
+    (U.uSunColor.value as THREE.Color).copy(elev >= 0 ? L.key : LOOK_COLORS[2].key).multiplyScalar(1 - c);
+    U.uMoon.value = (1 - smoothstep(0, 15, elev)) * (1 - c);
+    U.uStars.value = L.stars * (1 - c);
 
     // Mapa de sombras: com a luz alta, a área no chão encolhe no eixo da luz — compensa.
     const cfg = CONFIG.atmosphere;
