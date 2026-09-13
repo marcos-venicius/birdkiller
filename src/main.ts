@@ -26,6 +26,7 @@ import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
 import { Journal } from './ui/Journal';
 import { Markers } from './ui/Markers';
+import { Tips } from './ui/Tips';
 import { browserStore, resolveWorldSeed, SessionStore, shareUrl } from './ui/Session';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
@@ -145,10 +146,19 @@ const journal = new Journal([
   ...birds.speciesList.filter((s) => s.rare).map((s) => ({ id: s.id, name: s.name })),
   ...[boars, deer].flatMap((m) => m.kind.rares.map((r) => ({ id: r.id, name: r.name }))),
 ], PLACE_KINDS);
+// Dicas na hora certa (uma vez só na vida) e o guia de campo (tecla H).
+const tips = new Tips((text) => hud.tip(text));
+tips.offer('guia');
+let guideOpen = false;
+let tipTimer = 0;
+
 hunting.onKill = (info) => {
   const night = atmosphere.night > CONFIG.journal.nightThreshold;
   const news = journal.recordKill({ ...info, night, clock: atmosphere.clock }, hunting.score);
-  if (news.length) hud.note(news.join('  ·  '));
+  if (news.length) {
+    hud.note(news.join('  ·  '));
+    tips.offer('caderno');
+  }
 };
 window.addEventListener('pagehide', () => journal.flush());
 document.addEventListener('visibilitychange', () => {
@@ -160,12 +170,31 @@ let spotTimer = 0;
 let journalOpen = false;
 let journalRefresh = 0;
 
+/** A situação de alguma dica apareceu? (Cada uma só é mostrada uma vez na vida.) */
+function offerTips(): void {
+  const p = player.position;
+  if (atmosphere.night > 0.6) tips.offer('noite');
+  if (weather.rain > 0.5 || weather.mist > 0.6) tips.offer('chuva');
+  if (compassOn && compassMarks.length > 0) tips.offer('agua');
+  if (terrain.lakes.shoreDistance(p.x, p.z) < 70) tips.offer('lago');
+  const place = terrain.places.at(p.x, p.z);
+  if (place) {
+    const d = Math.hypot(p.x - place.x, p.z - place.z);
+    if (place.type === 'tower' && d < 120) tips.offer('torre');
+    if (place.type === 'cabin' && d < 45) tips.offer('cabana');
+    if (place.type === 'giantTree' && d < 150) tips.offer('arvore');
+  }
+}
+
 /** Chegou perto de um lugar (ou subiu nele): entra no caderno. */
 function discoverPlaces(): void {
   const p = terrain.places.at(player.position.x, player.position.z);
   if (!p || Math.hypot(player.position.x - p.x, player.position.z - p.z) > CONFIG.places.discoverDistance) return;
   const msg = journal.discover(p.id, p.type);
-  if (msg) hud.note(msg);
+  if (msg) {
+    hud.note(msg);
+    tips.offer('caderno');
+  }
 }
 
 /** Bicho de espécie ainda não avistada, na tela, perto e sem nada no caminho: entra no caderno. */
@@ -184,7 +213,13 @@ function spotAnimals(): void {
     if (terrain.raycast(cam.position, spotDir, clear) < clear) return;
     if (chunks.raycastObstacles(cam.position, spotDir, clear).kind) return;
     const msg = journal.spot(id);
-    if (msg) news.push(msg);
+    if (msg) {
+      news.push(msg);
+      if (id === 'deer') tips.offer('veado');
+      if (id === 'boar') tips.offer('javali');
+      if (id === 'deer' || id === 'boar') tips.offer('marcador');
+      tips.offer('caderno');
+    }
   };
   for (const b of birds.active) if (b.alive) check(b.species.id, b.pos);
   for (const m of [boars, deer]) for (const a of m.active) if (a.alive) check(a.rare?.id ?? m.kind.id, a.group.position);
@@ -311,6 +346,11 @@ engine.renderer.setAnimationLoop(() => {
     spotAnimals();
     discoverPlaces();
   }
+  if (input.isDown('Tab') && guideOpen) {
+    // O caderno e o guia ocupam o mesmo lugar: abrir um fecha o outro.
+    guideOpen = false;
+    hud.setGuideVisible(false);
+  }
   if (input.isDown('Tab')) {
     journalRefresh -= dt;
     if (!journalOpen || journalRefresh <= 0) {
@@ -333,6 +373,19 @@ engine.renderer.setAnimationLoop(() => {
     compassTimer = 0;
   }
   if (input.wasPressed('KeyK')) shareWorld();
+  if (input.wasPressed('KeyH')) {
+    guideOpen = !guideOpen;
+    hud.setGuideVisible(guideOpen);
+    tips.markSeen('guia');
+  }
+  // As dicas olham a situação uma vez por segundo; a fila mostra uma de cada vez.
+  tipTimer -= realDt;
+  if (tipTimer <= 0) {
+    tipTimer = 1;
+    offerTips();
+  }
+  // Com o guia aberto a fila espera: nenhuma dica é gasta por baixo dele.
+  if (!guideOpen) tips.update(realDt);
   if (input.wasPressed('KeyV')) {
     infrared = !infrared;
     hud.toast(infrared ? 'Infravermelho ligado' : 'Infravermelho desligado');
@@ -363,6 +416,7 @@ engine.renderer.setAnimationLoop(() => {
       engine.camera.getWorldDirection(rangeDir);
       const d = hunting.measure(engine.camera.position, rangeDir);
       hud.setRange(Number.isFinite(d) ? d : null);
+      if (d > 180 && Number.isFinite(d)) tips.offer('longe');
     } else {
       hud.setRange(null);
     }
@@ -474,6 +528,7 @@ if (import.meta.env.DEV) {
       placeView,
       discoverPlaces,
       world,
+      tips,
       session,
       saveSession,
       shareUrl,

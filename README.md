@@ -23,7 +23,9 @@ npm run preview    # http://localhost:4173
 # ou, sem Node: cd dist && python3 -m http.server 8000
 ```
 
-Clique na tela para controlar (o navegador também libera o som nesse clique).
+Clique na tela para controlar (o navegador também libera o som nesse clique). Aperte **H** a qualquer
+momento para o guia de campo, com todos os controles e o que existe para procurar; dicas curtas também
+aparecem sozinhas, uma única vez, quando a situação chega (a primeira noite, o primeiro lago, a primeira torre).
 
 | Ação | Tecla |
 | --- | --- |
@@ -40,6 +42,7 @@ Clique na tela para controlar (o navegador também libera o som nesse clique).
 | Marcador de direção (no ponto da mira) | Q |
 | Caderno de campo (segurar) | Tab |
 | Copiar o link do seu mundo | K |
+| Guia de campo | H |
 | Soltar o mouse | Esc |
 
 O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho

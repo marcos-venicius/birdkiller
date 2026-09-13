@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage23-guide.json` (H abre e fecha o guia, dicas oferecidas pela situação e mostradas uma vez só,
+intervalo entre dicas, nada repete depois de recarregar, capturas do guia e de uma dica),
 `stage22-session.json` (qual mundo abrir em cada situação, link de compartilhar, sessão salva em cima da
 torre com hora/chuva/pontos/marcador e intacta depois de recarregar, tecla K, link de outro mundo, volta ao
 próprio mundo),
@@ -88,6 +90,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - Escada da torre de caça: W sobe olhando reto ou para cima; olhando para baixo, W desce (S faz o contrário).
   Espaço solta da escada.
 - Q: marcador de direção no ponto da mira (Q de novo olhando para ele apaga; até 3, o mais antigo sai).
+- H: abre/fecha o guia de campo (o jogo não pausa).
 - K: copia o link do seu mundo (`?seed=`), para mandar a outra pessoa.
 - Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
@@ -209,6 +212,16 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   todos os mundos, e os ids de lugar levam a semente para descobertas de mundos diferentes não colidirem.
   Em desenvolvimento, `?hora`/`?chuva`/`?ir` desligam a retomada (o teste manda).
 
+- [x] **21. Guia de campo e dicas na hora certa** (pedido do usuário: "se não sei que tem torres, nunca vou
+  procurar") — **guia de campo** na tecla H (`ui/Guide.ts`): painel opcional de três colunas, sem pausar o
+  jogo, com os controles, o que existe para procurar (lagos, torres, cabanas, árvores gigantes), os bichos e os
+  raros, as ferramentas e como funciona o seu mundo. A caixa "Clique para controlar" ficou curta e aponta para
+  o H. **Dicas na hora certa** (`ui/Tips.ts`): 13 frases curtas oferecidas quando a situação aparece (primeira
+  noite, chuva/neblina, marca de água na bússola, lago perto, torre/cabana/árvore gigante perto, primeiro
+  veado e javali, primeira novidade no caderno, alvo além de 180 m no telêmetro) e mostradas **uma única vez
+  na vida** (`localStorage['birdkiller.dicas']`), uma de cada vez com 12 s de intervalo, embaixo no centro.
+  Abrir o guia apaga a dica que o sugere. A spec proíbe tutorial obrigatório: nada disso bloqueia ou pausa.
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
@@ -277,6 +290,8 @@ src/
   audio/AudioSystem.ts    AudioContext (desbloqueado no 1º gesto), compressor, reverb de floresta por convolução,
                           noiseBurst()/tone() com envelope — base para a Etapa 6
   audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
+  ui/Guide.ts             conteúdo do guia de campo (tecla H)
+  ui/Tips.ts              dicas na hora certa: fila, intervalo e o que já foi visto
   ui/Session.ts           mundo por jogador (resolveWorldSeed), link de compartilhar e a sessão salva por mundo
   ui/Markers.ts           marcadores de direção (tecla Q): toggle pela mira, máximo 3, números reaproveitados
   ui/Journal.ts           caderno de campo: modelo, regras de recorde e persistência (sem DOM)
