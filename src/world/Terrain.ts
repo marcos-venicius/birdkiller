@@ -5,6 +5,7 @@ import { Simplex2 } from '../core/noise';
 import { mulberry32 } from '../core/rng';
 import { ForestGrid, type Biome } from './Biome';
 import { Lakes } from './Lakes';
+import { Places } from './Places';
 
 const GRASS = new THREE.Color(0x5f6e37);
 const DRY_GRASS = new THREE.Color(0x857a42);
@@ -23,6 +24,8 @@ export class Terrain {
   readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true });
   /** Lagos: escavam a bacia dentro de heightAt() e respondem consultas sobre a água. */
   readonly lakes: Lakes;
+  /** Lugares para descobrir (torre, cabana, árvore gigante): colisão, pisos e escadas. */
+  readonly places: Places;
 
   private readonly hills: Simplex2;
   private readonly detail: Simplex2;
@@ -57,6 +60,12 @@ export class Terrain {
     this.index = new THREE.BufferAttribute(indices, 1);
     this.heights = new Float32Array((res + 3) * (res + 3));
     this.lakes = new Lakes(seed, (x, z) => this.baseHeight(x, z));
+    this.places = new Places(seed, (x, z) => this.heightAt(x, z), this.lakes, biome);
+  }
+
+  /** Ponto livre para vegetação: fora da água (com folga) e fora dos lugares para descobrir. */
+  open(x: number, z: number, margin = 0): boolean {
+    return this.lakes.dry(x, z, margin) && this.places.clear(x, z, margin);
   }
 
   heightAt(x: number, z: number): number {

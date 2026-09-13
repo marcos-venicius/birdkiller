@@ -148,6 +148,7 @@ export class QuadrupedManager implements AnimalWorld {
     this.chunks.resolveCollision(pos, radius);
     // Bicho de pata também para na beira do lago (só os patos entram na água).
     this.terrain.lakes.block(pos, radius);
+    this.terrain.places.resolveCollision(pos, radius, 1.2);
   }
 
   pickDrinkSpot(animal: Quadruped, out: THREE.Vector3): { x: number; z: number } | null {

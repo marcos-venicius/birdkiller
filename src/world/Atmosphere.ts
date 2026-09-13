@@ -124,8 +124,9 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-/** Hora inicial: `?hora=22` na URL, senão a configurada. */
+/** Hora inicial: a configurada; no modo de desenvolvimento, `?hora=22` na URL (atalho de teste, fora do build). */
 function startHour(): number {
+  if (!import.meta.env.DEV) return CONFIG.dayNight.startHour;
   const h = Number.parseFloat(new URLSearchParams(location.search).get('hora') ?? '');
   return Number.isFinite(h) && h >= 0 && h < 24 ? h : CONFIG.dayNight.startHour;
 }

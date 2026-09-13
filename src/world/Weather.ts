@@ -111,8 +111,8 @@ export class Weather {
     scene.add(this.mesh);
 
     this.timer = rand(W.clearMinutes[0], W.clearMinutes[1]) * 60;
-    // `?chuva=1` já começa chovendo (testes e capturas).
-    if (new URLSearchParams(location.search).get('chuva') === '1') {
+    // `?chuva=1` já começa chovendo (testes e capturas; só no modo de desenvolvimento).
+    if (import.meta.env.DEV && new URLSearchParams(location.search).get('chuva') === '1') {
       this.state = 'rain';
       this.rain = 1;
       this.cloud = 1;

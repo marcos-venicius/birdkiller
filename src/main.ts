@@ -29,6 +29,8 @@ import { Markers } from './ui/Markers';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
 import type { Lake } from './world/Lakes';
+import { PLACE_KINDS, type PlaceType } from './world/Places';
+import { PlaceView } from './world/PlaceView';
 import { Water } from './world/Water';
 import { Weather } from './world/Weather';
 import { Biome } from './world/Biome';
@@ -52,6 +54,7 @@ const chunks = new ChunkManager(engine.scene, terrain, vegetation);
 const atmosphere = new Atmosphere(engine.scene);
 const water = new Water(engine.scene, terrain.lakes);
 const weather = new Weather(engine.scene);
+const placeView = new PlaceView(engine.scene, terrain.places, terrain, vegetation);
 const quality = new Quality(engine.renderer, atmosphere.sun);
 
 const player = new PlayerController(engine.camera, input, terrain, chunks);
@@ -60,12 +63,42 @@ const spawnYaw = THREE.MathUtils.degToRad(CONFIG.atmosphere.sunAzimuth + 180 - 5
 player.spawn(0, 0, spawnYaw);
 chunks.warmup(player.position);
 // Evita começar colado a um tronco: procura em espiral um ponto livre por perto.
-for (let i = 0; i < 60 && !chunks.isClear(player.position.x, player.position.z, 4); i++) {
+for (
+  let i = 0;
+  i < 60 && (!chunks.isClear(player.position.x, player.position.z, 4) || !terrain.places.clear(player.position.x, player.position.z, 4));
+  i++
+) {
   const a = i * 2.4;
   const r = 2 + i * 1.5;
   player.spawn(Math.cos(a) * r, Math.sin(a) * r, spawnYaw);
 }
 chunks.resolveCollision(player.position, CONFIG.player.radius);
+
+// Testes (só no modo de desenvolvimento — o build publicado não tem): `?ir=torre`, `?ir=cabana` ou
+// `?ir=arvore` começa a ~30 m do lugar desse tipo mais perto do início, olhando para ele.
+if (import.meta.env.DEV) goToPlace();
+
+function goToPlace(): void {
+  const GO_TO: Record<string, PlaceType> = { torre: 'tower', cabana: 'cabin', arvore: 'giantTree', árvore: 'giantTree' };
+  const goTo = GO_TO[new URLSearchParams(location.search).get('ir') ?? ''];
+  if (!goTo) return;
+  const target = terrain.places
+    .near(0, 0, 4000, [])
+    .filter((p) => p.type === goTo)
+    .sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0];
+  if (target) {
+    // Frente do lugar (+Z local) = (-sin yaw, cos yaw); se ali não couber, vai girando em volta.
+    for (let k = 0; k < 16; k++) {
+      const a = Math.atan2(Math.cos(target.yaw), -Math.sin(target.yaw)) + k * 0.4;
+      const x = target.x + Math.cos(a) * 30;
+      const z = target.z + Math.sin(a) * 30;
+      player.spawn(x, z, Math.atan2(-(target.x - x), -(target.z - z)));
+      chunks.warmup(player.position);
+      if (chunks.isClear(x, z, 2) && terrain.open(x, z, 0)) break;
+    }
+    hud.toast(`Perto de: ${PLACE_KINDS.find((k) => k.type === goTo)!.name}`);
+  }
+}
 
 const weapon = new Weapon(engine, input, player, hud, audio, atmosphere);
 const birds = new BirdManager(engine.scene, terrain, biome, chunks, player, engine.camera);
@@ -93,7 +126,7 @@ const journal = new Journal([
   { id: deer.kind.id, name: deer.kind.name },
   ...birds.speciesList.filter((s) => s.rare).map((s) => ({ id: s.id, name: s.name })),
   ...[boars, deer].flatMap((m) => m.kind.rares.map((r) => ({ id: r.id, name: r.name }))),
-]);
+], PLACE_KINDS);
 hunting.onKill = (info) => {
   const night = atmosphere.night > CONFIG.journal.nightThreshold;
   const news = journal.recordKill({ ...info, night, clock: atmosphere.clock }, hunting.score);
@@ -108,6 +141,14 @@ const spotNdc = new THREE.Vector3();
 let spotTimer = 0;
 let journalOpen = false;
 let journalRefresh = 0;
+
+/** Chegou perto de um lugar (ou subiu nele): entra no caderno. */
+function discoverPlaces(): void {
+  const p = terrain.places.at(player.position.x, player.position.z);
+  if (!p || Math.hypot(player.position.x - p.x, player.position.z - p.z) > CONFIG.places.discoverDistance) return;
+  const msg = journal.discover(p.id, p.type);
+  if (msg) hud.note(msg);
+}
 
 /** Bicho de espécie ainda não avistada, na tela, perto e sem nada no caminho: entra no caderno. */
 function spotAnimals(): void {
@@ -160,7 +201,8 @@ const rangeDir = new THREE.Vector3();
 let infrared = false;
 let rangeTimer = 0;
 
-const debug = new URLSearchParams(location.search).has('debug');
+// `?debug` (FPS, CPU, relógio, posição) é ferramenta de desenvolvimento: não existe no build publicado.
+const debug = import.meta.env.DEV && new URLSearchParams(location.search).has('debug');
 let frames = 0;
 let fpsTimer = 0;
 let cpuUpdate = 0;
@@ -205,6 +247,7 @@ engine.renderer.setAnimationLoop(() => {
   if (spotTimer <= 0) {
     spotTimer = CONFIG.journal.spotInterval;
     spotAnimals();
+    discoverPlaces();
   }
   if (input.isDown('Tab')) {
     journalRefresh -= dt;
@@ -306,6 +349,7 @@ engine.renderer.setAnimationLoop(() => {
   weather.update(dt, engine.camera, atmosphere);
   atmosphere.update(player.position, engine.camera, dt);
   water.update(player.position, atmosphere, dt, weather.rain);
+  placeView.update(player.position);
   engine.renderer.toneMappingExposure = atmosphere.exposure;
   // Antes do render: trocar a resolução limpa o canvas, e o quadro precisa ser desenhado já no novo tamanho.
   quality.update(realDt);
@@ -364,6 +408,8 @@ if (import.meta.env.DEV) {
       journal,
       spotAnimals,
       markers,
+      placeView,
+      discoverPlaces,
       ambience,
       voices,
       boarVoices,

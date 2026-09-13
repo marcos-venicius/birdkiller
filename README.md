@@ -50,7 +50,7 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
   árvores secas, arbustos, samambaias, grama, pedras, troncos caídos, clareiras e matas fechadas.
 - **Dia e noite**: começa no fim de tarde (sol baixo e quente, sombras longas, névoa, vento na vegetação) e o
   tempo passa: o sol se põe, surgem a lua e as estrelas, amanhece e o ciclo continua (~42 min por dia). À noite
-  há menos pássaros, mais grilos e corujas. Para começar em outra hora: `?hora=22` no endereço.
+  há menos pássaros, mais grilos e corujas.
 - **Chuva e neblina**: o tempo fecha e abre sozinho. Nublado a luz some, o céu fica cinza e a floresta some na
   bruma; chovendo, os riscos d'água cruzam a tela, o lago fica picado e os grilos calam. De madrugada baixa uma
   neblina que o sol desfaz. Nada disso atrapalha o tiro — é só clima.
@@ -65,6 +65,9 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 - **Veados**: a caça grande. Pastam em clareiras e beiras de mata, ouvem de longe demais para quem chega
   correndo, param para olhar antes de decidir e disparam aos saltos. Valem 120 pontos — chegue agachado.
   Veados e javalis vão beber na beira do lago de tempos em tempos: vale a pena esperar escondido por perto.
+- **Lugares para descobrir**: torres de caça (suba pela escada e veja a mata de cima), cabanas abandonadas
+  (dá para entrar) e árvores gigantes que aparecem acima da copa de longe. Nada no mapa aponta para eles —
+  cada um que você acha entra no caderno.
 - **Raros**: de vez em quando o líder de um bando de veados é um **albino** ou um velho **galheiro** de galhada
   enorme — e ao amanhecer pode aparecer um **tucano** nas árvores altas. Eles entram no caderno como "???" até
   você cruzar com eles, e valem bem mais pontos.
@@ -92,7 +95,6 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 
 A qualidade se ajusta sozinha: se o FPS cair, o jogo reduz a resolução interna e o mapa de sombras, e volta a
 subir quando sobra folga. Para fixar um nível, use `?quality=0` (alta) até `?quality=4` (econômica) na URL.
-`?debug` mostra FPS, qualidade, tempo de CPU, draw calls, chunks e pássaros.
 
 ## Deploy (GitHub Pages)
 
@@ -104,5 +106,8 @@ GitHub Actions**. Os caminhos do build são relativos (`base: './'` no Vite), en
 ## Para desenvolver
 
 - `src/config.ts` reúne os números ajustáveis (velocidades, arma, pássaros, combate, volumes, distâncias).
+- No modo de desenvolvimento (`npm run dev`) há atalhos de teste no endereço: `?hora=22` (outra hora),
+  `?chuva=1` (começa chovendo), `?ir=torre`, `?ir=cabana` ou `?ir=arvore` (começa perto do lugar) e `?debug`
+  (FPS, CPU, relógio, posição). Eles não existem no build publicado.
 - `docs/PROGRESS.md` descreve a arquitetura, as decisões e como rodar os testes automatizados
   (`tools/cdp.mjs` + `tools/scenarios/*.json`, usando o Chrome headless).

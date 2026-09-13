@@ -48,6 +48,9 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage21-places.json` (lugares gerados por tipo, subir a torre pela escada e ficar na plataforma, grade
+segurando, descer, entrar na cabana pela porta e as paredes segurando, tiro na parede, tronco da árvore
+gigante, vegetação afastada, descoberta no caderno, capturas),
 `stage20-rares.json` (raros no fim do caderno, frequência do sorteio em 20 mil líderes, tucano só ao
 amanhecer, vitrine do albino e do galheiro, abate do galheiro com pontos/nome/peso, tucano de perto, canto),
 `stage19-markers.json` (marca um veado pela mira, rumo/distância na fita e losango na tela, some ao virar de
@@ -76,10 +79,15 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - R: recarga manual quando falta munição (cartucho a cartucho: 0,7 s + 0,4 s por cartucho). Vazio = automática (2,6 s).
 - M: liga/desliga a música de fundo (lembra a escolha).
 - L: liga/desliga a bússola (lembra a escolha). Ela some sozinha enquanto a luneta está no olho.
+- Escada da torre de caça: W sobe olhando reto ou para cima; olhando para baixo, W desce (S faz o contrário).
+  Espaço solta da escada.
 - Q: marcador de direção no ponto da mira (Q de novo olhando para ele apaga; até 3, o mais antigo sai).
 - Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
-- `?hora=22` (ou `?hora=5.5`) na URL começa em outra hora; o padrão é 17h. `?debug` mostra o relógio.
+- Atalhos de teste no endereço — **só no modo de desenvolvimento** (`import.meta.env.DEV`; o build publicado não
+  os tem, pedido do usuário): `?hora=22` ou `?hora=5.5` (começa em outra hora; o padrão é 17h), `?chuva=1`
+  (começa chovendo), `?ir=torre|cabana|arvore` (começa a ~30 m do lugar mais perto do início) e `?debug`
+  (FPS, CPU, relógio, posição). `?quality=0..4` continua valendo no build (ajuste de desempenho, não atalho).
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
 
 ## Etapas
@@ -168,12 +176,26 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   no máximo um de cada vivo; o `Quadruped.rare` dá o nome e os pontos no abate, e `weightId` faz o peso contar
   no recorde da espécie comum. Seguidores e bichos comuns nunca pegam paleta rara (`commonPalettes`).
 
+- [x] **19. Lugares para descobrir** (plano de retenção do usuário) — `world/Places.ts`: no máximo um lugar por
+  célula de 420 m (55% das células), em ponto que combina com o tipo: **torre de caça** na borda da clareira,
+  **cabana abandonada** no mato em chão bem plano, **árvore gigante** na mata fechada — sempre longe da água.
+  Cada lugar é descrito por colisores com altura (caixas giradas e cilindros), pisos e escadas; a mesma
+  descrição serve para o jogador (colisão, piso por onde anda, escada sem gravidade), os bichos (não
+  atravessam), a bala e o telêmetro (batem em madeira) e a vegetação (`Terrain.open` a mantém afastada).
+  A **torre** tem plataforma a 6,5 m com grade e telhado: sobe-se pela escada (W olhando reto; para descer,
+  olhe para baixo e W, ou S) e dali se vê por cima do mato. A **cabana** (5 × 4 m, toras, janelas, chaminé)
+  tem porta com degrau e assoalho; a **árvore gigante** é a copa comum 3× maior, com o mesmo vento, e aparece
+  acima das outras de longe. Desenho em `world/PlaceView.ts` (uma malha por lugar a até 380 m, feita na hora e
+  descartada ao se afastar). Chegar a 22 m de um lugar o registra no caderno ("Descoberto: Torre de caça") e a
+  seção **Lugares** do caderno conta quantos de cada tipo você já achou. Nada no mapa ou na bússola aponta os
+  lugares: a torre e a árvore gigante se veem por cima das copas; a cabana, só andando.
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
 
-- [ ] **19. Lugares para descobrir** — pontos de interesse raros e procedurais: torre de caça (subir e ver longe,
-  casa com telêmetro e balística), cabana abandonada, riacho ligando lagos, árvore gigante.
+- [ ] **19b. Riacho ligando lagos** — ficou de fora da etapa 19: precisa escavar leito no relevo ao longo de um
+  caminho e desenhar água nele (quase uma etapa inteira sozinho).
 - [ ] **20. Continuar e compartilhar** — voltar de onde parou (posição, hora, clima, pontuação da sessão) e
   `?seed=` para mandar o mesmo mundo para outra pessoa.
 
@@ -224,6 +246,8 @@ src/
   world/Lakes.ts          lagos procedurais: sítios por célula, escavação da bacia (shape), consultas (at, depthAt,
                           waterHeight/dry, shoreDistance, near), block() do jogador e clampInside() dos patos
   world/Water.ts          lâmina de água: um disco por lago com shader (ondas, Fresnel, brilho, névoa), cores da atmosfera
+  world/Places.ts         lugares para descobrir: sorteio por célula, colisores com altura, pisos, escadas, raycast
+  world/PlaceView.ts      desenho da torre, da cabana e da árvore gigante (malhas feitas na hora, perto do jogador)
   world/Weather.ts        chuva e neblina passageiras: máquina de estados + chuva em shader; ajusta a atmosfera
   world/Atmosphere.ts     ciclo dia/noite (hour, setHour, clock, night 0..1, exposure); luz principal sol/lua +
                           hemisférica + FogExp2 + cúpula do céu (sol, lua, estrelas); sombra segue o jogador com snap de texel

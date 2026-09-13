@@ -90,7 +90,7 @@ export const CONFIG = {
   },
 
   dayNight: {
-    /** Hora inicial: 17h é o fim de tarde original (sol a ~13°). `?hora=22` na URL começa em outra hora. */
+    /** Hora inicial: 17h é o fim de tarde original (sol a ~13°). `?hora=22` na URL (só em desenvolvimento) começa em outra hora. */
     startHour: 17,
     /** Horas do jogo por minuto real durante o dia (sol alto). */
     hoursPerMinute: 0.75,
@@ -121,6 +121,8 @@ export const CONFIG = {
     gravity: 18,
     /** Distância máxima para "grudar" no chão ao descer ladeiras. */
     stepSnap: 0.35,
+    /** Degrau mais alto que o pé alcança sem pular (entrar na cabana, pisar na plataforma). */
+    stepUp: 0.55,
     mouseSensitivity: 0.0022,
     maxPitch: 89,
     /** Comprimento da passada = strideBase + strideFactor * velocidade (~2,3 passos/s andando, ~3 correndo). */
@@ -284,6 +286,24 @@ export const CONFIG = {
     herd: [1, 3],
     scaleLeader: [1, 1.15],
     scaleOther: [0.8, 0.95],
+  },
+
+  places: {
+    /** Lado da célula que pode ter um lugar para descobrir (m) e a chance de ter. */
+    cell: 420,
+    chance: 0.55,
+    /** Peso de cada tipo no sorteio. */
+    weights: { tower: 0.45, cabin: 0.3, giantTree: 0.25 },
+    /** Até onde os lugares são desenhados (a névoa esconde antes disso). */
+    viewDistance: 380,
+    /** Chegando a esta distância do centro, o lugar entra no caderno. */
+    discoverDistance: 22,
+    /** Altura da plataforma da torre de caça (m). */
+    towerHeight: 6.5,
+    /** Tamanho da árvore gigante em relação a uma árvore de copa comum. */
+    giantTreeScale: 3,
+    /** Velocidade para subir e descer a escada (m/s). */
+    climbSpeed: 2.4,
   },
 
   rares: {

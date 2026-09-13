@@ -87,6 +87,7 @@ export class Hunting {
     if (water !== null && water < best) best = water;
     const obstacle = this.chunks.raycastObstacles(origin, dir, Math.min(best, C.range));
     if (obstacle.kind && obstacle.t < best) best = obstacle.t;
+    best = Math.min(best, this.terrain.places.raycast(origin, dir, Math.min(best, C.range)));
     const bird = this.birds.raycast(origin, dir, Math.min(best, C.range));
     if (bird) best = bird.t;
     for (const manager of this.animals) {
@@ -116,6 +117,12 @@ export class Hunting {
     if (obstacle.kind && obstacle.t < blockT) {
       blockT = obstacle.t;
       kind = obstacle.kind;
+    }
+    // Paredes da cabana, pernas e grade da torre, tronco da árvore gigante: madeira.
+    const placeT = this.terrain.places.raycast(origin, dir, Math.min(blockT, maxT));
+    if (placeT < blockT) {
+      blockT = placeT;
+      kind = 'trunk';
     }
 
     // Um obstáculo só bloqueia se estiver claramente antes do animal (quem pousa em cima de um tronco, p. ex.).

@@ -172,6 +172,7 @@ export class HUD {
         </section>
         <section>
           <h3>Recordes</h3><dl>${pairs(v.records)}</dl>
+          <h3>Lugares</h3><dl>${pairs(v.places)}</dl>
           <h3>Totais</h3><dl>${pairs(v.totals)}</dl>
         </section>
       </div>

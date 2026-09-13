@@ -32,6 +32,8 @@ export class PlayerController {
   bobAmount = 0;
   /** Fase dos passos: avança π a cada passo — base para o áudio de passos (Etapa 6). */
   stepPhase = 0;
+  /** Numa escada (torre de caça): sem gravidade, sobe e desce. */
+  climbing = false;
 
   private eyeHeight: number = CONFIG.player.eyeHeight;
 
@@ -84,18 +86,37 @@ export class PlayerController {
     this.velocity.x += (wx * speed - this.velocity.x) * k;
     this.velocity.z += (wz * speed - this.velocity.z) * k;
 
-    if (this.onGround && input.wasPressed('Space')) {
-      this.velocity.y = P.jumpSpeed;
-      this.onGround = false;
-      this.crouched = false;
+    // Escada da torre de caça: dentro dela a gravidade some. W sobe olhando reto ou para cima e desce
+    // olhando para baixo (S faz o contrário); perto do topo, o passo à frente leva à plataforma.
+    const places = this.terrain.places;
+    const ladder = places.ladderAt(this.position);
+    this.climbing = ladder !== null;
+    if (ladder) {
+      const dir = this.pitch < -0.35 ? -1 : 1;
+      this.velocity.y = mz * dir * CONFIG.places.climbSpeed;
+      if (this.position.y < ladder.y1 - 0.5) {
+        // Agarrado na escada: quase não sai do lugar na horizontal.
+        this.velocity.x *= 0.15;
+        this.velocity.z *= 0.15;
+      }
+      if (input.wasPressed('Space')) this.velocity.y = P.jumpSpeed * 0.6;
+    } else {
+      if (this.onGround && input.wasPressed('Space')) {
+        this.velocity.y = P.jumpSpeed;
+        this.onGround = false;
+        this.crouched = false;
+      }
+      this.velocity.y -= P.gravity * dt;
     }
-    this.velocity.y -= P.gravity * dt;
     this.position.addScaledVector(this.velocity, dt);
     this.world?.resolveCollision(this.position, P.radius);
     // A margem do lago segura o jogador na parte rasa.
     this.terrain.lakes.block(this.position, P.radius);
+    places.resolveCollision(this.position, P.radius, P.eyeHeight);
 
-    const ground = this.terrain.heightAt(this.position.x, this.position.z);
+    // Chão = relevo, ou um piso de lugar (plataforma, assoalho) que o pé alcança.
+    const floor = places.floorAt(this.position.x, this.position.z, this.position.y, P.stepUp);
+    const ground = Math.max(this.terrain.heightAt(this.position.x, this.position.z), floor);
     if (this.position.y <= ground) {
       this.position.y = ground;
       this.velocity.y = 0;

@@ -25,10 +25,18 @@ export interface JournalKill {
   clock: string;
 }
 
+/** Um tipo de lugar para descobrir (torre, cabana...), com o nome no singular e no plural. */
+export interface JournalPlaceKind {
+  type: string;
+  name: string;
+  plural: string;
+}
+
 /** O que o painel mostra, já formatado. */
 export interface JournalView {
   rows: { name: string; seen: boolean; kills: number; longest: string }[];
   records: [string, string][];
+  places: [string, string][];
   totals: [string, string][];
   seen: number;
   total: number;
@@ -50,10 +58,12 @@ interface Data {
   firstNight: { id: string; clock: string; date: number } | null;
   kills: number;
   seconds: number;
+  /** Lugares descobertos: id do lugar → tipo. */
+  places: Record<string, string>;
 }
 
 function empty(): Data {
-  return { v: 1, species: {}, longestShot: null, heaviest: {}, bestSession: 0, firstNight: null, kills: 0, seconds: 0 };
+  return { v: 1, species: {}, longestShot: null, heaviest: {}, bestSession: 0, firstNight: null, kills: 0, seconds: 0, places: {} };
 }
 
 /** Lê o caderno salvo; qualquer coisa estranha (outra versão, JSON quebrado) vira caderno novo. */
@@ -63,7 +73,7 @@ function load(): Data {
     if (!raw) return empty();
     const d = JSON.parse(raw) as Partial<Data>;
     if (d.v !== 1) return empty();
-    return { ...empty(), ...d, species: d.species ?? {}, heaviest: d.heaviest ?? {} };
+    return { ...empty(), ...d, species: d.species ?? {}, heaviest: d.heaviest ?? {}, places: d.places ?? {} };
   } catch {
     return empty();
   }
@@ -95,7 +105,10 @@ export class Journal {
   private readonly bestAtStart: number;
   private beatBest = false;
 
-  constructor(private readonly species: readonly JournalSpecies[]) {
+  constructor(
+    private readonly species: readonly JournalSpecies[],
+    private readonly placeKinds: readonly JournalPlaceKind[] = [],
+  ) {
     for (const s of species) if (!this.data.species[s.id]?.seenAt) this.unseen.add(s.id);
     this.bestAtStart = this.data.bestSession;
   }
@@ -116,6 +129,15 @@ export class Journal {
     this.record(id).seenAt = Date.now();
     this.touch();
     return `Novo no caderno: ${this.nameOf(id)}`;
+  }
+
+  /** Chegou a um lugar pela primeira vez: entra no caderno. */
+  discover(id: string, type: string): string | null {
+    if (this.data.places[id]) return null;
+    this.data.places[id] = type;
+    this.touch();
+    const kind = this.placeKinds.find((k) => k.type === type);
+    return `Descoberto: ${kind ? kind.name : type}`;
   }
 
   /** Registra um abate e devolve os avisos que ele gerou. */
@@ -214,9 +236,12 @@ export class Journal {
     }
     records.push(['Melhor sessão', d.bestSession > 0 ? `${d.bestSession} pontos` : '—']);
     records.push(['Primeira caçada noturna', fn ? `${this.nameOf(fn.id)} · ${fn.clock} · ${formatDate(fn.date)}` : '—']);
+    const found = Object.values(d.places);
+    const places: [string, string][] = this.placeKinds.map((k) => [k.plural, String(found.filter((t) => t === k.type).length)]);
     return {
       rows,
       records,
+      places,
       totals: [
         ['Abates', String(d.kills)],
         ['Tempo em campo', formatTime(d.seconds)],
