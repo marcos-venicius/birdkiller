@@ -2,7 +2,8 @@
 // Uso: node tools/cdp.mjs <url> tools/scenarios/<cenario>.json   (capturas em tools/shots/)
 // actions: [{wait:ms} | {shot:name} | {eval:expr} | {keyDown:code} | {keyUp:code} | {press:code}]
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,13 +14,15 @@ const outDir = join(here, 'shots');
 mkdirSync(outDir, { recursive: true });
 const port = 9333;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Perfil novo a cada execução: o localStorage (caderno, sessão salva, mundo) não vaza de um cenário para outro.
+const profile = mkdtempSync(join(tmpdir(), 'birdkiller-chrome-'));
 
 const chrome = spawn('google-chrome', [
   '--headless=new', `--remote-debugging-port=${port}`, '--window-size=1280,720',
   '--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist',
   '--autoplay-policy=no-user-gesture-required',
   '--js-flags=--expose-gc', '--enable-precise-memory-info',
-  '--no-first-run', '--no-default-browser-check', `--user-data-dir=${join(here, '.chrome-profile')}`,
+  '--no-first-run', '--no-default-browser-check', `--user-data-dir=${profile}`,
   'about:blank',
 ], { stdio: 'ignore' });
 // Garante que o Chrome não fique órfão (ex.: script interrompido por `timeout`).
@@ -28,6 +31,11 @@ const killChrome = () => {
     chrome.kill('SIGKILL');
   } catch {
     // já encerrado
+  }
+  try {
+    rmSync(profile, { recursive: true, force: true, maxRetries: 3 });
+  } catch {
+    // o sistema limpa a pasta temporária depois
   }
 };
 process.on('exit', killChrome);

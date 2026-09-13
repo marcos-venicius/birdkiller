@@ -48,6 +48,9 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage22-session.json` (qual mundo abrir em cada situação, link de compartilhar, sessão salva em cima da
+torre com hora/chuva/pontos/marcador e intacta depois de recarregar, tecla K, link de outro mundo, volta ao
+próprio mundo),
 `stage21-places.json` (lugares gerados por tipo, subir a torre pela escada e ficar na plataforma, grade
 segurando, descer, entrar na cabana pela porta e as paredes segurando, tiro na parede, tronco da árvore
 gigante, vegetação afastada, descoberta no caderno, capturas),
@@ -67,6 +70,9 @@ volta ao original, neblina por hora do dia, ~2,8 h de ciclo e capturas),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
+Cada execução do `cdp.mjs` usa um perfil do Chrome novo e temporário: o `localStorage` (caderno, sessão salva,
+mundo) não vaza de um cenário para outro. Quem testa persistência recarrega a página dentro do mesmo cenário.
+
 **Atenção:** com a floresta, o SwiftShader roda a ~1 fps. Não use o headless para medir desempenho nem para testar
 movimento em tempo real — os cenários simulam chamando `game.player.update(1/30)` em laço, com teclas injetadas em
 `game.input.down`, e `game.chunks.warmup(pos)` para carregar chunks na hora.
@@ -82,6 +88,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - Escada da torre de caça: W sobe olhando reto ou para cima; olhando para baixo, W desce (S faz o contrário).
   Espaço solta da escada.
 - Q: marcador de direção no ponto da mira (Q de novo olhando para ele apaga; até 3, o mais antigo sai).
+- K: copia o link do seu mundo (`?seed=`), para mandar a outra pessoa.
 - Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
 - Atalhos de teste no endereço — **só no modo de desenvolvimento** (`import.meta.env.DEV`; o build publicado não
@@ -190,14 +197,24 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   seção **Lugares** do caderno conta quantos de cada tipo você já achou. Nada no mapa ou na bússola aponta os
   lugares: a torre e a árvore gigante se veem por cima das copas; a cabana, só andando.
 
+- [x] **20. Continuar e compartilhar** (plano de retenção do usuário) — **um mundo por jogador**
+  (`ui/Session.ts`): na primeira visita o jogo sorteia uma semente de até 6 dígitos e guarda no navegador
+  (`birdkiller.mundo`); quem já tinha caderno segue no mundo de sempre (semente 20260911), e o modo de
+  desenvolvimento também, para os testes. **Compartilhar**: a tecla K copia o link `…/birdkiller/?seed=48213`
+  (sem área de transferência, o link aparece na tela); quem abre cai no mesmo mundo, sem perder o próprio —
+  sem o `?seed=`, volta para o seu. O `?seed=` fica no build: é recurso de jogador, aprovado pelo usuário (os
+  atalhos de teste não). **Continuar de onde parou**: uma sessão salva por mundo (`birdkiller.sessao.<semente>`)
+  com posição e olhar (em cima da torre volta para a plataforma), hora, clima, pontuação e marcadores; grava a
+  cada 10 s e ao sair da página, e ao voltar avisa "Continuando de onde você parou". O caderno é um só para
+  todos os mundos, e os ids de lugar levam a semente para descobertas de mundos diferentes não colidirem.
+  Em desenvolvimento, `?hora`/`?chuva`/`?ir` desligam a retomada (o teste manda).
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
 
 - [ ] **19b. Riacho ligando lagos** — ficou de fora da etapa 19: precisa escavar leito no relevo ao longo de um
   caminho e desenhar água nele (quase uma etapa inteira sozinho).
-- [ ] **20. Continuar e compartilhar** — voltar de onde parou (posição, hora, clima, pontuação da sessão) e
-  `?seed=` para mandar o mesmo mundo para outra pessoa.
 
 Sugestões ainda na gaveta: **apito de caça** (tecla que imita o chamado e atrai a bicharada por alguns segundos)
 e **rastros/sinais** (pegadas de javali, penas, grama amassada). O usuário recusou minimapa: um mapa de floresta
@@ -260,6 +277,7 @@ src/
   audio/AudioSystem.ts    AudioContext (desbloqueado no 1º gesto), compressor, reverb de floresta por convolução,
                           noiseBurst()/tone() com envelope — base para a Etapa 6
   audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
+  ui/Session.ts           mundo por jogador (resolveWorldSeed), link de compartilhar e a sessão salva por mundo
   ui/Markers.ts           marcadores de direção (tecla Q): toggle pela mira, máximo 3, números reaproveitados
   ui/Journal.ts           caderno de campo: modelo, regras de recorde e persistência (sem DOM)
   ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setScoped, setCrosshairVisible, flash,

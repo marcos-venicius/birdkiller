@@ -270,7 +270,8 @@ export class Places {
         max = Math.max(max, h);
       }
       if (max - min > rule.flatness) continue;
-      return this.describe(`${type}:${i}:${j}`, type, x, z, yaw, rule, max);
+      // O id leva a semente: a torre (3, 5) de um mundo não é a mesma do mundo de outra pessoa.
+      return this.describe(`${this.seed}:${type}:${i}:${j}`, type, x, z, yaw, rule, max);
     }
     return null;
   }

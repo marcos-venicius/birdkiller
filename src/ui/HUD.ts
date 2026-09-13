@@ -78,7 +78,7 @@ export class HUD {
       <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
       <div class="hud-hint">
         Clique para controlar
-        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · V infravermelho · Q marcador · Tab caderno · Esc soltar o mouse</small>
+        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · V infravermelho · Q marcador · Tab caderno · K compartilhar mundo · Esc soltar o mouse</small>
       </div>
       <div class="hud-range" hidden></div>
       <div class="hud-ir" hidden>IV</div>
@@ -158,7 +158,7 @@ export class HUD {
   }
 
   /** Painel do caderno de campo (Tab segurado). */
-  showJournal(v: JournalView): void {
+  showJournal(v: JournalView, world = ''): void {
     const rows = v.rows
       .map((r) => `<tr class="${r.seen ? '' : 'unseen'}"><td>${r.name}</td><td>${r.seen ? r.kills : ''}</td><td>${r.seen ? r.longest : ''}</td></tr>`)
       .join('');
@@ -176,7 +176,7 @@ export class HUD {
           <h3>Totais</h3><dl>${pairs(v.totals)}</dl>
         </section>
       </div>
-      <footer>${v.seen} de ${v.total} espécies avistadas</footer>`;
+      <footer>${v.seen} de ${v.total} espécies avistadas${world ? ` · ${world}` : ''}</footer>`;
     this.journalEl.hidden = false;
   }
 

@@ -1,0 +1,21 @@
+[
+  { "wait": 4000 },
+  { "eval": "(() => { const f = (init) => { const m = { ...init }; return { m, s: { get: (k) => m[k] ?? null, set: (k, v) => { m[k] = v; } } }; }; const R = game.resolveWorldSeed; const d = f({}); const novo = R('', d.s, false, () => 0.5); return { link: R('?seed=4321', f({}).s, false), jaTinhaMundo: R('', f({ 'birdkiller.mundo': '777' }).s, false), jogadorAntigoComCaderno: R('', f({ 'birdkiller.caderno': '{}' }).s, false), jogadorNovo: { ...novo, guardou: d.m['birdkiller.mundo'] }, desenvolvimento: R('', f({}).s, true), linkInvalido: R('?seed=abc', f({}).s, false, () => 0.25), mundoDestaAba: game.world, alturaEm00: +game.terrain.heightAt(0, 0).toFixed(2) }; })()", "label": "qual mundo abrir em cada situação" },
+  { "eval": "(() => game.shareUrl(48213, { origin: 'https://marcos-venicius.github.io', pathname: '/birdkiller/' }))()", "label": "link de compartilhar" },
+  { "eval": "(() => { const g = game, p = g.player, V = p.position.constructor; g.session.clear(); const o = []; g.terrain.places.near(0, 0, 3000, o); const T = o.filter(q => q.type === 'tower').sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0]; p.position.set(T.x, T.floorY, T.z); p.velocity.set(0, 0, 0); p.yaw = 1.23; p.pitch = -0.2; g.chunks.warmup(p.position); for (let i = 0; i < 10; i++) p.update(1 / 30); g.atmosphere.setHour(5.5); g.weather.state = 'rain'; g.weather.target = 1; g.weather.timer = 200; g.weather.rain = 0.8; g.weather.cloud = 0.9; g.hunting.restore(123, 4); g.markers.clear(); g.markers.list.push({ n: 2, pos: new V(T.x + 30, T.y, T.z) }); g.saveSession(); localStorage.setItem('__T', JSON.stringify({ x: T.x, z: T.z, floorY: T.floorY })); return { salvoEm: { acimaDaPlataforma: +(p.position.y - T.floorY).toFixed(2), noChao: p.onGround }, hora: g.atmosphere.clock, idDoLugar: T.id }; })()", "label": "em cima da torre, 05:30, chovendo, 123 pontos, marcador 2: salva" },
+  { "eval": "(() => { location.reload(); return 'recarregando'; })()" },
+  { "wait": 7000 },
+  { "eval": "(() => { const g = game, p = g.player, T = JSON.parse(localStorage.getItem('__T')); return { posicao: { dx: +(p.position.x - T.x).toFixed(2), dz: +(p.position.z - T.z).toFixed(2), acimaDaPlataforma: +(p.position.y - T.floorY).toFixed(2) }, olhar: [+p.yaw.toFixed(2), +p.pitch.toFixed(2)], hora: g.atmosphere.clock, chuva: +g.weather.rain.toFixed(2), estadoDoTempo: g.weather.state, placar: [g.hunting.score, g.hunting.kills], hud: document.querySelector('.hud-score').textContent.replace(/\\s+/g, ' ').trim(), marcadores: g.markers.list.map(m => m.n), aviso: document.querySelector('.hud-kill').textContent }; })()", "label": "depois de recarregar: continua de onde parou?" },
+  { "eval": "(() => { game.input.pressed.add('KeyK'); return 'K'; })()" },
+  { "wait": 2500 },
+  { "eval": "(() => ({ aviso: document.querySelector('.hud-kill').textContent, nota: document.querySelector('.hud-note').textContent }))()", "label": "K copiou o link? (sem área de transferência, mostra o link)" },
+  { "eval": "(() => { game.input.down.add('Tab'); return 'Tab'; })()" },
+  { "wait": 2500 },
+  { "eval": "(() => { const f = document.querySelector('.hud-journal footer'); game.input.down.delete('Tab'); return { rodapeDoCaderno: f && f.textContent }; })()", "label": "caderno mostra o mundo" },
+  { "eval": "(() => { location.href = location.pathname + '?quality=2&seed=424242'; return 'abrindo o link de outro mundo'; })()" },
+  { "wait": 8000 },
+  { "eval": "(() => { const g = game, o = []; g.terrain.places.near(0, 0, 1500, o); return { mundo: g.world, alturaEm00: +g.terrain.heightAt(0, 0).toFixed(2), idDeUmLugar: o[0] && o[0].id, avisoAoAbrir: document.querySelector('.hud-kill').textContent, meuMundoGuardado: localStorage.getItem('birdkiller.mundo') }; })()", "label": "link ?seed=424242: outro mundo, sem sessão dele ainda" },
+  { "eval": "(() => { location.href = location.pathname + '?quality=2'; return 'de volta ao meu mundo'; })()" },
+  { "wait": 8000 },
+  { "eval": "(() => { const g = game; const r = { mundo: g.world, hora: g.atmosphere.clock, placar: g.hunting.score, avisoAoAbrir: document.querySelector('.hud-kill').textContent }; g.session.clear(); localStorage.removeItem('__T'); return r; })()", "label": "sem link: volta ao próprio mundo e à sessão dele" }
+]

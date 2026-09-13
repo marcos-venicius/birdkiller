@@ -39,6 +39,7 @@ Clique na tela para controlar (o navegador também libera o som nesse clique).
 | Infravermelho da luneta | V |
 | Marcador de direção (no ponto da mira) | Q |
 | Caderno de campo (segurar) | Tab |
+| Copiar o link do seu mundo | K |
 | Soltar o mouse | Esc |
 
 O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho
@@ -88,6 +89,9 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 - **Caderno de campo**: segure Tab para ver o que você já viveu — as espécies que avistou (as que nunca viu
   aparecem como "???"), quantas abateu, o tiro mais longo, o maior javali e o maior veado, a melhor sessão e a
   primeira caçada noturna. Fica salvo no navegador entre uma visita e outra. Não destrava nada: é só memória.
+- **Seu mundo**: cada jogador ganha uma floresta própria na primeira visita, e o jogo continua de onde você parou
+  — mesmo lugar, mesma hora, mesmo tempo, mesma pontuação. Aperte K para copiar o link do seu mundo e mandar
+  para alguém: quem abre cai na mesma floresta, com os mesmos lagos, torres e cabanas.
 - **Som**: cantos vindos de onde cada pássaro está, vento, folhas, grilos, animais ao longe, passos e uma
   música de fundo generativa bem baixinha.
 

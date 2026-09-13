@@ -26,6 +26,7 @@ import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
 import { Journal } from './ui/Journal';
 import { Markers } from './ui/Markers';
+import { browserStore, resolveWorldSeed, SessionStore, shareUrl } from './ui/Session';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
 import type { Lake } from './world/Lakes';
@@ -47,9 +48,11 @@ const audio = new AudioSystem();
 window.addEventListener('pointerdown', () => audio.unlock());
 window.addEventListener('keydown', () => audio.unlock());
 
-const biome = new Biome(CONFIG.seed);
-const terrain = new Terrain(CONFIG.seed, biome);
-const vegetation = new Vegetation(terrain, biome, CONFIG.seed);
+// Mundo: o do link (`?seed=`), senão o seu; na primeira visita um mundo novo é sorteado.
+const world = resolveWorldSeed(location.search, browserStore, import.meta.env.DEV);
+const biome = new Biome(world.seed);
+const terrain = new Terrain(world.seed, biome);
+const vegetation = new Vegetation(terrain, biome, world.seed);
 const chunks = new ChunkManager(engine.scene, terrain, vegetation);
 const atmosphere = new Atmosphere(engine.scene);
 const water = new Water(engine.scene, terrain.lakes);
@@ -73,6 +76,21 @@ for (
   player.spawn(Math.cos(a) * r, Math.sin(a) * r, spawnYaw);
 }
 chunks.resolveCollision(player.position, CONFIG.player.radius);
+
+// Continuar de onde parou: posição, olhar, hora e clima deste mundo (antes de povoar os bichos, para eles
+// nascerem em volta de onde o jogador está). Em desenvolvimento, os atalhos de teste mandam.
+const session = new SessionStore(world.seed);
+const testing = import.meta.env.DEV && /[?&](hora|chuva|ir)=/.test(location.search);
+const resumed = testing ? null : session.load();
+if (resumed) {
+  player.spawn(resumed.x, resumed.z, resumed.yaw);
+  player.pitch = resumed.pitch;
+  // Salvo em cima da torre ou dentro da cabana: volta para o piso, não para o chão lá embaixo.
+  player.position.y = Math.max(player.position.y, resumed.y);
+  chunks.warmup(player.position);
+  atmosphere.setHour(resumed.hour);
+  weather.restore(resumed.weather);
+}
 
 // Testes (só no modo de desenvolvimento — o build publicado não tem): `?ir=torre`, `?ir=cabana` ou
 // `?ir=arvore` começa a ~30 m do lugar desse tipo mais perto do início, olhando para ele.
@@ -196,6 +214,45 @@ const worldPins: { n: number; x: number; y: number; distance: number }[] = [];
 const markDir = new THREE.Vector3();
 const markTarget = new THREE.Vector3();
 const pinNdc = new THREE.Vector3();
+
+// O resto da sessão salva: pontuação e marcadores.
+if (resumed) {
+  hunting.restore(resumed.score, resumed.kills);
+  for (const m of resumed.markers) markers.list.push({ n: m.n, pos: new THREE.Vector3(m.x, m.y, m.z) });
+  hud.toast('Continuando de onde você parou');
+}
+
+/** Guarda o "continuar de onde parou" deste mundo. */
+function saveSession(): void {
+  session.save({
+    v: 1,
+    savedAt: Date.now(),
+    x: player.position.x,
+    y: player.position.y,
+    z: player.position.z,
+    yaw: player.yaw,
+    pitch: player.pitch,
+    hour: atmosphere.hour,
+    weather: weather.snapshot(),
+    score: hunting.score,
+    kills: hunting.kills,
+    markers: markers.list.map((m) => ({ n: m.n, x: m.pos.x, y: m.pos.y, z: m.pos.z })),
+  });
+}
+let sessionTimer = 10;
+window.addEventListener('pagehide', saveSession);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveSession();
+});
+
+// Compartilhar (tecla K): copia o link deste mundo; sem área de transferência, mostra o link na tela.
+const worldLabel = `Mundo ${world.seed}${world.shared ? ' (de um link)' : ''} · K copia o link`;
+function shareWorld(): void {
+  const url = shareUrl(world.seed);
+  const fail = () => hud.note(url);
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => hud.toast('Link do seu mundo copiado'), fail);
+  else fail();
+}
 const rangeDir = new THREE.Vector3();
 // Luneta infravermelha (tecla V): só enxerga térmico com a luneta no olho.
 let infrared = false;
@@ -243,6 +300,11 @@ engine.renderer.setAnimationLoop(() => {
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
   // Caderno de campo: tempo em campo, avistamentos e o painel com Tab segurado.
   journal.tick(Math.min(realDt, 1));
+  sessionTimer -= realDt;
+  if (sessionTimer <= 0) {
+    sessionTimer = 10;
+    saveSession();
+  }
   spotTimer -= dt;
   if (spotTimer <= 0) {
     spotTimer = CONFIG.journal.spotInterval;
@@ -252,7 +314,7 @@ engine.renderer.setAnimationLoop(() => {
   if (input.isDown('Tab')) {
     journalRefresh -= dt;
     if (!journalOpen || journalRefresh <= 0) {
-      hud.showJournal(journal.view());
+      hud.showJournal(journal.view(), worldLabel);
       journalOpen = true;
       journalRefresh = 0.5;
     }
@@ -270,6 +332,7 @@ engine.renderer.setAnimationLoop(() => {
     hud.toast(r.action === 'added' ? `Marcador ${r.n}` : `Marcador ${r.n} removido`);
     compassTimer = 0;
   }
+  if (input.wasPressed('KeyK')) shareWorld();
   if (input.wasPressed('KeyV')) {
     infrared = !infrared;
     hud.toast(infrared ? 'Infravermelho ligado' : 'Infravermelho desligado');
@@ -410,6 +473,11 @@ if (import.meta.env.DEV) {
       markers,
       placeView,
       discoverPlaces,
+      world,
+      session,
+      saveSession,
+      shareUrl,
+      resolveWorldSeed,
       ambience,
       voices,
       boarVoices,

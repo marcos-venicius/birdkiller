@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config';
 import { smoothstep, TAU } from '../core/math';
+import type { WeatherSnapshot } from '../ui/Session';
 import type { Atmosphere } from './Atmosphere';
 
 const RAIN_VERTEX = /* glsl */ `
@@ -119,6 +120,22 @@ export class Weather {
       this.target = 1;
       this.timer = 600;
     }
+  }
+
+  /** Estado do tempo para o "continuar de onde parou". */
+  snapshot(): WeatherSnapshot {
+    return { state: this.state, timer: this.timer, target: this.target, rain: this.rain, cloud: this.cloud };
+  }
+
+  /** Volta ao tempo salvo (chovendo continua chovendo). Estado estranho é ignorado. */
+  restore(s: WeatherSnapshot): void {
+    if (s.state !== 'clear' && s.state !== 'closing' && s.state !== 'rain' && s.state !== 'opening') return;
+    if (![s.timer, s.target, s.rain, s.cloud].every(Number.isFinite)) return;
+    this.state = s.state;
+    this.timer = s.timer;
+    this.target = s.target;
+    this.rain = s.rain;
+    this.cloud = s.cloud;
   }
 
   /** Avança o tempo e aplica o resultado na atmosfera (luz, céu e névoa). */

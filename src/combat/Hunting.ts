@@ -68,6 +68,13 @@ export class Hunting {
     hud.setScore(0, 0);
   }
 
+  /** Retoma a pontuação da sessão (continuar de onde parou). */
+  restore(score: number, kills: number): void {
+    this.score = score;
+    this.kills = kills;
+    this.hud.setScore(score, kills);
+  }
+
   /** Puxa o gatilho: solta a bala e o estampido espanta a bicharada em volta na hora. */
   shoot(origin: THREE.Vector3, dir: THREE.Vector3): void {
     this.lastShot = null;
