@@ -22,6 +22,8 @@ export interface KillInfo {
   distance: number;
   /** Escala do bicho (quadrúpedes). */
   scale?: number;
+  /** Espécie cujo recorde de peso o abate disputa (o galheiro conta como veado). */
+  weightId?: string;
 }
 
 export interface ShotResult {
@@ -145,12 +147,15 @@ export class Hunting {
       result.point.copy(origin).addScaledVector(dir, animalHit.t);
       const outcome = animalHit.manager.hit(animalHit.animal, dir, animalHit.zone !== 'rear', origin);
       result.lethal = outcome === 'killed';
+      // Raro (albino, galheiro) tem nome e pontos próprios; o peso conta no recorde da espécie.
+      const rare = animalHit.animal.rare;
+      const name = rare?.name ?? kind.name;
       if (result.lethal) {
-        result.points = kind.cfg.points + Math.floor(result.distance / 10);
-        this.addKill(result.points, `${kind.name} · ${Math.round(result.distance)} m`);
-        this.onKill?.({ id: kind.id, name: kind.name, distance: result.distance, scale: animalHit.animal.scale });
+        result.points = (rare?.points ?? kind.cfg.points) + Math.floor(result.distance / 10);
+        this.addKill(result.points, `${name} · ${Math.round(result.distance)} m`);
+        this.onKill?.({ id: rare?.id ?? kind.id, name, distance: result.distance, scale: animalHit.animal.scale, weightId: kind.id });
       } else {
-        this.hud.toast(`${kind.name} ferido`);
+        this.hud.toast(`${name} ferido`);
       }
       this.particles.tufts(result.point, animalHit.animal.geo.tufts, result.lethal ? 12 : 7, dir);
       playFleshHit(this.audio, result.distance, result.point);

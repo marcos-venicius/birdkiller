@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage20-rares.json` (raros no fim do caderno, frequência do sorteio em 20 mil líderes, tucano só ao
+amanhecer, vitrine do albino e do galheiro, abate do galheiro com pontos/nome/peso, tucano de perto, canto),
 `stage19-markers.json` (marca um veado pela mira, rumo/distância na fita e losango na tela, some ao virar de
 costas, distância cai ao andar, Q olhando apaga, 4º marcador derruba o mais antigo),
 `stage18-journal.json` (caderno limpo, fora do cone não registra, à vista registra e avisa, abates com
@@ -157,11 +159,19 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   sai. Valem só na sessão. Lógica em `ui/Markers.ts` (sem DOM), desenho em `HUD.setCompass(…, pins)` e
   `HUD.setWorldPins`.
 
+- [x] **18. Bichos raros** (plano de retenção do usuário) — três raros que entram no fim da lista do caderno
+  como "???" até aparecerem: **veado albino** (3% dos líderes de bando, 300 pontos), **veado-galheiro**, um
+  macho velho maior (escala 1,25–1,38) com galhada 1,7× e uma ponta a mais (6% dos líderes, 220 pontos — e
+  disputa o recorde de "maior veado": 195 kg no teste) e o **tucano**, que só entra no sorteio de pássaros ao
+  amanhecer (`CONFIG.rares.dawn`, 4h30–8h30), pousa em árvores altas e tem canto próprio. Raros de
+  quadrúpede são `RareVariant` no `AnimalKind` (paleta, chance, pontos, escala), sorteados só para o líder,
+  no máximo um de cada vivo; o `Quadruped.rare` dá o nome e os pontos no abate, e `weightId` faz o peso contar
+  no recorde da espécie comum. Seguidores e bichos comuns nunca pegam paleta rara (`commonPalettes`).
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
 
-- [ ] **18. Bichos raros** — veado albino, macho velho de galhada enorme, ave rara ao amanhecer. Alimentam o caderno.
 - [ ] **19. Lugares para descobrir** — pontos de interesse raros e procedurais: torre de caça (subir e ver longe,
   casa com telêmetro e balística), cabana abandonada, riacho ligando lagos, árvore gigante.
 - [ ] **20. Continuar e compartilhar** — voltar de onde parou (posição, hora, clima, pontuação da sessão) e

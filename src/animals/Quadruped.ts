@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { markWarm } from '../core/Engine';
 import { angleDiff, raySphere, TAU } from '../core/math';
-import type { AnimalKind } from './kinds';
+import type { AnimalKind, RareVariant } from './kinds';
 import type { HitZone, QuadrupedGeometry } from './quadrupedModel';
 
 export type AnimalState = 'forage' | 'walk' | 'drink' | 'alert' | 'flee' | 'dying' | 'dead';
@@ -45,6 +45,8 @@ export class Quadruped {
   speed = 0;
   herdId = 0;
   leader: Quadruped | null = null;
+  /** Variação rara (veado albino, galheiro), ou null. Definida por quem cria o bicho. */
+  rare: RareVariant | null = null;
   /** Tempo até sentir sede de novo (s). */
   thirst = rand(20, 120);
   /** O destino atual é a margem do lago. */

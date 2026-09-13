@@ -7,7 +7,7 @@ import type { ChunkManager } from '../world/ChunkManager';
 import { inPlayerView } from '../world/spawnRules';
 import type { Terrain } from '../world/Terrain';
 import { Quadruped, type AnimalWorld, type HitZone } from './Quadruped';
-import type { AnimalKind } from './kinds';
+import type { AnimalKind, RareVariant } from './kinds';
 import type { QuadrupedGeometry } from './quadrupedModel';
 
 
@@ -131,6 +131,7 @@ export class QuadrupedManager implements AnimalWorld {
     boar.reset(pos, yaw, scale);
     boar.active = true;
     boar.herdId = 0;
+    boar.rare = null;
     this.scene.add(boar.group);
     this.active.push(boar);
     boar.update(0, this);
@@ -217,7 +218,9 @@ export class QuadrupedManager implements AnimalWorld {
       const n = Math.min(Math.round(rand(C.herd[0], C.herd[1])), C.maxActive - this.living);
       if (n <= 0) return;
       const herdId = ++this.herds;
-      const palette = Math.floor(Math.random() * this.kind.geometries.length);
+      const palette = Math.floor(Math.random() * this.kind.commonPalettes);
+      // De vez em quando o líder do bando é um raro (veado albino, velho galheiro).
+      const rare = this.rollRare();
       let leader: Quadruped | null = null;
       for (let k = 0; k < n; k++) {
         const px = x + (k === 0 ? 0 : rand(-5, 5));
@@ -226,7 +229,14 @@ export class QuadrupedManager implements AnimalWorld {
         // O primeiro é o maior (macho adulto); os outros, menores.
         const scale = k === 0 ? rand(C.scaleLeader[0], C.scaleLeader[1]) : rand(C.scaleOther[0], C.scaleOther[1]);
         // O primeiro do bando usa a primeira paleta (macho adulto); os outros variam.
-        const boar = this.spawn(_v.set(px, 0, pz), Math.random() * TAU, scale, k === 0 ? palette : palette + k);
+        const variant = k === 0 ? rare : null;
+        const boar = this.spawn(
+          _v.set(px, 0, pz),
+          Math.random() * TAU,
+          variant ? rand(variant.scale[0], variant.scale[1]) : scale,
+          variant ? variant.palette : (palette + k) % this.kind.commonPalettes,
+        );
+        boar.rare = variant;
         boar.herdId = herdId;
         boar.leader = leader ?? boar;
         leader ??= boar;
@@ -234,6 +244,16 @@ export class QuadrupedManager implements AnimalWorld {
       }
       return;
     }
+  }
+
+  /** Sorteia uma variação rara para o líder — no máximo uma de cada viva ao mesmo tempo. */
+  private rollRare(): RareVariant | null {
+    for (const r of this.kind.rares) {
+      if (Math.random() >= r.chance) continue;
+      if (this.active.some((a) => a.alive && a.rare === r)) continue;
+      return r;
+    }
+    return null;
   }
 
   private release(i: number): void {

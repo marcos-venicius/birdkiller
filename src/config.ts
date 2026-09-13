@@ -286,6 +286,14 @@ export const CONFIG = {
     scaleOther: [0.8, 0.95],
   },
 
+  rares: {
+    /** Chance de o líder de um bando de veados nascer albino, ou um velho galheiro de galhada enorme. */
+    albino: 0.03,
+    galheiro: 0.06,
+    /** Janela do amanhecer (horas do jogo) em que o tucano pode aparecer. */
+    dawn: [4.5, 8.5],
+  },
+
   markers: {
     /** Quantos marcadores de direção ao mesmo tempo (o mais antigo sai). */
     max: 3,

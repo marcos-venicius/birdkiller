@@ -65,6 +65,9 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 - **Veados**: a caça grande. Pastam em clareiras e beiras de mata, ouvem de longe demais para quem chega
   correndo, param para olhar antes de decidir e disparam aos saltos. Valem 120 pontos — chegue agachado.
   Veados e javalis vão beber na beira do lago de tempos em tempos: vale a pena esperar escondido por perto.
+- **Raros**: de vez em quando o líder de um bando de veados é um **albino** ou um velho **galheiro** de galhada
+  enorme — e ao amanhecer pode aparecer um **tucano** nas árvores altas. Eles entram no caderno como "???" até
+  você cruzar com eles, e valem bem mais pontos.
 - **Javalis**: andam em bandos pela mata, fuçando o chão. Têm faro e ouvido bons — chegue agachado e devagar.
   Tiro na cabeça ou no peito abate; na traseira ele fica ferido e foge (o próximo tiro mata). Eles não atacam.
 - **Tiro com balística**: a bala leva tempo para chegar (0,2 s a 100 m, 0,8 s a 400 m) e cai no caminho — a

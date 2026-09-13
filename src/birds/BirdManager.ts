@@ -31,6 +31,8 @@ export class BirdManager implements BirdWorld {
   frozen = false;
   /** Atividade (1 de dia, menor à noite): limita quantos pássaros aparecem. */
   activity = 1;
+  /** É amanhecer? Só então as espécies `dawnOnly` (tucano) entram no sorteio. */
+  dawn = false;
   /** Depuração/testes: chamado a cada pássaro criado. */
   onSpawn?: (bird: Bird, initial: boolean) => void;
 
@@ -282,7 +284,9 @@ export class BirdManager implements BirdWorld {
     for (const b of this.active) if (b.alive) counts.set(b.species, (counts.get(b.species) ?? 0) + 1);
     const P = this.player.position;
     const hasLake = this.terrain.lakes.near(P.x, P.z, CONFIG.birds.spawnMax, _lakes).length > 0;
-    const available = SPECIES.filter((sp) => (counts.get(sp) ?? 0) < sp.max && (!sp.water || hasLake));
+    const available = SPECIES.filter(
+      (sp) => (counts.get(sp) ?? 0) < sp.max && (!sp.water || hasLake) && (!sp.dawnOnly || this.dawn),
+    );
     let r = Math.random() * available.reduce((sum, sp) => sum + sp.weight, 0);
     for (const sp of available) {
       r -= sp.weight;

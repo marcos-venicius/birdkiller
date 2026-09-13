@@ -50,6 +50,10 @@ export interface Species {
   points: number;
   /** Espécie aquática: pousa e passeia nadando nos lagos, nunca em terra firme. */
   water?: boolean;
+  /** Rara: entra no fim da lista do caderno de campo. */
+  rare?: boolean;
+  /** Só aparece na janela do amanhecer (`CONFIG.rares.dawn`). */
+  dawnOnly?: boolean;
 }
 
 export const SPECIES: Species[] = [
@@ -298,5 +302,42 @@ export const SPECIES: Species[] = [
     tallPerch: false,
     points: 45,
     water: true,
+  },
+  {
+    id: 'tucano',
+    name: 'Tucano',
+    length: 0.55,
+    span: 0.7,
+    chord: 0.95,
+    tail: 1.2,
+    beak: 2.6,
+    crest: false,
+    colors: {
+      back: 0x151515,
+      belly: 0x1a1a1a,
+      breast: 0xf6d34a,
+      head: 0x161616,
+      cap: 0x0f0f0f,
+      beak: 0xf08a1c,
+      wing: 0x141414,
+      primaries: 0x0c0c0c,
+      tail: 0x121212,
+    },
+    speed: 7,
+    agility: 2.2,
+    flapHz: 7,
+    flight: 'bounding',
+    cruise: [8, 16],
+    perchTime: [15, 40],
+    groundChance: 0,
+    perchChance: 0.85,
+    flock: [1, 2],
+    weight: 1.4,
+    max: 2,
+    wary: 1.1,
+    tallPerch: true,
+    points: 80,
+    rare: true,
+    dawnOnly: true,
   },
 ];

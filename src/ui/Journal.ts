@@ -19,6 +19,8 @@ export interface JournalKill {
   distance: number;
   /** Escala do bicho (só quadrúpedes) — vira peso estimado. */
   scale?: number;
+  /** Espécie cujo recorde de peso conta (raros disputam o da espécie comum). */
+  weightId?: string;
   night: boolean;
   clock: string;
 }
@@ -133,13 +135,14 @@ export class Journal {
       this.data.longestShot = { m: k.distance, id: k.id };
     }
 
-    const base = (CONFIG.journal.weightKg as Record<string, number | undefined>)[k.id];
+    const wid = k.weightId ?? k.id;
+    const base = (CONFIG.journal.weightKg as Record<string, number | undefined>)[wid];
     if (base && k.scale) {
       const kg = base * k.scale ** 3;
-      const prev = this.data.heaviest[k.id] ?? 0;
+      const prev = this.data.heaviest[wid] ?? 0;
       if (kg > prev) {
-        if (prev > 0) out.push(`Recorde: maior ${k.name.toLowerCase()} — ${Math.round(kg)} kg`);
-        this.data.heaviest[k.id] = kg;
+        if (prev > 0) out.push(`Recorde: maior ${this.nameOf(wid).toLowerCase()} — ${Math.round(kg)} kg`);
+        this.data.heaviest[wid] = kg;
       }
     }
 

@@ -16,6 +16,8 @@ export interface DeerPalette {
   rump: number;
   face: number;
   antlers: boolean;
+  /** Tamanho da galhada (1 = macho comum; o velho galheiro tem bem mais, e uma ponta a mais). */
+  antlerScale?: number;
 }
 
 export const DEER_PALETTES: DeerPalette[] = [
@@ -23,6 +25,9 @@ export const DEER_PALETTES: DeerPalette[] = [
   { coat: 0x7d5a38, belly: 0xc9b38e, legs: 0x5f452c, rump: 0xe4d8bb, face: 0x6a4a2e, antlers: true },
   { coat: 0x8a6741, belly: 0xd2bd96, legs: 0x6a4e32, rump: 0xe8dcc2, face: 0x74522f, antlers: false },
   { coat: 0x6a4a2f, belly: 0xb8a17e, legs: 0x4f3924, rump: 0xd8cbae, face: 0x5a3f27, antlers: false },
+  // Raros (só nascem pelo sorteio de `kinds.ts`): albino e o velho galheiro.
+  { coat: 0xe9e4da, belly: 0xf5f2ec, legs: 0xd6cec2, rump: 0xffffff, face: 0xe4d4cc, antlers: true },
+  { coat: 0x6c4a2c, belly: 0xbba27e, legs: 0x4c3420, rump: 0xdccdb0, face: 0x593c24, antlers: true, antlerScale: 1.7 },
 ];
 
 /** Altura do centro do corpo acima do chão (escala 1). */
@@ -103,21 +108,33 @@ function buildHead(p: DeerPalette): THREE.BufferGeometry {
     parts.push(paint(eye, solid(0x0a0806), 0));
 
     if (p.antlers) {
-      // Galhada: haste inclinada para trás com duas pontas.
+      // Galhada: haste inclinada para trás com duas pontas; o galheiro velho tem três, e tudo maior
+      // (escalado a partir da base, que fica presa na cabeça).
+      const a = p.antlerScale ?? 1;
+      const antler: THREE.BufferGeometry[] = [];
       const beam = new THREE.CylinderGeometry(0.016, 0.026, 0.34, 5);
       beam.rotateX(-0.35);
       beam.rotateZ(-s * 0.45);
       beam.translate(s * 0.11, 0.68, 0.18);
-      parts.push(paint(beam, solid(0x9a866a), 0.1));
-      for (const [len, up, fwd, tilt] of [
+      antler.push(paint(beam, solid(0x9a866a), 0.1));
+      const tines: [number, number, number, number][] = [
         [0.16, 0.82, 0.26, 0.9],
         [0.13, 0.9, 0.1, 0.2],
-      ] as const) {
+      ];
+      if (a > 1.2) tines.push([0.15, 0.97, 0.3, 0.55]);
+      for (const [len, up, fwd, tilt] of tines) {
         const tine = new THREE.CylinderGeometry(0.009, 0.015, len, 4);
         tine.rotateX(-tilt);
         tine.rotateZ(-s * 0.7);
         tine.translate(s * 0.19, up, fwd);
-        parts.push(paint(tine, solid(0xa89273), 0.1));
+        antler.push(paint(tine, solid(0xa89273), 0.1));
+      }
+      const bx = s * 0.09;
+      for (const g of antler) {
+        g.translate(-bx, -0.53, -0.2);
+        g.scale(a, a, a);
+        g.translate(bx, 0.53, 0.2);
+        parts.push(g);
       }
     }
   }

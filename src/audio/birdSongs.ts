@@ -149,7 +149,29 @@ const pato: SongFn = (a, dest, alarm) => {
   return n * gap + 0.15;
 };
 
-export const SONGS: Record<string, SongFn> = { pardal, sabia, pisco, gralha, rolinha, gaviao, pato };
+/** Tucano: coaxado rouco e grave, "rrék rrék", em série; no alarme, mais apressado. */
+const tucano: SongFn = (a, dest, alarm) => {
+  const n = alarm ? 4 : 2 + Math.floor(Math.random() * 3);
+  const gap = alarm ? 0.22 : 0.42;
+  for (let i = 0; i < n; i++) {
+    const at = i * gap;
+    a.tone({
+      at,
+      duration: 0.16,
+      freq: r(700, 820),
+      freqEnd: r(520, 600),
+      type: 'sawtooth',
+      gain: 0.75,
+      attack: 0.01,
+      dest,
+      filter: { type: 'bandpass', freq: 1500, q: 3 },
+    });
+    a.noiseBurst({ at, duration: 0.12, type: 'bandpass', freq: 2200, q: 2, gain: 0.25, dest });
+  }
+  return n * gap + 0.2;
+};
+
+export const SONGS: Record<string, SongFn> = { pardal, sabia, pisco, gralha, rolinha, gaviao, pato, tucano };
 
 /** Pato entrando ou saindo da água: chape mais o chuvisco. */
 export function waterSplash(a: AudioSystem, dest: Dest, size = 1): void {

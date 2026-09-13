@@ -57,6 +57,18 @@ export interface AnimalConfig {
   readonly scaleOther: readonly [number, number];
 }
 
+/** Variação rara de uma espécie: outra paleta, outro tamanho, outro nome e mais pontos. */
+export interface RareVariant {
+  id: string;
+  name: string;
+  /** Índice da geometria (paleta) em `AnimalKind.geometries`. */
+  palette: number;
+  /** Chance de o líder de um bando nascer assim. */
+  chance: number;
+  points: number;
+  scale: readonly [number, number];
+}
+
 /** Uma espécie de quadrúpede: modelo, números e sons. */
 export interface AnimalKind {
   id: 'boar' | 'deer';
@@ -71,6 +83,9 @@ export interface AnimalKind {
   /** Inclinação da cabeça comendo e em alerta (rad). */
   feedPitch: number;
   alertPitch: number;
+  /** Paletas que nascem normalmente (as primeiras); as seguintes são dos raros. */
+  commonPalettes: number;
+  rares: RareVariant[];
 }
 
 let boar: AnimalKind | undefined;
@@ -98,6 +113,8 @@ export function boarKind(): AnimalKind {
     bounding: false,
     feedPitch: 0.55,
     alertPitch: -0.2,
+    commonPalettes: BOAR_PALETTES.length,
+    rares: [],
   });
 }
 
@@ -124,5 +141,10 @@ export function deerKind(): AnimalKind {
     // Pescoço comprido: pastar leva o focinho até o chão.
     feedPitch: 1.15,
     alertPitch: -0.28,
+    commonPalettes: 3,
+    rares: [
+      { id: 'deer-albino', name: 'Veado albino', palette: 3, chance: CONFIG.rares.albino, points: 300, scale: [1, 1.12] },
+      { id: 'deer-galheiro', name: 'Veado-galheiro', palette: 4, chance: CONFIG.rares.galheiro, points: 220, scale: [1.25, 1.38] },
+    ],
   });
 }

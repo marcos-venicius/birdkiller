@@ -20,6 +20,7 @@ const VOICES: Record<string, Voice> = {
   rolinha: { gap: [7, 18], range: 110, ref: 6 },
   gaviao: { gap: [15, 35], range: 300, ref: 20 },
   pato: { gap: [6, 16], range: 170, ref: 10 },
+  tucano: { gap: [8, 20], range: 180, ref: 10 },
 };
 
 /** Máximo de cantos soando ao mesmo tempo. */

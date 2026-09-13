@@ -86,10 +86,13 @@ const music = new Music(audio);
 weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
 
 // Caderno de campo: espécies avistadas/abatidas, recordes e totais, guardados entre sessões.
+// Comuns primeiro; os raros ficam no fim da lista, como "???" até aparecerem.
 const journal = new Journal([
-  ...birds.speciesList.map((s) => ({ id: s.id, name: s.name })),
+  ...birds.speciesList.filter((s) => !s.rare).map((s) => ({ id: s.id, name: s.name })),
   { id: boars.kind.id, name: boars.kind.name },
   { id: deer.kind.id, name: deer.kind.name },
+  ...birds.speciesList.filter((s) => s.rare).map((s) => ({ id: s.id, name: s.name })),
+  ...[boars, deer].flatMap((m) => m.kind.rares.map((r) => ({ id: r.id, name: r.name }))),
 ]);
 hunting.onKill = (info) => {
   const night = atmosphere.night > CONFIG.journal.nightThreshold;
@@ -125,7 +128,7 @@ function spotAnimals(): void {
     if (msg) news.push(msg);
   };
   for (const b of birds.active) if (b.alive) check(b.species.id, b.pos);
-  for (const m of [boars, deer]) for (const a of m.active) if (a.alive) check(m.kind.id, a.group.position);
+  for (const m of [boars, deer]) for (const a of m.active) if (a.alive) check(a.rare?.id ?? m.kind.id, a.group.position);
   if (news.length) hud.note(news.join('  ·  '));
 }
 input.onLockChange = (locked) => {
@@ -182,6 +185,7 @@ engine.renderer.setAnimationLoop(() => {
   weapon.update(dt);
   // À noite (e na chuva) aparecem menos pássaros — e eles quase não cantam.
   birds.activity = (1 - atmosphere.night * 0.65) * (1 - weather.rain * 0.5);
+  birds.dawn = atmosphere.hour >= CONFIG.rares.dawn[0] && atmosphere.hour <= CONFIG.rares.dawn[1];
   birds.update(dt);
   boars.update(dt);
   deer.update(dt);
