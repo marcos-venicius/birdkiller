@@ -19,6 +19,7 @@ import { Hunting } from './combat/Hunting';
 import { Particles } from './effects/Particles';
 import { CONFIG } from './config';
 import { Engine } from './core/Engine';
+import { smoothstep } from './core/math';
 import { Quality } from './core/Quality';
 import { Input } from './core/Input';
 import { PlayerController } from './player/PlayerController';
@@ -146,6 +147,12 @@ engine.renderer.setAnimationLoop(() => {
     hud.toast(infrared ? 'Infravermelho ligado' : 'Infravermelho desligado');
   }
   engine.thermal = infrared && weapon.inScope;
+  if (engine.thermal) {
+    // Sol alto aquece o chão e mata o contraste; chuva, nuvem e neblina esfriam tudo de novo.
+    const sun = smoothstep(0, 35, atmosphere.sunElevation);
+    const heat = sun * (1 - 0.85 * weather.rain) * (1 - 0.55 * weather.cloud) * (1 - 0.5 * weather.mist);
+    engine.setThermalHeat(THREE.MathUtils.clamp(heat, 0, 1), atmosphere.sunDir);
+  }
   hud.setInfrared(engine.thermal);
   if (input.wasPressed('KeyL')) {
     compassOn = !compassOn;

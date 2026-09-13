@@ -70,6 +70,8 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
   clarão marca onde ela bateu, para você corrigir o próximo tiro. Com a luneta no olho, um telêmetro mostra a
   distância do que está na mira — é o que diz quanto levantar. A tecla V troca a luneta para infravermelho:
   o mato fica frio e azulado, os bichos acendem em branco e laranja, e nem a névoa nem a noite atrapalham.
+  Com o sol a pino, porém, o chão esquenta e a imagem lava — o térmico só compensa de madrugada, na chuva ou
+  no tempo fechado, como no equipamento de verdade.
 - **Caça**: troncos, pedras e morros bloqueiam o tiro. Corpo ou cabeça é abate
   (o pássaro cai de verdade e fica no chão); pegar só a asa é raspão. Pontos por espécie e distância.
 - **Som**: cantos vindos de onde cada pássaro está, vento, folhas, grilos, animais ao longe, passos e uma

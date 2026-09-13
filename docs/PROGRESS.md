@@ -172,6 +172,12 @@ orientar e mostrar bichos acabaria com a caça — por isso a bússola.
   Os materiais usam os chunks padrão do Three (`begin_vertex`/`project_vertex`), então instancing continua
   funcionando. Custo medido no headless: 2,1 ms/quadro no térmico contra 2,6 ms no normal (mais barato: sem
   sombras e com shaders simples). Tronco e relevo continuam escondendo o bicho — não é visão através de parede.
+- [x] **16b. O térmico piora no sol** (pedido do usuário) — o contraste agora depende do cenário, como num
+  equipamento de verdade: com o sol alto o chão e as pedras viradas para ele acumulam calor, a imagem vira uma
+  papa morna e o bicho se perde no meio; de madrugada, na chuva, sob nuvem ou neblina o cenário esfria e ele
+  volta a saltar aos olhos. O valor (`heat`) sai da elevação do sol × (1 − 0,85·chuva) × (1 − 0,55·nuvem) ×
+  (1 − 0,5·neblina) e entra como uniform nos dois materiais (`Engine.setThermalHeat`). Medido: 0 às 4h, 0,31
+  às 17h, 1,00 ao meio-dia e 0,07 ao meio-dia debaixo de chuva. Ninguém proíbe ligar de dia — só não compensa.
 
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |

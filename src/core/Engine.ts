@@ -23,9 +23,15 @@ const THERMAL_VERTEX = /* glsl */ `
   }
 `;
 
-/** Mundo frio: relevo e mata em tons de azul/verde, com o contraste vindo da inclinação. */
+/**
+ * Mundo frio: relevo e mata em azul/verde. Com o sol a pino (`uHeat` = 1) o chão e as pedras
+ * viradas para o sol esquentam e a imagem vira uma papa morna — é assim que um térmico se comporta
+ * de verdade, e é o que tira a vantagem de usá-lo de dia.
+ */
 const COLD_FRAGMENT = /* glsl */ `
   uniform float uFar;
+  uniform float uHeat;
+  uniform vec3 uSunDir;
   varying vec3 vNormal;
   varying float vDepth;
   void main() {
@@ -33,18 +39,24 @@ const COLD_FRAGMENT = /* glsl */ `
     float d = clamp(vDepth / uFar, 0.0, 1.0);
     float v = clamp(0.16 + 0.5 * up - 0.25 * d, 0.0, 1.0);
     vec3 col = mix(vec3(0.015, 0.035, 0.06), vec3(0.10, 0.42, 0.40), v);
+    // Superfície batida de sol acumula calor.
+    float lit = max(dot(normalize(vNormal), uSunDir), 0.0);
+    float warm = uHeat * (0.25 + 0.75 * lit) * (1.0 - 0.5 * d);
+    col = mix(col, vec3(0.62, 0.45, 0.34), clamp(warm, 0.0, 0.85));
     gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
   }
 `;
 
-/** Bicho quente: branco no meio, alaranjado nas bordas — pula aos olhos contra o fundo frio. */
+/** Bicho quente: branco no meio, alaranjado nas bordas — e mais apagado quando o fundo esquenta. */
 const HOT_FRAGMENT = /* glsl */ `
+  uniform float uHeat;
   varying vec3 vNormal;
   varying float vDepth;
   void main() {
     float face = clamp(vNormal.y * 0.35 + 0.65, 0.0, 1.0);
     vec3 col = mix(vec3(1.0, 0.42, 0.08), vec3(1.0, 0.97, 0.86), face * face);
+    col = mix(col, vec3(0.72, 0.56, 0.42), uHeat * 0.75);
     gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
   }
@@ -88,17 +100,31 @@ export class Engine {
     this.coldMaterial = new THREE.ShaderMaterial({
       vertexShader: THERMAL_VERTEX,
       fragmentShader: COLD_FRAGMENT,
-      uniforms: { uFar: { value: CONFIG.camera.far * 0.35 } },
+      uniforms: {
+        uFar: { value: CONFIG.camera.far * 0.35 },
+        uHeat: { value: 0 },
+        uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+      },
       fog: false,
     });
     this.hotMaterial = new THREE.ShaderMaterial({
       vertexShader: THERMAL_VERTEX,
       fragmentShader: HOT_FRAGMENT,
-      uniforms: {},
+      uniforms: { uHeat: { value: 0 } },
       fog: false,
     });
 
     window.addEventListener('resize', this.onResize);
+  }
+
+  /**
+   * Contraste do térmico: `heat` 0 = madrugada, chuva ou neblina (cenário frio, bicho salta aos
+   * olhos); 1 = sol a pino (chão quente, bicho se perde no meio). `sunDir` aponta para o sol.
+   */
+  setThermalHeat(heat: number, sunDir: THREE.Vector3): void {
+    this.coldMaterial.uniforms.uHeat.value = heat;
+    this.hotMaterial.uniforms.uHeat.value = heat;
+    (this.coldMaterial.uniforms.uSunDir.value as THREE.Vector3).copy(sunDir);
   }
 
   render(): void {
