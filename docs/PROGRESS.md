@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage15-ballistics.json` (tabela de queda e tempo de voo por distância, bala no ar, rastro enquanto voa e
+apagando depois do impacto, onde a bala passa mirando reto),
 `stage14-weather.json` (começa com tempo bom, 100 s de chuva forte com luz/névoa medidas, o tempo abrindo de
 volta ao original, neblina por hora do dia, ~2,8 h de ciclo e capturas),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
@@ -126,11 +128,6 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 ## A fazer (combinado com o usuário, nesta ordem)
 Depois da etapa dos veados o usuário escolheu, de uma lista de sugestões, seguir com:
 
-- [ ] **14. Queda da bala, com rastro visível** — trocar o hitscan por tiro com tempo de voo e gravidade, para o tiro
-  longo com a luneta virar perícia. O usuário pediu explicitamente: **é preciso ver o "rastro" da bala** para saber
-  onde ela está batendo (um traço/risco curto acompanhando o projétil). Mexe em `Hunting.shoot` (hoje resolve tudo
-  num quadro) e provavelmente vira um `combat/Projectile.ts` com atualização por quadro + marcação do impacto.
-
 Sugestões que ficaram de fora por ora (o usuário pode retomar): **apito de caça** (tecla que imita o chamado e
 atrai a bicharada por alguns segundos) e **rastros/sinais** (pegadas de javali, penas, grama amassada, dizendo
 que passou algo por ali há pouco). O usuário recusou minimapa: um mapa de floresta infinita não ajuda a se
@@ -145,6 +142,17 @@ orientar e mostrar bichos acabaria com a caça — por isso a bússola.
   folhas (mais forte na mata). Neblina de madrugada entre ~4h e o nascer do sol, independente da chuva.
   **Não atrapalha o jogador** (spec §2): não mexe em velocidade, pontaria nem alcance do tiro — só na visibilidade
   e no humor. Menos pássaros na chuva (`birds.activity`). `?chuva=1` na URL começa chovendo (testes).
+
+- [x] **14. Queda da bala e rastro** (pedido do usuário) — o hitscan virou projétil (`combat/Ballistics.ts`):
+  bala a 500 m/s com gravidade, resolvida trecho a trecho a cada quadro (o alvo pode se mexer durante o voo).
+  Zeragem em 100 m: a queda em relação à mira é −0,02 m a 50 m, 0 a 100, −0,23 a 200, −0,87 a 300 e −1,90 a 400,
+  com 0,21 s de voo a 100 m e 0,8 s a 400 m. **Rastro** desenhado como fita virada para a câmera, com largura
+  proporcional à distância (linha de 1 px some na tela): enquanto voa aparece o pedaço final; ao bater, a
+  trajetória inteira fica 0,45 s apagando. A largura é calculada por ponta (pela distância de cada vértice até
+  a câmera), senão o trecho que sai do cano vira uma cunha grossa na tela. O rastro **começa na boca do cano** (direita/abaixo do olho) só para
+  desenhar — a bala voa exatamente na linha da mira, então a precisão é a mesma de antes; sem esse deslocamento o
+  rastro projetaria num ponto só no meio da tela. **Clarão** no ponto de impacto (0,3 s, cresce com a distância):
+  é ele que mostra onde o tiro bateu a 300 m.
 
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
@@ -211,6 +219,7 @@ src/
   world/ChunkManager.ts   + randomPerch(x, z, minR, maxR, out, accept) — sorteia topo de copa carregado
                           + raycastObstacles(o, d, maxT) — troncos (chunk.trunks) e pedras (chunk.rocks)
   world/Terrain.ts        + raycast(o, d, maxT) — marcha de 1 m + bisseção
+  combat/Ballistics.ts    balas com tempo de voo e queda + rastro (fita) e clarão do impacto
   combat/Hunting.ts       shoot(origin, dir): resolve o tiro, abate/raspão, pontuação, efeitos e sons; lastShot
   audio/AudioSystem.ts    + buses, updateListener(camera), spatial(pos, bus, ref), loop(), level(), debugRender()
   audio/Ambience.ts       vento/folhas/farfalhar (loops), grilos, animais ocasionais
@@ -280,6 +289,9 @@ src/
   `wadeDepth`, distância de render). Cada lago cabe inteiro na sua célula, então consultar a célula do ponto basta —
   `heightAt` não ficou mais caro de forma mensurável (~0,7 µs por chamada, igual ao relevo puro). A água é um disco
   por lago com material próprio (poucos em cena); o disco tem 98,5% do raio da bacia para a beira não brigar com a margem.
+- Balística: `CONFIG.combat` (velocidade, gravidade, zeragem, boca do cano, rastro e clarão). `Hunting.shoot()`
+  só solta a bala e espanta a bicharada; quem resolve o acerto é `Hunting.update(dt)`, chamado pelo loop — por
+  isso os cenários de teste precisam avançar `hunting.update` antes de ler `hunting.lastShot`.
 - Tempo: `CONFIG.weather` (durações, chance de chuva, gotas/raio/altura/velocidade, multiplicadores de névoa).
   `Atmosphere.cloud` e `Atmosphere.fogFactor` são as duas alavancas que o Weather usa — nada mais no mundo
   precisa saber que está chovendo, tirando a água (uniform `uRain`) e o ambiente (som).

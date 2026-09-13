@@ -30,7 +30,7 @@
   "label": "60 s de simulação"
  },
  {
-  "eval": "(() => { const g = game, patos = window.__patos.filter(p => p.active && p.alive); if (!patos.length) return 'nenhum pato vivo'; const alvo = patos[0]; const V = g.player.position.constructor; const o = new V(g.player.position.x, g.player.position.y + 1.7, g.player.position.z); const dir = new V(alvo.pos.x - o.x, alvo.pos.y - o.y, alvo.pos.z - o.z).normalize(); const antes = g.hunting.score; const r = g.hunting.shoot(o, dir); return { tipo: r.kind, especie: r.bird && r.bird.species.name, letal: r.lethal, pontos: r.points, distancia: +r.distance.toFixed(1), placar: g.hunting.score - antes }; })()",
+  "eval": "(() => { const g = game, patos = window.__patos.filter(p => p.active && p.alive); if (!patos.length) return 'nenhum pato vivo'; const alvo = patos[0]; const V = g.player.position.constructor; const o = new V(g.player.position.x, g.player.position.y + 1.7, g.player.position.z); const dir = new V(alvo.pos.x - o.x, alvo.pos.y - o.y, alvo.pos.z - o.z).normalize(); const antes = g.hunting.score; g.hunting.shoot(o, dir); for (let i = 0; i < 400 && !g.hunting.lastShot; i++) g.hunting.update(1 / 60); const r = g.hunting.lastShot || { kind: 'nada', distance: 0, point: o, bird: null, lethal: false, points: 0 }; return { tipo: r.kind, especie: r.bird && r.bird.species.name, letal: r.lethal, pontos: r.points, distancia: +r.distance.toFixed(1), placar: g.hunting.score - antes }; })()",
   "label": "tiro num pato"
  },
  {

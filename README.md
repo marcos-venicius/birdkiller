@@ -64,7 +64,10 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
   Veados e javalis vão beber na beira do lago de tempos em tempos: vale a pena esperar escondido por perto.
 - **Javalis**: andam em bandos pela mata, fuçando o chão. Têm faro e ouvido bons — chegue agachado e devagar.
   Tiro na cabeça ou no peito abate; na traseira ele fica ferido e foge (o próximo tiro mata). Eles não atacam.
-- **Caça**: tiro exato para onde a arma aponta; troncos, pedras e morros bloqueiam. Corpo ou cabeça é abate
+- **Tiro com balística**: a bala leva tempo para chegar (0,2 s a 100 m, 0,8 s a 400 m) e cai no caminho — a
+  luneta está zerada em 100 m, então a 300 m a bala passa quase 90 cm abaixo da mira. Um rastro sai do cano e um
+  clarão marca onde ela bateu, para você corrigir o próximo tiro.
+- **Caça**: troncos, pedras e morros bloqueiam o tiro. Corpo ou cabeça é abate
   (o pássaro cai de verdade e fica no chão); pegar só a asa é raspão. Pontos por espécie e distância.
 - **Som**: cantos vindos de onde cada pássaro está, vento, folhas, grilos, animais ao longe, passos e uma
   música de fundo generativa bem baixinha.

@@ -14,6 +14,7 @@ import { Footsteps } from './audio/Footsteps';
 import { Music } from './audio/Music';
 import * as weaponSounds from './audio/weaponSounds';
 import { BirdManager } from './birds/BirdManager';
+import { Ballistics } from './combat/Ballistics';
 import { Hunting } from './combat/Hunting';
 import { Particles } from './effects/Particles';
 import { CONFIG } from './config';
@@ -71,7 +72,8 @@ boars.populate();
 const deer = new QuadrupedManager(deerKind(), engine.scene, terrain, biome, chunks, player, engine.camera);
 deer.populate();
 const particles = new Particles(engine.scene, terrain);
-const hunting = new Hunting(terrain, chunks, birds, [boars, deer], particles, hud, audio);
+const ballistics = new Ballistics(engine.scene);
+const hunting = new Hunting(terrain, chunks, birds, [boars, deer], particles, hud, audio, ballistics);
 const ambience = new Ambience(audio, biome, terrain.lakes);
 const voices = new BirdVoices(audio);
 const boarVoices = new AnimalVoices(audio, boarKind().sounds);
@@ -125,6 +127,7 @@ engine.renderer.setAnimationLoop(() => {
   birds.update(dt);
   boars.update(dt);
   deer.update(dt);
+  hunting.update(dt, engine.camera.position);
   particles.update(dt);
   audio.updateListener(engine.camera);
   ambience.update(dt, player, engine.camera.position, atmosphere.night, weather.rain);
@@ -220,6 +223,7 @@ if (import.meta.env.DEV) {
       deer,
       particles,
       hunting,
+      ballistics,
       ambience,
       voices,
       boarVoices,

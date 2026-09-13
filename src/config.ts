@@ -289,6 +289,31 @@ export const CONFIG = {
   combat: {
     /** Alcance máximo do tiro (m). */
     range: 400,
+    /** Velocidade da bala (m/s) e gravidade que a puxa — o tiro longe exige compensar a queda. */
+    muzzleVelocity: 500,
+    gravity: 9.8,
+    /** Distância em que a luneta está zerada (a bala passa exatamente na mira). */
+    zeroDistance: 100,
+    /** Boca do cano em relação ao olho (m): só onde o rastro começa, não muda a trajetória. */
+    muzzleRight: 0.2,
+    muzzleDown: 0.16,
+    muzzleForward: 0.5,
+    /** Rastro da bala: cor, opacidade, comprimento (em pontos do caminho) e quanto dura depois do impacto (s). */
+    tracerColor: 0xffe6b0,
+    tracerOpacity: 0.85,
+    /**
+     * Largura do rastro na tela: quase toda proporcional à distância da câmera, para o risco ter
+     * a mesma espessura em pixels perto e longe (`tracerWidth` é só um piso em metros).
+     */
+    tracerWidth: 0.004,
+    tracerWidthPerMeter: 0.0016,
+    tracerLength: 7,
+    tracerFade: 0.45,
+    /** Clarão do impacto: tamanho (m), quanto cresce por metro de distância, brilho e duração (s). */
+    flashSize: 0.03,
+    flashSizePerMeter: 0.006,
+    flashOpacity: 0.9,
+    flashTime: 0.3,
     /** Aumenta as esferas de acerto dos pássaros (tamanho real seria punitivo demais a distância). */
     hitboxScale: 1.35,
     /** Um obstáculo só bloqueia se estiver esta distância antes do pássaro (m). */

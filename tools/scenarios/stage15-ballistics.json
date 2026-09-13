@@ -1,0 +1,33 @@
+[
+ {
+  "wait": 4000
+ },
+ {
+  "eval": "(() => { const g = game, C = g.CONFIG || null; const B = g.ballistics, V = g.player.position.constructor; window.__drop = (dist) => { const o = new V(0, 200, 0); const d = new V(0, 0, 1); B.fire(o, d); let t = 0, x = null; const H = g.hunting; for (let i = 0; i < 2000 && x === null; i++) { const dt = 1 / 120; t += dt; B.update(dt, (from, dir, maxT, travelled) => { if (travelled + maxT >= dist) { const k = dist - travelled; x = { queda: +(from.y + dir.y * k - 200).toFixed(2), tempo: +t.toFixed(3) }; return true; } return false; }); } return x; }; return { m50: __drop(50), m100: __drop(100), m200: __drop(200), m300: __drop(300), m400: __drop(400) }; })()",
+  "label": "queda da bala (m) e tempo de voo (s) por distância"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, w = g.weapon, inp = g.input; g.audio.unlock(); p.position.set(-29, g.terrain.heightAt(-29, -28), -28); p.velocity.set(0, 0, 0); p.yaw = 1.0; p.pitch = 0.02; g.chunks.warmup(p.position); window.__shoot = () => { inp.buttonsPressed |= 1; w.magazine = 5; w.state = 'ready'; w.update(1 / 30); inp.endFrame(); }; return { balasNoAr: g.ballistics.flying }; })()",
+  "label": "preparo"
+ },
+ {
+  "eval": "(() => { const g = game; g.hunting.lastShot = null; __shoot(); const antes = g.ballistics.flying; let quadros = 0; for (let i = 0; i < 400 && !g.hunting.lastShot; i++) { g.hunting.update(1 / 60); quadros++; } const s = g.hunting.lastShot || { kind: 'nada', zone: null, distance: Infinity, lethal: false, points: 0 }; return { balaNoArLogoAposOTiro: antes, quadrosAteBater: quadros, tempoDeVooS: +(quadros / 60).toFixed(2), tipo: s && s.kind, distancia: s && +s.distance.toFixed(1) }; })()",
+  "label": "tiro no relevo: a bala leva tempo para chegar"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player; p.pitch = 0.0; g.hunting.lastShot = null; __shoot(); for (let i = 0; i < 20; i++) g.hunting.update(1 / 60); const tracer = g.engine.scene.getObjectByName('rastro'); return { segmentosDesenhados: tracer.geometry.drawRange.count / 6, visivel: tracer.visible, balasNoAr: g.ballistics.flying }; })()",
+  "label": "o rastro aparece enquanto a bala voa"
+ },
+ {
+  "wait": 500,
+  "eval": "(() => { const g = game; g.hunting.lastShot = null; __shoot(); for (let i = 0; i < 400 && !g.hunting.lastShot; i++) g.hunting.update(1 / 60, g.engine.camera.position); const linhas = () => g.engine.scene.getObjectByName('rastro').geometry.drawRange.count / 6; const clarao = () => g.engine.scene.getObjectByName('impacto').geometry.drawRange.count / 6; const aoBater = { rastro: linhas(), clarao: clarao() }; for (let i = 0; i < 12; i++) g.hunting.update(1 / 60, g.engine.camera.position); const d02 = { rastro: linhas(), clarao: clarao() }; for (let i = 0; i < 30; i++) g.hunting.update(1 / 60, g.engine.camera.position); const d07 = { rastro: linhas(), clarao: clarao() }; return { aoBater, apos02s: d02, apos07s: d07, impacto: g.hunting.lastShot && g.hunting.lastShot.kind }; })()"
+ },
+ {
+  "eval": "(() => { const g = game; for (let i = 0; i < 400 && !g.hunting.lastShot; i++) g.hunting.update(1 / 60); const antes = g.engine.scene.children.filter(c => c.type === 'LineSegments').pop().geometry.drawRange.count; for (let i = 0; i < 40; i++) g.hunting.update(1 / 60); const meio = g.engine.scene.children.filter(c => c.type === 'LineSegments').pop().geometry.drawRange.count; for (let i = 0; i < 40; i++) g.hunting.update(1 / 60); const depois = g.engine.scene.children.filter(c => c.type === 'LineSegments').pop().geometry.drawRange.count; return { aoBater: antes, meioSegundoDepois: meio, umSegundoDepois: depois, impacto: g.hunting.lastShot && g.hunting.lastShot.kind }; })()",
+  "label": "o rastro fica um instante e some"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, V = p.position.constructor; const B = g.ballistics, H = g.hunting; const res = {}; for (const dist of [50, 150, 300]) { const o = new V(p.position.x, p.position.y + 1.7, p.position.z); const alvo = new V(o.x + Math.sin(1.0) * -dist, o.y, o.z + Math.cos(1.0) * -dist); const dir = new V(alvo.x - o.x, 0, alvo.z - o.z).normalize(); H.lastShot = null; B.fire(o, dir); let passou = null; for (let i = 0; i < 3000 && passou === null; i++) { B.update(1 / 240, (from, d2, maxT, travelled) => { if (travelled + maxT >= dist) { const k = dist - travelled; passou = +(from.y + d2.y * k - o.y).toFixed(2); return true; } return false; }); } res['alvo a ' + dist + ' m'] = { alturaDaBalaRelativaAMira: passou }; } return res; })()",
+  "label": "mirando reto: onde a bala passa"
+ }
+]
