@@ -227,3 +227,14 @@ body {
   color: rgba(255, 240, 220, 0.75);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
 }
+
+/* Marca do modo infravermelho, ao lado do telêmetro. */
+.hud-ir {
+  position: absolute;
+  left: calc(50% + 30px);
+  top: calc(50% + 40px);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: rgba(255, 170, 90, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}

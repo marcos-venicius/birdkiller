@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { markWarm } from '../core/Engine';
 import { angleDiff, raySphere, TAU } from '../core/math';
 import type { AnimalKind } from './kinds';
 import type { HitZone, QuadrupedGeometry } from './quadrupedModel';
@@ -90,6 +91,8 @@ export class Quadruped {
     }
     for (const m of [body, headMesh, this.tail, ...this.legs]) m.castShadow = true;
     this.group.rotation.order = 'YXZ';
+    // Sangue quente: aparece na luneta infravermelha.
+    markWarm(this.group);
   }
 
   /** Vivo = pode ser alvo, perceber o jogador e fugir. */

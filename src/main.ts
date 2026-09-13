@@ -99,6 +99,8 @@ const compassMarks: { bearing: number; distance: number }[] = [];
 const compassLakes: Lake[] = [];
 let compassTimer = 0;
 const rangeDir = new THREE.Vector3();
+// Luneta infravermelha (tecla V): só enxerga térmico com a luneta no olho.
+let infrared = false;
 let rangeTimer = 0;
 
 const debug = new URLSearchParams(location.search).has('debug');
@@ -139,6 +141,12 @@ engine.renderer.setAnimationLoop(() => {
   footsteps.update(dt, player);
   music.update();
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
+  if (input.wasPressed('KeyV')) {
+    infrared = !infrared;
+    hud.toast(infrared ? 'Infravermelho ligado' : 'Infravermelho desligado');
+  }
+  engine.thermal = infrared && weapon.inScope;
+  hud.setInfrared(engine.thermal);
   if (input.wasPressed('KeyL')) {
     compassOn = !compassOn;
     hud.setCompassEnabled(compassOn);

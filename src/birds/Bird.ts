@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { markWarm } from '../core/Engine';
 import { angleDiff, raySphere, smoothstep, TAU } from '../core/math';
 import type { BirdGeometry } from './birdGeometry';
 import type { Species } from './species';
@@ -100,6 +101,8 @@ export class Bird {
     }
     this.group.scale.setScalar(species.length);
     this.group.rotation.order = 'YXZ';
+    // Sangue quente: aparece na luneta infravermelha.
+    markWarm(this.group);
   }
 
   /** Vivo = pode ser alvo, se assustar e pontuar. */

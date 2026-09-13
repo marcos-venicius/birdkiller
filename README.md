@@ -36,6 +36,7 @@ Clique na tela para controlar (o navegador também libera o som nesse clique).
 | Recarregar (quando faltar munição) | R |
 | Música de fundo (liga/desliga) | M |
 | Bússola (liga/desliga) | L |
+| Infravermelho da luneta | V |
 | Soltar o mouse | Esc |
 
 O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho
@@ -67,7 +68,8 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 - **Tiro com balística**: a bala leva tempo para chegar (0,2 s a 100 m, 0,8 s a 400 m) e cai no caminho — a
   luneta está zerada em 100 m, então a 300 m a bala passa quase 90 cm abaixo da mira. Um rastro sai do cano e um
   clarão marca onde ela bateu, para você corrigir o próximo tiro. Com a luneta no olho, um telêmetro mostra a
-  distância do que está na mira — é o que diz quanto levantar.
+  distância do que está na mira — é o que diz quanto levantar. A tecla V troca a luneta para infravermelho:
+  o mato fica frio e azulado, os bichos acendem em branco e laranja, e nem a névoa nem a noite atrapalham.
 - **Caça**: troncos, pedras e morros bloqueiam o tiro. Corpo ou cabeça é abate
   (o pássaro cai de verdade e fica no chão); pegar só a asa é raspão. Pontos por espécie e distância.
 - **Som**: cantos vindos de onde cada pássaro está, vento, folhas, grilos, animais ao longe, passos e uma

@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage17-infrared.json` (tecla V com a luneta, marca IV, veados quentes contra o mundo frio, mesma cena de
+noite com chuva, custo por quadro),
 `stage16-rangefinder.json` (some sem luneta, mede o relevo e um veado a 60/80 m, custo por medida),
 `stage15-ballistics.json` (tabela de queda e tempo de voo por distância, bala no ar, rastro enquanto voa e
 apagando depois do impacto, onde a bala passa mirando reto),
@@ -68,6 +70,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - R: recarga manual quando falta munição (cartucho a cartucho: 0,7 s + 0,4 s por cartucho). Vazio = automática (2,6 s).
 - M: liga/desliga a música de fundo (lembra a escolha).
 - L: liga/desliga a bússola (lembra a escolha). Ela some sozinha enquanto a luneta está no olho.
+- V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
 - `?hora=22` (ou `?hora=5.5`) na URL começa em outra hora; o padrão é 17h. `?debug` mostra o relógio.
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
 
@@ -161,6 +164,15 @@ orientar e mostrar bichos acabaria com a caça — por isso a bússola.
   (0,34 ms cada, só enquanto está mirando). Some junto com a luneta. Com a queda da bala, é ele que diz quanto
   levantar a mira.
 
+- [x] **16. Luneta infravermelha** (pedido do usuário, tecla V) — no `Engine`, a passada do mundo vira duas:
+  o cenário inteiro com um material frio (azul/verde, contraste pela inclinação da superfície) e, por cima e com
+  o mesmo teste de profundidade, só os bichos com um material quente (branco/laranja). Eles ficam na camada 1
+  (`markWarm()` no construtor de `Bird` e `Quadruped`); a câmera enxerga as duas camadas na renderização normal.
+  No térmico a névoa e as sombras são desligadas — é isso que faz o modo valer a pena na chuva e de madrugada.
+  Os materiais usam os chunks padrão do Three (`begin_vertex`/`project_vertex`), então instancing continua
+  funcionando. Custo medido no headless: 2,1 ms/quadro no térmico contra 2,6 ms no normal (mais barato: sem
+  sombras e com shaders simples). Tronco e relevo continuam escondendo o bicho — não é visão através de parede.
+
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
 | --- | --- | --- |
@@ -185,7 +197,8 @@ orientar e mostrar bichos acabaria com a caça — por isso a bússola.
 src/
   main.ts                 bootstrap + loop (dt limitado a CONFIG.maxDt)
   config.ts               todas as constantes ajustáveis
-  core/Engine.ts          renderer (ACES, sombras PCF), cena + câmera do mundo; viewScene + viewCamera da arma
+  core/Engine.ts          renderer (ACES, sombras PCF), cena + câmera do mundo; viewScene + viewCamera da arma;
+                          visão térmica (duas passadas: mundo frio + camada quente dos bichos), markWarm()
                           (2 passadas: mundo, limpa profundidade, arma); info.reset manual
   core/Input.ts           teclado, mouse, pointer lock (wasPressed limpo em endFrame)
   core/noise.ts, rng.ts   simplex 2D + fbm, mulberry32, hash2 (seed por chunk)

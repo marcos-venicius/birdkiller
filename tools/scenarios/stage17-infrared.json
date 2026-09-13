@@ -1,0 +1,18 @@
+[
+  { "wait": 4000 },
+  { "eval": "(() => { const g = game, p = g.player, w = g.weapon, inp = g.input; p.position.set(-29, g.terrain.heightAt(-29, -28), -28); p.velocity.set(0, 0, 0); p.yaw = 1.0; p.pitch = -0.03; g.chunks.warmup(p.position); window.__scope = (on) => { if (on !== w.aimToggled) inp.buttonsPressed |= 4; for (let i = 0; i < 20; i++) { p.update(1 / 30); w.update(1 / 30); inp.endFrame(); } }; window.__key = (code) => { g.input.pressed.add(code); }; const K = g.deer; for (let i = K.active.length - 1; i >= 0; i--) K.release(i); K.frozen = true; const V = p.position.constructor, cam = g.engine.camera; p.update(1 / 30); cam.updateMatrixWorld(); let posto = []; for (let n = 0; n < 3; n++) { const dist = 30 + n * 18; let achou = null; for (let a = -0.5; a < 0.5 && !achou; a += 0.05) { const ang = p.yaw + Math.PI + a; const x = p.position.x - Math.sin(p.yaw) * dist + Math.cos(ang) * n * 4, z = p.position.z - Math.cos(p.yaw) * dist + Math.sin(ang) * n * 4; if (!g.chunks.isClear(x, z, 2)) continue; const y = g.terrain.heightAt(x, z) + 1.0; const dir = new V(x - cam.position.x, y - cam.position.y, z - cam.position.z).normalize(); const dd = Math.hypot(x - cam.position.x, z - cam.position.z); if (g.terrain.raycast(cam.position, dir, dd) < dd) continue; achou = { x, z }; } if (achou) { const d = K.spawn(new V(achou.x, 0, achou.z), p.yaw + Math.PI * 0.5, 1.1, n % 3); d.pose('forage', 0); posto.push(+cam.position.distanceTo(d.group.position).toFixed(0)); } } return { veados: posto, camadasDaCamera: cam.layers.mask.toString(2) }; })()", "label": "três veados na frente" },
+  { "eval": "(() => { const g = game; __scope(true); __key('KeyV'); for (let i = 0; i < 3; i++) { g.player.update(1 / 60); g.weapon.update(1 / 60); } return { naLuneta: g.weapon.inScope }; })()", "label": "luneta + tecla V" },
+  { "wait": 2500 },
+  { "eval": "(() => { const g = game; return { termico: g.engine.thermal, marcaIV: !document.querySelector('.hud-ir').hidden, telemetro: document.querySelector('.hud-range').textContent }; })()", "label": "modo térmico ligado?" },
+  { "shot": "s17-01-infravermelho" },
+  { "eval": "(() => { const g = game; g.engine.thermal = false; g.engine.render(); return 'normal'; })()" },
+  { "wait": 1200 },
+  { "shot": "s17-02-normal" },
+  { "eval": "(() => { const g = game; g.atmosphere.setHour(23); g.weather.state = 'rain'; g.weather.target = 1; g.weather.timer = 900; for (let i = 0; i < 1200; i++) g.weather.update(1 / 30, g.engine.camera, g.atmosphere); g.engine.thermal = true; g.engine.render(); return { hora: g.atmosphere.clock, chuva: +g.weather.rain.toFixed(2), nevoa: +g.engine.scene.fog.density.toFixed(4) }; })()", "label": "noite com chuva, no térmico" },
+  { "wait": 1500 },
+  { "shot": "s17-03-noite-chuva-iv" },
+  { "eval": "(() => { const g = game; g.engine.thermal = false; g.engine.render(); return 'mesma cena sem térmico'; })()" },
+  { "wait": 1200 },
+  { "shot": "s17-04-noite-chuva-normal" },
+  { "eval": "(() => { const g = game; const t0 = performance.now(); for (let i = 0; i < 20; i++) { g.engine.thermal = true; g.engine.render(); } const termico = (performance.now() - t0) / 20; const t1 = performance.now(); for (let i = 0; i < 20; i++) { g.engine.thermal = false; g.engine.render(); } const normal = (performance.now() - t1) / 20; return { msPorQuadroTermico: +termico.toFixed(1), msPorQuadroNormal: +normal.toFixed(1), draws: g.engine.renderer.info.render.calls }; })()", "label": "custo do térmico (headless é lento, vale a proporção)" }
+]

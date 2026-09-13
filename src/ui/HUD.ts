@@ -33,6 +33,7 @@ export class HUD {
   private readonly scopeEl: HTMLElement;
   private readonly flashEl: HTMLElement;
   private readonly rangeEl: HTMLElement;
+  private readonly irEl: HTMLElement;
   private readonly compassEl: HTMLElement;
   private readonly dirEls: HTMLElement[] = [];
   private readonly markEls: HTMLElement[] = [];
@@ -67,9 +68,10 @@ export class HUD {
       <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
       <div class="hud-hint">
         Clique para controlar
-        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · Esc soltar o mouse</small>
+        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · V infravermelho · Esc soltar o mouse</small>
       </div>
       <div class="hud-range" hidden></div>
+      <div class="hud-ir" hidden>IV</div>
       <div class="hud-compass" hidden></div>
       <div class="hud-debug" hidden></div>
     `;
@@ -84,6 +86,7 @@ export class HUD {
     this.scopeEl = root.querySelector('.hud-scope')!;
     this.flashEl = root.querySelector('.hud-flash')!;
     this.rangeEl = root.querySelector('.hud-range')!;
+    this.irEl = root.querySelector('.hud-ir')!;
     this.compassEl = root.querySelector('.hud-compass')!;
     for (const [name] of CARDINALS) {
       const el = document.createElement('span');
@@ -145,6 +148,11 @@ export class HUD {
     }
     this.rangeEl.hidden = false;
     this.rangeEl.textContent = `${Math.round(meters)} m`;
+  }
+
+  /** Marca "IV" enquanto a luneta está no modo infravermelho. */
+  setInfrared(on: boolean): void {
+    if (this.irEl.hidden === on) this.irEl.hidden = !on;
   }
 
   /** Liga/desliga a fita da bússola (tecla L). */
