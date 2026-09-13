@@ -43,6 +43,7 @@ capturas às 17h, pôr do sol, lua nascendo, noite, amanhecer e meio-dia),
 `stage10-lake.json` (lagos gerados, perfil da bacia, jogador barrado na água funda, tiro na água,
 vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 `stage11-ducks.json` (patos boiando, 60 s de simulação sem sair do lago, abate, corpo boiando, sons novos),
+`stage12-compass.json` (posição das marcas na fita lendo o DOM, liga/desliga, some na luneta),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -57,6 +58,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   Shift, a recarga automática e soltar o mouse (Esc) desligam a mira.
 - R: recarga manual quando falta munição (cartucho a cartucho: 0,7 s + 0,4 s por cartucho). Vazio = automática (2,6 s).
 - M: liga/desliga a música de fundo (lembra a escolha).
+- L: liga/desliga a bússola (lembra a escolha). Ela some sozinha enquanto a luneta está no olho.
 - `?hora=22` (ou `?hora=5.5`) na URL começa em outra hora; o padrão é 17h. `?debug` mostra o relógio.
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
 
@@ -93,6 +95,12 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   mergulham o bico, o corpo abatido fica boiando (`groundAt` devolve a lâmina d'água), fazem "quá-quá" e levantam
   água ao decolar e ao pousar. 45 pontos + distância; só entram no sorteio de spawn se houver lago por perto.
 
+- [x] **11. Bússola** (pedido do usuário: achar os lagos sem minimapa) — fita discreta no topo (`hud-compass`)
+  com os pontos cardeais (N/NE/L/SE/S/SO/O/NO) rolando com o olhar e, numa segunda linha, até 3 marcas "≈ 120 m"
+  para os lagos num raio de 600 m (mais perto = mais sólida). Tudo em DOM, atualizado 8×/s a partir de
+  `Lakes.near()`; nada de minimapa (mundo infinito e procedural, e mostrar bicho acabaria com a caça).
+  Tecla L liga/desliga (lembrada em `localStorage`), e ela some sozinha com a luneta no olho.
+
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
 | --- | --- | --- |
@@ -105,7 +113,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 | 8 | Pontuação discreta, sem loja/níveis/progressão | HUD "Pontos · Abates" |
 | 9–10 | Kar98k visível, tiro com efeito e som, luneta, carregador limitado, munição infinita, "Recarregando..." | `Kar98kModel`, `Weapon`, `weaponSounds` |
 | 11 | Hit detection exato, sem pontuar duas vezes | `Hunting.shoot` (hitscan + oclusão), só pássaros vivos são alvo |
-| 12 | HUD mínima | `HUD.ts` |
+| 12 | HUD mínima | `HUD.ts` (a bússola foi pedida pelo usuário; é opcional e discreta) |
 | 13 | Áudio ambiente, pássaros espaciais, passos, arma | `audio/*` |
 | 14 | Atmosfera contemplativa | luz baixa, névoa, vento, grilos, música bem baixa |
 | 15 | Sem começo/fim | não há game over nem condição de término |
@@ -145,7 +153,8 @@ src/
   audio/AudioSystem.ts    AudioContext (desbloqueado no 1º gesto), compressor, reverb de floresta por convolução,
                           noiseBurst()/tone() com envelope — base para a Etapa 6
   audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
-  ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setScoped, setCrosshairVisible, flash, setDebug
+  ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setScoped, setCrosshairVisible, flash,
+                          setDebug, setCompass/setCompassEnabled (fita de rumo + marcas de água)
   birds/species.ts        definição das espécies (cores, tamanho, voo, destinos, bando, peso/máximo, cautela)
   birds/birdGeometry.ts   corpo (tronco, cabeça, bico, olhos, cauda, crista) + asa em leque; unidade = comprimento
   birds/Bird.ts           um pássaro: máquina de estados, voo por steering (vagueio, inclinação nas curvas,

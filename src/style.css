@@ -155,3 +155,62 @@ body {
   white-space: pre;
   opacity: 0.8;
 }
+
+/* Fita de bússola: rumo no topo e marcas para a água por perto. */
+.hud-compass {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: 260px;
+  height: 40px;
+  margin-left: -130px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.hud-compass::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 7px;
+  margin-left: -0.5px;
+  background: rgba(255, 238, 215, 0.75);
+}
+
+.hud-compass .dir,
+.hud-compass .mark {
+  position: absolute;
+  left: 50%;
+  transform: translateX(0);
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+}
+
+.hud-compass .dir {
+  top: 10px;
+  margin-left: -12px;
+  width: 24px;
+}
+
+/* Água numa segunda linha, para não encavalar nos pontos cardeais. */
+.hud-compass .mark {
+  top: 25px;
+  margin-left: -30px;
+  width: 60px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: rgba(190, 225, 240, 0.95);
+}
+
+.hud-compass .mark b {
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.hud-compass .mark i {
+  font-style: normal;
+  opacity: 0.8;
+}

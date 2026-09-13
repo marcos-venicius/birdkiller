@@ -1,0 +1,15 @@
+[
+  { "wait": 4000 },
+  { "eval": "(() => { const g = game, L = g.terrain.lakes, out = []; L.near(0, 0, 700, out); const l = out.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0]; window.__lake = l; const p = g.player; p.position.set(l.x, 0, l.z + l.r + 120); p.position.y = g.terrain.heightAt(p.position.x, p.position.z); p.velocity.set(0, 0, 0); p.yaw = 0; p.pitch = 0; g.chunks.warmup(p.position); return { lago: [+l.x.toFixed(0), +l.z.toFixed(0)], jogador: [+p.position.x.toFixed(0), +p.position.z.toFixed(0)], distanciaAteAMargem: +(Math.hypot(l.x - p.position.x, l.z - p.position.z) - l.r).toFixed(0) }; })()", "label": "jogador ao sul do lago, olhando para o norte" },
+  { "wait": 1500 },
+  { "eval": "(() => { const c = document.querySelector('.hud-compass'); const led = [...c.querySelectorAll('.dir')].map(e => ({ t: e.textContent, x: +(new DOMMatrix(getComputedStyle(e).transform).m41).toFixed(0), op: +(+getComputedStyle(e).opacity).toFixed(2) })).filter(e => e.op > 0.01); const mk = [...c.querySelectorAll('.mark')].map(e => ({ txt: e.querySelector('i').textContent, x: +(new DOMMatrix(getComputedStyle(e).transform).m41).toFixed(0), op: +(+getComputedStyle(e).opacity).toFixed(2) })).filter(e => e.op > 0.01); return { visivel: !c.hidden, direcoes: led, marcasDeAgua: mk }; })()", "label": "fita olhando para o norte (0 = centro)" },
+  { "wait": 500 },
+  { "shot": "s12-01-norte" },
+  { "eval": "(() => { const p = game.player; p.yaw = -Math.PI / 2; return 'olhando para o leste'; })()" },
+  { "wait": 1500 },
+  { "eval": "(() => { const c = document.querySelector('.hud-compass'); const led = [...c.querySelectorAll('.dir')].map(e => ({ t: e.textContent, x: +(new DOMMatrix(getComputedStyle(e).transform).m41).toFixed(0), op: +(+getComputedStyle(e).opacity).toFixed(2) })).filter(e => e.op > 0.01); const mk = [...c.querySelectorAll('.mark')].map(e => ({ txt: e.querySelector('i').textContent, x: +(new DOMMatrix(getComputedStyle(e).transform).m41).toFixed(0), op: +(+getComputedStyle(e).opacity).toFixed(2) })).filter(e => e.op > 0.01); return { direcoes: led, marcasDeAgua: mk }; })()", "label": "fita olhando para o leste (o lago deve sair para a esquerda)" },
+  { "eval": "(() => { const g = game, l = window.__lake, p = g.player; p.position.set(l.x + Math.cos(0.6) * (l.r + 30), 0, l.z + Math.sin(0.6) * (l.r + 30)); p.position.y = g.terrain.heightAt(p.position.x, p.position.z); p.yaw = Math.atan2(-(l.x - p.position.x), -(l.z - p.position.z)); p.pitch = -0.08; g.chunks.warmup(p.position); return 'olhando para o lago'; })()" },
+  { "wait": 2000 },
+  { "shot": "s12-02-olhando-o-lago" },
+  { "eval": "(() => { game.input.pressed ? null : null; const c = document.querySelector('.hud-compass'); game.hud.setCompassEnabled(false); const off = c.hidden; game.hud.setCompassEnabled(true); game.hud.setScoped(true); const naLuneta = c.hidden; game.hud.setScoped(false); return { escondeDesligada: off, escondeNaLuneta: naLuneta, voltou: !c.hidden }; })()", "label": "liga/desliga e luneta" }
+]

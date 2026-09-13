@@ -35,6 +35,7 @@ Clique na tela para controlar (o navegador também libera o som nesse clique).
 | Atirar | Botão esquerdo |
 | Recarregar (quando faltar munição) | R |
 | Música de fundo (liga/desliga) | M |
+| Bússola (liga/desliga) | L |
 | Soltar o mouse | Esc |
 
 O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho
@@ -53,6 +54,8 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
 - **Lagos e patos**: clareiras com água espalhadas pela floresta, com ondulação, reflexo do céu e o caminho do sol
   (ou da lua) na superfície. Patos boiam, nadam, mergulham o bico e levantam voo em bando quando você chega perto;
   o pato abatido cai e fica boiando. Dá para entrar na parte rasa, mas não para nadar.
+- **Bússola**: uma fita discreta no topo com o rumo e marcas para a água num raio de 600 m, com a distância —
+  é assim que você acha os lagos. Tecla L desliga, se preferir a tela limpa.
 - **Javalis**: andam em bandos pela mata, fuçando o chão. Têm faro e ouvido bons — chegue agachado e devagar.
   Tiro na cabeça ou no peito abate; na traseira ele fica ferido e foge (o próximo tiro mata). Eles não atacam.
 - **Caça**: tiro exato para onde a arma aponta; troncos, pedras e morros bloqueiam. Corpo ou cabeça é abate

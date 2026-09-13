@@ -22,6 +22,7 @@ import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
+import type { Lake } from './world/Lakes';
 import { Water } from './world/Water';
 import { Biome } from './world/Biome';
 import { ChunkManager } from './world/ChunkManager';
@@ -76,6 +77,19 @@ input.onLockChange = (locked) => {
   if (!locked) weapon.cancelAim();
 };
 
+// Bússola: o jogador liga/desliga com L e a escolha é lembrada.
+const COMPASS_KEY = 'birdkiller.bussola';
+let compassOn = true;
+try {
+  compassOn = localStorage.getItem(COMPASS_KEY) !== '0';
+} catch {
+  // Sem armazenamento (janela privada): fica ligada.
+}
+hud.setCompassEnabled(compassOn);
+const compassMarks: { bearing: number; distance: number }[] = [];
+const compassLakes: Lake[] = [];
+let compassTimer = 0;
+
 const debug = new URLSearchParams(location.search).has('debug');
 let frames = 0;
 let fpsTimer = 0;
@@ -111,6 +125,34 @@ engine.renderer.setAnimationLoop(() => {
   footsteps.update(dt, player);
   music.update();
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
+  if (input.wasPressed('KeyL')) {
+    compassOn = !compassOn;
+    hud.setCompassEnabled(compassOn);
+    hud.toast(compassOn ? 'Bússola ligada' : 'Bússola desligada');
+    try {
+      localStorage.setItem(COMPASS_KEY, compassOn ? '1' : '0');
+    } catch {
+      // Sem armazenamento: só não lembra a escolha.
+    }
+  }
+  compassTimer -= dt;
+  if (compassOn && compassTimer <= 0) {
+    compassTimer = 0.12;
+    const p = player.position;
+    terrain.lakes.near(p.x, p.z, 600, compassLakes);
+    compassMarks.length = 0;
+    for (const lake of compassLakes) {
+      const dx = lake.x - p.x;
+      const dz = lake.z - p.z;
+      compassMarks.push({
+        bearing: (THREE.MathUtils.radToDeg(Math.atan2(dx, -dz)) + 360) % 360,
+        distance: Math.max(0, Math.hypot(dx, dz) - lake.r),
+      });
+    }
+    compassMarks.sort((a, b) => a.distance - b.distance);
+    // Câmera olhando para -Z quando yaw = 0: o rumo é o oposto do yaw.
+    hud.setCompass((THREE.MathUtils.radToDeg(-player.yaw) + 360) % 360, compassMarks);
+  }
   chunks.update(player.position);
   atmosphere.update(player.position, engine.camera, dt);
   water.update(player.position, atmosphere, dt);
