@@ -214,3 +214,16 @@ body {
   font-style: normal;
   opacity: 0.8;
 }
+
+/* Telêmetro: distância do alvo, só com a luneta no olho. */
+.hud-range {
+  position: absolute;
+  /* À direita e abaixo do centro: não encosta no poste do retículo. */
+  left: calc(50% + 30px);
+  top: calc(50% + 24px);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 240, 220, 0.75);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}

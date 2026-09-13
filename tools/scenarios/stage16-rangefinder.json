@@ -1,0 +1,42 @@
+[
+ {
+  "wait": 4000
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, w = g.weapon, inp = g.input; p.position.set(-29, g.terrain.heightAt(-29, -28), -28); p.velocity.set(0, 0, 0); p.yaw = 1.0; p.pitch = -0.05; g.chunks.warmup(p.position); window.__scope = (on) => { if (on !== w.aimToggled) inp.buttonsPressed |= 4; for (let i = 0; i < 20; i++) { p.update(1 / 30); w.update(1 / 30); inp.endFrame(); } }; const el = document.querySelector('.hud-range'); return { telemetroVisivel: !el.hidden, texto: el.textContent, naLuneta: w.inScope }; })()",
+  "label": "sem luneta: telêmetro escondido"
+ },
+ {
+  "eval": "(() => { const g = game; __scope(true); return { naLuneta: g.weapon.inScope, medida: +g.hunting.measure(g.engine.camera.position, g.engine.camera.getWorldDirection(new g.player.position.constructor())).toFixed(1) }; })()",
+  "label": "luneta no olho"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "eval": "(() => { const el = document.querySelector('.hud-range'); return { visivel: !el.hidden, texto: el.textContent }; })()",
+  "label": "o número aparece na tela"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, V = p.position.constructor, cam = g.engine.camera; const K = g.deer; for (let i = K.active.length - 1; i >= 0; i--) K.release(i); K.frozen = true; let spot = null; for (let a = 0; a < 6.28 && !spot; a += 0.08) { const x = p.position.x + Math.cos(a) * 60, z = p.position.z + Math.sin(a) * 60; const y = g.terrain.heightAt(x, z) + 1.2; const dir = new V(x - cam.position.x, y - cam.position.y, z - cam.position.z).normalize(); const dist = Math.hypot(x - cam.position.x, z - cam.position.z); if (g.terrain.raycast(cam.position, dir, dist) < dist) continue; if (g.chunks.raycastObstacles(cam.position, dir, dist).kind) continue; if (!g.chunks.isClear(x, z, 2)) continue; spot = { x, z }; } if (!spot) return 'sem linha de visão livre a 60 m'; const d = K.spawn(new V(spot.x, 0, spot.z), p.yaw + Math.PI, 1.1, 0); d.pose('forage', 0); const aim = d.zonePoint('chest', new V()); const e = cam.position; p.yaw = Math.atan2(-(aim.x - e.x), -(aim.z - e.z)); p.pitch = Math.atan2(aim.y - e.y, Math.hypot(aim.x - e.x, aim.z - e.z)); p.update(1 / 30); cam.updateMatrixWorld(); const dir2 = cam.getWorldDirection(new V()); const semVeado = (() => { const i = K.active.indexOf(d); K.release(i); const v = g.hunting.measure(e, dir2); K.active.push(d); return +v.toFixed(1); })(); return { distanciaRealDoVeado: +e.distanceTo(aim).toFixed(1), telemetroComOVeado: +g.hunting.measure(e, dir2).toFixed(1), oQueTemAtrasDele: semVeado }; })()",
+  "label": "a medida bate com o ponto atingido?"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, V = p.position.constructor, cam = g.engine.camera; const K = g.deer; for (let i = K.active.length - 1; i >= 0; i--) K.release(i); K.frozen = true; const dir = cam.getWorldDirection(new V()); const dist = 80; const alvo = cam.position.clone().addScaledVector(dir, dist); const d = K.spawn(new V(alvo.x, 0, alvo.z), p.yaw + Math.PI, 1.1, 0); d.pose('forage', 0); const e = cam.position; const aim = d.zonePoint('chest', new V()); p.yaw = Math.atan2(-(aim.x - e.x), -(aim.z - e.z)); p.pitch = Math.atan2(aim.y - e.y, Math.hypot(aim.x - e.x, aim.z - e.z)); p.update(1 / 30); cam.updateMatrixWorld(); const dir2 = cam.getWorldDirection(new V()); return { distanciaRealDoVeado: +e.distanceTo(aim).toFixed(1), telemetro: +g.hunting.measure(e, dir2).toFixed(1) }; })()",
+  "label": "mirando num veado a 80 m"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "shot": "s16-01-telemetro"
+ },
+ {
+  "eval": "(() => { const g = game; const t0 = performance.now(); const V = g.player.position.constructor; const dir = g.engine.camera.getWorldDirection(new V()); for (let i = 0; i < 200; i++) g.hunting.measure(g.engine.camera.position, dir); return { msPorMedida: +((performance.now() - t0) / 200).toFixed(3) }; })()",
+  "label": "custo de cada medida"
+ },
+ {
+  "eval": "(() => { const g = game; __scope(false); const el = document.querySelector('.hud-range'); return { naLuneta: g.weapon.inScope, escondido: el.hidden }; })()",
+  "label": "saiu da luneta"
+ }
+]

@@ -63,6 +63,26 @@ export class Hunting {
     for (const manager of this.animals) manager.scare(origin, manager.kind.cfg.shotScare);
   }
 
+  /**
+   * Distância até a primeira coisa na linha da mira (relevo, água, tronco, pedra ou bicho),
+   * ou Infinity se não há nada no alcance. Usada pelo telêmetro da luneta.
+   */
+  measure(origin: THREE.Vector3, dir: THREE.Vector3): number {
+    const C = CONFIG.combat;
+    let best = this.terrain.raycast(origin, dir, C.range, 2);
+    const water = this.waterSurface(origin, dir, Math.min(best, C.range));
+    if (water !== null && water < best) best = water;
+    const obstacle = this.chunks.raycastObstacles(origin, dir, Math.min(best, C.range));
+    if (obstacle.kind && obstacle.t < best) best = obstacle.t;
+    const bird = this.birds.raycast(origin, dir, Math.min(best, C.range));
+    if (bird) best = bird.t;
+    for (const manager of this.animals) {
+      const hit = manager.raycast(origin, dir, Math.min(best, C.range));
+      if (hit) best = hit.t;
+    }
+    return best;
+  }
+
   /** Avança as balas no ar. */
   update(dt: number, eye?: THREE.Vector3): void {
     this.ballistics.update(dt, (from, dir, maxT, travelled) => this.resolve(from, dir, maxT, travelled), eye);

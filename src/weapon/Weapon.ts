@@ -49,6 +49,11 @@ export class Weapon {
   aim = 0;
   /** Mira ligada (o botão direito alterna). */
   aimToggled = false;
+  /** Luneta efetivamente no olho (depois da animação) — quem liga o telêmetro. */
+  get inScope(): boolean {
+    return this.scoped;
+  }
+
   /** Chamado a cada disparo com a origem e a direção exata do tiro (já com dispersão). */
   onFire?: (origin: THREE.Vector3, dir: THREE.Vector3) => void;
 

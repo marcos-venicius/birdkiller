@@ -32,6 +32,7 @@ export class HUD {
   private readonly crosshairEl: HTMLElement;
   private readonly scopeEl: HTMLElement;
   private readonly flashEl: HTMLElement;
+  private readonly rangeEl: HTMLElement;
   private readonly compassEl: HTMLElement;
   private readonly dirEls: HTMLElement[] = [];
   private readonly markEls: HTMLElement[] = [];
@@ -68,6 +69,7 @@ export class HUD {
         Clique para controlar
         <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · Esc soltar o mouse</small>
       </div>
+      <div class="hud-range" hidden></div>
       <div class="hud-compass" hidden></div>
       <div class="hud-debug" hidden></div>
     `;
@@ -81,6 +83,7 @@ export class HUD {
     this.crosshairEl = root.querySelector('.hud-crosshair')!;
     this.scopeEl = root.querySelector('.hud-scope')!;
     this.flashEl = root.querySelector('.hud-flash')!;
+    this.rangeEl = root.querySelector('.hud-range')!;
     this.compassEl = root.querySelector('.hud-compass')!;
     for (const [name] of CARDINALS) {
       const el = document.createElement('span');
@@ -129,7 +132,19 @@ export class HUD {
   setScoped(scoped: boolean): void {
     this.scopeEl.hidden = !scoped;
     this.scoped = scoped;
+    // O telêmetro é da luneta: sai junto com ela, sem esperar a próxima medida.
+    if (!scoped) this.setRange(null);
     this.showCompass();
+  }
+
+  /** Telêmetro da luneta: distância até o que está na mira (null esconde). */
+  setRange(meters: number | null): void {
+    if (meters === null) {
+      this.rangeEl.hidden = true;
+      return;
+    }
+    this.rangeEl.hidden = false;
+    this.rangeEl.textContent = `${Math.round(meters)} m`;
   }
 
   /** Liga/desliga a fita da bússola (tecla L). */

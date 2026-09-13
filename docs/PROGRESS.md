@@ -48,6 +48,7 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage16-rangefinder.json` (some sem luneta, mede o relevo e um veado a 60/80 m, custo por medida),
 `stage15-ballistics.json` (tabela de queda e tempo de voo por distância, bala no ar, rastro enquanto voa e
 apagando depois do impacto, onde a bala passa mirando reto),
 `stage14-weather.json` (começa com tempo bom, 100 s de chuva forte com luz/névoa medidas, o tempo abrindo de
@@ -154,6 +155,12 @@ orientar e mostrar bichos acabaria com a caça — por isso a bússola.
   rastro projetaria num ponto só no meio da tela. **Clarão** no ponto de impacto (0,3 s, cresce com a distância):
   é ele que mostra onde o tiro bateu a 300 m.
 
+- [x] **15. Telêmetro da luneta** (pedido do usuário) — com a luneta no olho, a distância do que está na mira
+  aparece discreta ao lado do retículo ("79 m"). `Hunting.measure()` lança o mesmo raio do tiro contra relevo,
+  água, troncos, pedras, pássaros e quadrúpedes e devolve o primeiro que aparecer; 10 medidas por segundo
+  (0,34 ms cada, só enquanto está mirando). Some junto com a luneta. Com a queda da bala, é ele que diz quanto
+  levantar a mira.
+
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
 | --- | --- | --- |
@@ -209,7 +216,7 @@ src/
                           noiseBurst()/tone() com envelope — base para a Etapa 6
   audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
   ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setScoped, setCrosshairVisible, flash,
-                          setDebug, setCompass/setCompassEnabled (fita de rumo + marcas de água)
+                          setDebug, setCompass/setCompassEnabled (fita de rumo + marcas de água), setRange (telêmetro)
   birds/species.ts        definição das espécies (cores, tamanho, voo, destinos, bando, peso/máximo, cautela)
   birds/birdGeometry.ts   corpo (tronco, cabeça, bico, olhos, cauda, crista) + asa em leque; unidade = comprimento
   birds/Bird.ts           um pássaro: máquina de estados, voo por steering (vagueio, inclinação nas curvas,

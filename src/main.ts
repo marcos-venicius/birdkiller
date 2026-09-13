@@ -98,6 +98,8 @@ hud.setCompassEnabled(compassOn);
 const compassMarks: { bearing: number; distance: number }[] = [];
 const compassLakes: Lake[] = [];
 let compassTimer = 0;
+const rangeDir = new THREE.Vector3();
+let rangeTimer = 0;
 
 const debug = new URLSearchParams(location.search).has('debug');
 let frames = 0;
@@ -145,6 +147,18 @@ engine.renderer.setAnimationLoop(() => {
       localStorage.setItem(COMPASS_KEY, compassOn ? '1' : '0');
     } catch {
       // Sem armazenamento: só não lembra a escolha.
+    }
+  }
+  // Telêmetro da luneta: o que está na mira, 10x por segundo.
+  rangeTimer -= dt;
+  if (rangeTimer <= 0) {
+    rangeTimer = 0.1;
+    if (weapon.inScope) {
+      engine.camera.getWorldDirection(rangeDir);
+      const d = hunting.measure(engine.camera.position, rangeDir);
+      hud.setRange(Number.isFinite(d) ? d : null);
+    } else {
+      hud.setRange(null);
     }
   }
   compassTimer -= dt;
