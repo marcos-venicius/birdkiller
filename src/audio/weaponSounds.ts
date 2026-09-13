@@ -66,6 +66,15 @@ export function playImpact(a: AudioSystem, distance: number, kind: 'trunk' | 'ro
   }
 }
 
+/** Bala na água: o "plop" e o chuvisco caindo de volta. */
+export function playSplash(a: AudioSystem, distance: number, pos: Vector3): void {
+  const at = distance / 343;
+  const dest = a.spatial(pos, 'sfx', 6);
+  a.noiseBurst({ at, duration: 0.09, type: 'lowpass', freq: 600, gain: 0.55, dest });
+  a.tone({ at, duration: 0.2, freq: 420, freqEnd: 900, type: 'sine', gain: 0.2, attack: 0.005, dest });
+  a.noiseBurst({ at: at + 0.08, duration: 0.35, type: 'highpass', freq: 2200, gain: 0.22, attack: 0.03, dest });
+}
+
 /** Recarga parcial: abre o ferrolho, empurra os cartuchos que faltam um a um e fecha no fim. */
 export function playTopUp(a: AudioSystem, rounds: number, duration: number): void {
   playBoltOpen(a, 0.15);

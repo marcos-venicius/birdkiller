@@ -89,6 +89,20 @@ export class Particles {
     }
   }
 
+  /** Respingo de água: gotas claras subindo e caindo de volta. */
+  splash(point: THREE.Vector3, count: number): void {
+    for (let i = 0; i < count; i++) {
+      const p = this.spawn();
+      if (!p) return;
+      p.feather = false;
+      p.pos.copy(point);
+      p.vel.set(rnd(-1.8, 1.8), rnd(3, 6.5), rnd(-1.8, 1.8));
+      p.w = p.h = rnd(0.025, 0.06);
+      p.life = rnd(0.5, 0.9);
+      p.color.setRGB(rnd(0.7, 0.9), rnd(0.85, 1), 1);
+    }
+  }
+
   /** Lascas pulando do ponto de impacto. */
   debris(point: THREE.Vector3, color: number, count: number): void {
     for (let i = 0; i < count; i++) {
@@ -127,7 +141,9 @@ export class Particles {
         }
         p.pos.addScaledVector(p.vel, dt);
         p.rot.addScaledVector(p.spin, dt);
-        const ground = this.terrain.heightAt(p.pos.x, p.pos.z) + 0.02;
+        const lake = this.terrain.lakes.at(p.pos.x, p.pos.z);
+        const surface = this.terrain.heightAt(p.pos.x, p.pos.z);
+        const ground = (lake ? Math.max(surface, lake.level) : surface) + 0.02;
         if (p.pos.y < ground) {
           p.pos.y = ground;
           p.resting = true;

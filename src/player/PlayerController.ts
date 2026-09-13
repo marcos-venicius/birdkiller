@@ -92,6 +92,8 @@ export class PlayerController {
     this.velocity.y -= P.gravity * dt;
     this.position.addScaledVector(this.velocity, dt);
     this.world?.resolveCollision(this.position, P.radius);
+    // A margem do lago segura o jogador na parte rasa.
+    this.terrain.lakes.block(this.position, P.radius);
 
     const ground = this.terrain.heightAt(this.position.x, this.position.z);
     if (this.position.y <= ground) {

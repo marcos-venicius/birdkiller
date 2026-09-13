@@ -4,6 +4,7 @@ import { smoothstep } from '../core/math';
 import { Simplex2 } from '../core/noise';
 import { mulberry32 } from '../core/rng';
 import { ForestGrid, type Biome } from './Biome';
+import { Lakes } from './Lakes';
 
 const GRASS = new THREE.Color(0x5f6e37);
 const DRY_GRASS = new THREE.Color(0x857a42);
@@ -20,6 +21,8 @@ const MAX_HEIGHT = 23;
  */
 export class Terrain {
   readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true });
+  /** Lagos: escavam a bacia dentro de heightAt() e respondem consultas sobre a água. */
+  readonly lakes: Lakes;
 
   private readonly hills: Simplex2;
   private readonly detail: Simplex2;
@@ -53,9 +56,15 @@ export class Terrain {
     }
     this.index = new THREE.BufferAttribute(indices, 1);
     this.heights = new Float32Array((res + 3) * (res + 3));
+    this.lakes = new Lakes(seed, (x, z) => this.baseHeight(x, z));
   }
 
   heightAt(x: number, z: number): number {
+    return this.lakes.shape(x, z, this.baseHeight(x, z));
+  }
+
+  /** Relevo de ruído puro, antes dos lagos (usado por eles para escolher onde cabe um). */
+  private baseHeight(x: number, z: number): number {
     const big = this.hills.fbm(x * 0.0025, z * 0.0025, 3);
     const mid = this.detail.fbm(x * 0.012, z * 0.012, 3);
     const small = this.fine.noise(x * 0.08, z * 0.08);

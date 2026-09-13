@@ -142,6 +142,8 @@ export class BoarManager implements BoarWorld {
 
   resolveCollision(pos: THREE.Vector3, radius: number): void {
     this.chunks.resolveCollision(pos, radius);
+    // Javalis também param na beira do lago (só os patos entram na água).
+    this.terrain.lakes.block(pos, radius);
   }
 
   pickForageSpot(boar: Boar, out: THREE.Vector3): void {
@@ -168,7 +170,7 @@ export class BoarManager implements BoarWorld {
       const z = cz + Math.sin(a) * r;
       // Preferem a mata; nas últimas tentativas aceitam clareira.
       if (i < 6 && this.biome.forest(x, z) < 0.3) continue;
-      if (!this.chunks.isClear(x, z, 1.2)) continue;
+      if (!this.chunks.isClear(x, z, 1.2) || !this.terrain.lakes.dry(x, z, 0.1)) continue;
       out.set(x, 0, z);
       return;
     }
@@ -197,6 +199,7 @@ export class BoarManager implements BoarWorld {
       const z = P.z + Math.sin(a) * d;
       if (!initial && inPlayerView(this.player, this.camera, x, z, C.hiddenDistance, C.viewMargin)) continue;
       if (this.biome.forest(x, z) < 0.3 || !this.chunks.isClear(x, z, 1.5)) continue;
+      if (!this.terrain.lakes.dry(x, z, 0.2)) continue;
 
       const r = Math.random();
       const n = Math.min(r < 0.4 ? 1 : r < 0.75 ? 2 : 3, C.maxActive - this.living);

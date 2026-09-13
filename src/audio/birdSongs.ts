@@ -127,7 +127,36 @@ const gaviao: SongFn = (a, dest) => {
   return n * 1.2;
 };
 
-export const SONGS: Record<string, SongFn> = { pardal, sabia, pisco, gralha, rolinha, gaviao };
+/** Pato: "quá-quá" nasal e rouco, em série; no alarme, mais rápido e mais alto. */
+const pato: SongFn = (a, dest, alarm) => {
+  const n = alarm ? 5 + Math.floor(Math.random() * 3) : 2 + Math.floor(Math.random() * 4);
+  const gap = alarm ? 0.16 : r(0.26, 0.38);
+  for (let i = 0; i < n; i++) {
+    const f = r(620, 760) * (alarm ? 1.15 : 1) * (1 - i * 0.04);
+    a.tone({
+      at: i * gap,
+      duration: 0.15,
+      freq: f,
+      freqEnd: f * 0.72,
+      type: 'sawtooth',
+      gain: alarm ? 0.4 : 0.3,
+      attack: 0.012,
+      dest,
+      filter: { type: 'bandpass', freq: 1250, q: 2.2 },
+    });
+    a.noiseBurst({ at: i * gap, duration: 0.07, type: 'bandpass', freq: 1800, q: 1.5, gain: 0.12, dest });
+  }
+  return n * gap + 0.15;
+};
+
+export const SONGS: Record<string, SongFn> = { pardal, sabia, pisco, gralha, rolinha, gaviao, pato };
+
+/** Pato entrando ou saindo da água: chape mais o chuvisco. */
+export function waterSplash(a: AudioSystem, dest: Dest, size = 1): void {
+  a.noiseBurst({ duration: 0.13 * size, type: 'lowpass', freq: 900, gain: 0.5 * size, attack: 0.006, dest });
+  a.tone({ duration: 0.22, freq: 300, freqEnd: 620, type: 'sine', gain: 0.14 * size, attack: 0.01, dest });
+  a.noiseBurst({ at: 0.07, duration: 0.3 * size, type: 'highpass', freq: 2400, gain: 0.16 * size, attack: 0.03, dest });
+}
 
 /** Bater de asas ao decolar, no ritmo das batidas da espécie. */
 export function wingFlutter(a: AudioSystem, dest: Dest, hz: number, count = 8): number {

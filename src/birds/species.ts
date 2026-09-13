@@ -48,6 +48,8 @@ export interface Species {
   tallPerch: boolean;
   /** Pontos base por abate (mais 1 ponto a cada 10 m de distância). */
   points: number;
+  /** Espécie aquática: pousa e passeia nadando nos lagos, nunca em terra firme. */
+  water?: boolean;
 }
 
 export const SPECIES: Species[] = [
@@ -260,5 +262,41 @@ export const SPECIES: Species[] = [
     wary: 1.6,
     tallPerch: true,
     points: 40,
+  },
+  {
+    id: 'pato',
+    name: 'Pato',
+    length: 0.5,
+    span: 0.72,
+    chord: 0.95,
+    tail: 0.6,
+    beak: 1.9,
+    crest: false,
+    colors: {
+      back: 0x6a6252,
+      belly: 0xd2c8ae,
+      breast: 0x8a5334,
+      head: 0x1e5c3c,
+      cap: 0x17492f,
+      beak: 0xd9b040,
+      wing: 0x6e6658,
+      primaries: 0x3c4c66,
+      tail: 0x4a4438,
+    },
+    speed: 13,
+    agility: 2.4,
+    flapHz: 9,
+    flight: 'flapping',
+    cruise: [10, 22],
+    perchTime: [20, 50],
+    groundChance: 1,
+    perchChance: 0,
+    flock: [2, 5],
+    weight: 2.4,
+    max: 6,
+    wary: 1.15,
+    tallPerch: false,
+    points: 45,
+    water: true,
   },
 ];

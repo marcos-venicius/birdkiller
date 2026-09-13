@@ -40,6 +40,9 @@ Cenários: `stage1.json`, `stage2.json` (capturas de sol/clareira/mata, corrida,
 `stage8b-reload.json` (recarga manual com R: tempos, carregador cheio, durante o ferrolho, mira, som),
 `stage9-daynight.json` (início igual ao fim de tarde original, saltos de luz em 24 h, duração das fases,
 capturas às 17h, pôr do sol, lua nascendo, noite, amanhecer e meio-dia),
+`stage10-lake.json` (lagos gerados, perfil da bacia, jogador barrado na água funda, tiro na água,
+vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
+`stage11-ducks.json` (patos boiando, 60 s de simulação sem sair do lago, abate, corpo boiando, sons novos),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -77,12 +80,25 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   mata continuar legível; sombra ajusta o volume à altura da luz; luzes da arma seguem a luz do mundo. À noite:
   menos pássaros (`birds.activity`) e quase sem canto, grilos mais altos, mais corujas, sem pica-pau/corvo.
 
+- [x] **10. Lagos e patos** (pedido do usuário) — lagos procedurais (`world/Lakes.ts`): no máximo um por célula de
+  260 m, contorno irregular (três harmônicas), só onde o relevo original é plano e não fica "pendurado" acima do
+  entorno; `Terrain.heightAt` escava a bacia (fundo parabólico, margem subindo, mistura com o relevo em 1,6 raio),
+  então física, tiro e vegetação enxergam o lago sem saber dele. Água (`world/Water.ts`): um disco por lago com
+  shader próprio (ondulação por soma de senos com gradiente analítico, reflexo do céu por Fresnel, brilho do sol/lua,
+  fundo à mostra na parte rasa, névoa e dithering); as cores vêm da atmosfera, então a água acompanha o ciclo
+  dia/noite e escurece à noite. Vegetação e grama não nascem na água; jogador e javalis param na parte rasa
+  (`wadeDepth` 0,5 m); tiro na água vira respingo + "plop" em vez de acertar o fundo; marola no ambiente perto da margem.
+  **Patos** são uma espécie de pássaro (`species.ts`, `water: true`), reaproveitando voo, susto, abate e pontuação:
+  só pousam e passeiam nadando nos lagos (destinos na água, `BirdManager.findWaterSpot`), boiam com balanço e
+  mergulham o bico, o corpo abatido fica boiando (`groundAt` devolve a lâmina d'água), fazem "quá-quá" e levantam
+  água ao decolar e ao pousar. 45 pontos + distância; só entram no sorteio de spawn se houver lago por perto.
+
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
 | --- | --- | --- |
 | 1 | Navegador, offline, recursos locais, sem tela de título | Vite/`dist/`, tudo procedural, só a dica "Clique para controlar" |
 | 2 | Andar, correr, agachar, olhar, mirar, atirar, recarga automática; sem stamina/fome/etc. | `PlayerController`, `Weapon` |
-| 3 | Floresta variada, fim de tarde, sombras | `Vegetation`, `Biome`, `Atmosphere` (começa no fim de tarde; o ciclo dia/noite foi pedido pelo usuário) |
+| 3 | Floresta variada, fim de tarde, sombras | `Vegetation`, `Biome`, `Atmosphere` (começa no fim de tarde; o ciclo dia/noite foi pedido pelo usuário), `Lakes`/`Water` |
 | 4 | Mundo infinito por chunks | `ChunkManager` (streaming + pool) |
 | 5 | Pássaros com spawn dinâmico fora da visão, comportamentos e variações | `BirdManager`, `Bird`, `species.ts` |
 | 6–7 | Caça livre, morte com queda física, corpo inerte, remoção de corpos antigos | `Hunting`, `Bird` (falling/dead), `CONFIG.combat` |
@@ -115,6 +131,9 @@ src/
   world/vegetation/geometries.ts  geometrias low-poly procedurais (LOD0/LOD1) com cores por vértice
   world/vegetation/Vegetation.ts  definição das camadas + populate(chunk) + fillGrass(mesh, chunk)
   world/vegetation/wind.ts        applyWind(material): balanço no vertex shader + fade por distância; windTime
+  world/Lakes.ts          lagos procedurais: sítios por célula, escavação da bacia (shape), consultas (at, depthAt,
+                          waterHeight/dry, shoreDistance, near), block() do jogador e clampInside() dos patos
+  world/Water.ts          lâmina de água: um disco por lago com shader (ondas, Fresnel, brilho, névoa), cores da atmosfera
   world/Atmosphere.ts     ciclo dia/noite (hour, setHour, clock, night 0..1, exposure); luz principal sol/lua +
                           hemisférica + FogExp2 + cúpula do céu (sol, lua, estrelas); sombra segue o jogador com snap de texel
   player/PlayerController.ts  movimento, pulo, agachar, head-bob, colisão via CollisionWorld; stepPhase (áudio);
@@ -197,6 +216,12 @@ src/
 - Números da Etapa 2 (spawn): ~60 chunks, ~250 draw calls, ~0,5 M triângulos. Custo de geração medido no headless
   (CPU disputada com o SwiftShader): terreno ~5 ms, vegetação 1,5–5 ms (conforme densidade), grama ~7 ms.
   Se houver engasgos ao andar, mover a geração para um Web Worker (Etapa 7).
+- Lagos: tudo sai de `CONFIG.lakes` (célula, chance, raio, profundidade, `flatness`/`outerDrop` do teste de terreno,
+  `wadeDepth`, distância de render). Cada lago cabe inteiro na sua célula, então consultar a célula do ponto basta —
+  `heightAt` não ficou mais caro de forma mensurável (~0,7 µs por chamada, igual ao relevo puro). A água é um disco
+  por lago com material próprio (poucos em cena); o disco tem 98,5% do raio da bacia para a beira não brigar com a margem.
+- Patos: espécie normal com `water: true`. `BirdManager.groundAt` devolve a lâmina d'água dentro dos lagos — é isso
+  que faz pato e corpo boiarem. Susto: raio 14 m × wary 1,15, então chegar na margem levanta o bando.
 - Grama e samambaia usam faces de trás duplicadas na geometria (não `DoubleSide`, que inverte a normal e escurece).
 - Coníferas têm os galhos a partir de ~3 m para não bloquear a visão na altura dos olhos.
 - A cor da névoa (`fogColor`) é igual à base do céu abaixo do horizonte — manter alinhadas ao ajustar a atmosfera.

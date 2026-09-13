@@ -22,6 +22,7 @@ import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
+import { Water } from './world/Water';
 import { Biome } from './world/Biome';
 import { ChunkManager } from './world/ChunkManager';
 import { Terrain } from './world/Terrain';
@@ -41,6 +42,7 @@ const terrain = new Terrain(CONFIG.seed, biome);
 const vegetation = new Vegetation(terrain, biome, CONFIG.seed);
 const chunks = new ChunkManager(engine.scene, terrain, vegetation);
 const atmosphere = new Atmosphere(engine.scene);
+const water = new Water(engine.scene, terrain.lakes);
 const quality = new Quality(engine.renderer, atmosphere.sun);
 
 const player = new PlayerController(engine.camera, input, terrain, chunks);
@@ -63,7 +65,7 @@ const boars = new BoarManager(engine.scene, terrain, biome, chunks, player, engi
 boars.populate();
 const particles = new Particles(engine.scene, terrain);
 const hunting = new Hunting(terrain, chunks, birds, boars, particles, hud, audio);
-const ambience = new Ambience(audio, biome);
+const ambience = new Ambience(audio, biome, terrain.lakes);
 const voices = new BirdVoices(audio);
 const boarVoices = new BoarVoices(audio);
 const footsteps = new Footsteps(audio, biome);
@@ -111,6 +113,7 @@ engine.renderer.setAnimationLoop(() => {
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
   chunks.update(player.position);
   atmosphere.update(player.position, engine.camera, dt);
+  water.update(player.position, atmosphere, dt);
   engine.renderer.toneMappingExposure = atmosphere.exposure;
   // Antes do render: trocar a resolução limpa o canvas, e o quadro precisa ser desenhado já no novo tamanho.
   quality.update(realDt);
@@ -155,6 +158,7 @@ if (import.meta.env.DEV) {
       vegetation,
       chunks,
       atmosphere,
+      water,
       hud,
       audio,
       weapon,

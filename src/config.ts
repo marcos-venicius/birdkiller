@@ -22,6 +22,24 @@ export const CONFIG = {
     buildBudgetMs: 4,
   },
 
+  lakes: {
+    /** Lado da célula que pode conter um lago (m) e chance de ela ter um. */
+    cell: 260,
+    chance: 0.5,
+    minRadius: 20,
+    maxRadius: 46,
+    minDepth: 2.2,
+    maxDepth: 4,
+    /** Desnível máximo do relevo original na borda: em encosta o lago viraria uma cratera. */
+    flatness: 5.5,
+    /** Quanto o terreno logo fora do lago pode estar abaixo da água (senão ela fica "pendurada"). */
+    outerDrop: 2.5,
+    /** Profundidade até onde o jogador entra na água; além disso a margem o segura. */
+    wadeDepth: 0.5,
+    /** Lagos com água desenhada até esta distância do jogador. */
+    viewDistance: 320,
+  },
+
   vegetation: {
     /** Grade de candidatos a árvore por lado do chunk (no máximo uma árvore por célula). */
     treeCells: 12,

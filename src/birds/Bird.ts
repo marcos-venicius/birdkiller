@@ -10,6 +10,8 @@ export type TargetKind = 'perch' | 'ground' | 'roam';
 /** O que o pássaro consulta no mundo — implementado pelo BirdManager. */
 export interface BirdWorld {
   groundAt(x: number, z: number): number;
+  /** Mantém o nadador dentro do lago; devolve o nível da água (null se saiu de um). */
+  swim(pos: THREE.Vector3): number | null;
   /** Escolhe o próximo destino e chama bird.setTarget(). */
   chooseDestination(bird: Bird): void;
   releasePerch(bird: Bird): void;
@@ -38,6 +40,8 @@ export class Bird {
   perchKey: string | null = null;
   /** Pousado no chão (true) ou numa copa (false). */
   onGround = false;
+  /** Boiando num lago (patos). */
+  onWater = false;
   /** Em uso (fora do pool). */
   active = false;
   /** Corpo terminou de encolher e pode voltar ao pool. */
@@ -122,6 +126,7 @@ export class Bird {
     this.pos.copy(p);
     this.vel.set(0, 0, 0);
     this.onGround = onGround;
+    this.onWater = onGround && this.species.water === true;
     this.perchKey = key;
     this.targetKind = onGround ? 'ground' : 'perch';
     this.setState('perched');
@@ -274,6 +279,11 @@ export class Bird {
       return;
     }
 
+    if (this.onWater) {
+      this.updateSwim(dt, world);
+      return;
+    }
+
     this.actionTimer -= dt;
     if (this.actionTimer <= 0) {
       const r = Math.random();
@@ -303,6 +313,30 @@ export class Bird {
       this.pos.lerpVectors(this.hopFrom, this.hopTo, t);
       this.pos.y += Math.sin(t * Math.PI) * 0.35 * this.species.length;
     }
+  }
+
+  /** Boiando: nada devagar em curvas largas, mergulha o bico de vez em quando e balança na água. */
+  private updateSwim(dt: number, world: BirdWorld): void {
+    this.actionTimer -= dt;
+    if (this.actionTimer <= 0) {
+      this.actionTimer = rand(1.5, 5);
+      this.targetYaw = this.yaw + rand(-1.3, 1.3);
+      if (Math.random() < 0.35) this.peck = 1;
+    }
+    this.yaw += angleDiff(this.yaw, this.targetYaw) * (1 - Math.exp(-2.5 * dt));
+    const speed = 0.25 + Math.sin(this.time * 0.7 + this.phase) * 0.12;
+    this.pos.x += Math.sin(this.yaw) * speed * dt;
+    this.pos.z += Math.cos(this.yaw) * speed * dt;
+    const level = world.swim(this.pos);
+    if (level === null) {
+      // Saiu do lago (o lago sumiu do cache): melhor levantar voo.
+      this.takeOff(world);
+      return;
+    }
+    // Boia com um leve balanço; o bico mergulha na "bicada".
+    this.pos.y = level + this.species.length * 0.16 + Math.sin(this.time * 1.7 + this.phase) * 0.015;
+    this.peck = Math.max(0, this.peck - dt * 1.6);
+    this.pitch = -0.05 + Math.sin(this.peck * Math.PI) * 0.7;
   }
 
   private updateFlight(dt: number, world: BirdWorld): void {

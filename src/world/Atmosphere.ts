@@ -222,6 +222,16 @@ export class Atmosphere {
     this.applyTime();
   }
 
+  /** Cor do céu no alto (para a água refletir). */
+  get skyTop(): THREE.Color {
+    return this.look.top;
+  }
+
+  /** Cor do céu no horizonte. */
+  get skyHorizon(): THREE.Color {
+    return this.look.horizon;
+  }
+
   /** Relógio "HH:MM". */
   get clock(): string {
     const h = Math.floor(this.hour);

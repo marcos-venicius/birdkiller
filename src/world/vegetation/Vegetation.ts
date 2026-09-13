@@ -126,6 +126,7 @@ export class Vegetation {
     const oz = chunk.cz * size;
     const rand = mulberry32(hash2(chunk.cx, chunk.cz, this.seed));
     const terrain = this.terrain;
+    const lakes = terrain.lakes;
     const biome = this.biome;
     chunk.clearContent();
 
@@ -138,6 +139,7 @@ export class Vegetation {
         const z = oz + (gz + 0.1 + rand() * 0.8) * cell;
         const forest = biome.forest(x, z);
         if (rand() > forest * 0.85) continue;
+        if (!lakes.dry(x, z, 1)) continue;
         const conif = biome.conifer(x, z);
         const pick = rand();
         const sp =
@@ -172,6 +174,7 @@ export class Vegetation {
       const f = biome.forest(x, z);
       const edge = f * (1 - f) * 4;
       if (rand() > 0.15 + 0.55 * edge + 0.25 * f) continue;
+      if (!lakes.dry(x, z, 0.3)) continue;
       const s = 0.6 + rand() * 1.0;
       this.put(chunk, LAYER.bush, x, terrain.heightAt(x, z) - 0.1, z, rand() * TAU, s * (0.9 + rand() * 0.3), s, s * (0.9 + rand() * 0.3), tint(rand, 0.3, 0.08));
     }
@@ -181,6 +184,7 @@ export class Vegetation {
       const x = ox + rand() * size;
       const z = oz + rand() * size;
       if (rand() > biome.forest(x, z) * 0.8) continue;
+      if (!lakes.dry(x, z, 0.25)) continue;
       const s = 0.6 + rand() * 0.7;
       this.put(chunk, LAYER.fern, x, terrain.heightAt(x, z) - 0.02, z, rand() * TAU, s, s, s, tint(rand, 0.3, 0.1));
     }
@@ -209,6 +213,7 @@ export class Vegetation {
       const x = ox + rand() * size;
       const z = oz + rand() * size;
       if (rand() > biome.forest(x, z) * 0.6) continue;
+      if (!lakes.dry(x, z, 0.4)) continue;
       const len = 3 + rand() * 5;
       const rs = 0.7 + rand() * 0.7;
       const yaw = rand() * TAU;
@@ -225,6 +230,7 @@ export class Vegetation {
       const x = ox + rand() * size;
       const z = oz + rand() * size;
       if (rand() > biome.forest(x, z) * 0.5) continue;
+      if (!lakes.dry(x, z, 0.4)) continue;
       const s = 0.7 + rand() * 0.6;
       const y = terrain.heightAt(x, z) - 0.05;
       this.put(chunk, LAYER.stump, x, y, z, rand() * TAU, s, s, s, tint(rand, 0.25, 0.06));
@@ -237,6 +243,7 @@ export class Vegetation {
       const x = ox + rand() * size;
       const z = oz + rand() * size;
       if (rand() > biome.forest(x, z) * 0.9) continue;
+      if (!lakes.dry(x, z, 0.15)) continue;
       const s = 0.7 + rand() * 0.6;
       this.put(chunk, LAYER.debris, x, terrain.heightAt(x, z) + 0.01, z, rand() * TAU, s, s, s, tint(rand, 0.3, 0.05));
     }
@@ -264,6 +271,7 @@ export class Vegetation {
       const lz = rand() * size;
       const open = 1 - grid.at(lx, lz);
       if (rand() > 0.15 + 0.85 * open) continue;
+      if (!this.terrain.lakes.dry(ox + lx, oz + lz, 0.1)) continue;
       const s = (0.7 + rand() * 0.6) * (0.85 + open * 0.4);
       const yaw = rand() * TAU;
       const sy = s * (0.8 + rand() * 0.5);
@@ -311,6 +319,7 @@ export class Vegetation {
 
   private putRock(chunk: Chunk, rand: () => number, x: number, z: number, s: number): void {
     const sy = s * (0.55 + rand() * 0.45);
+    if (!this.terrain.lakes.dry(x, z, 0.1)) return;
     const y = this.terrain.heightAt(x, z) - sy * 0.3;
     this.put(chunk, LAYER.rock, x, y, z, rand() * TAU, s * (0.8 + rand() * 0.4), sy, s * (0.8 + rand() * 0.4), tint(rand, 0.25, 0.05), (rand() - 0.5) * 0.5, (rand() - 0.5) * 0.5);
     if (s > 0.6) chunk.colliders.push(x, z, s * 0.75);

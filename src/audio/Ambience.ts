@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { TAU } from '../core/math';
+import { smoothstep as smoothstepFn, TAU } from '../core/math';
 import type { PlayerController } from '../player/PlayerController';
 import type { Biome } from '../world/Biome';
+import type { Lakes } from '../world/Lakes';
 import { ANIMALS, cricketChirp } from './animalSounds';
 import type { AudioSystem, NoiseLoop } from './AudioSystem';
 
@@ -21,6 +22,7 @@ interface Loops {
   leavesL: NoiseLoop;
   leavesR: NoiseLoop;
   rustle: NoiseLoop;
+  water: NoiseLoop;
 }
 
 function set(p: AudioParam, value: number, now: number, timeConstant: number): void {
@@ -51,6 +53,7 @@ export class Ambience {
   constructor(
     private readonly audio: AudioSystem,
     private readonly biome: Biome,
+    private readonly lakes: Lakes,
   ) {}
 
   update(dt: number, player: PlayerController, listener: THREE.Vector3, night = 0): void {
@@ -83,6 +86,11 @@ export class Ambience {
       const move = player.onGround ? Math.min(speed / 9, 1) : 0;
       set(loops.rustle.gain, move * (0.012 + 0.03 * (1 - forest)) * (player.crouched ? 0.5 : 1), now, 0.08);
       set(loops.rustle.freq, 2200 + speed * 150, now, 0.1);
+      // Marola do lago: só se ouve perto da margem, e a rajada levanta as ondinhas.
+      const shore = Math.max(this.lakes.shoreDistance(p.x, p.z), 0);
+      const water = (1 - smoothstepFn(2, 45, shore)) * (0.55 + 0.45 * gust);
+      set(loops.water.gain, water * 0.05, now, 0.5);
+      set(loops.water.freq, 700 + 500 * gust, now, 0.6);
     }
 
     this.updateCrickets(now, listener);
@@ -100,8 +108,9 @@ export class Ambience {
     const leavesL = a.loop('bandpass', 3000, 0.8, 'ambience', -0.6);
     const leavesR = a.loop('bandpass', 3200, 0.8, 'ambience', 0.6);
     const rustle = a.loop('bandpass', 2600, 1, 'ambience');
-    if (!wind || !leavesL || !leavesR || !rustle) return null;
-    this.loops = { wind, leavesL, leavesR, rustle };
+    const water = a.loop('bandpass', 900, 0.7, 'ambience');
+    if (!wind || !leavesL || !leavesR || !rustle || !water) return null;
+    this.loops = { wind, leavesL, leavesR, rustle, water };
     return this.loops;
   }
 

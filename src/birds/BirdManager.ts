@@ -5,12 +5,14 @@ import type { PlayerController } from '../player/PlayerController';
 import type { Biome } from '../world/Biome';
 import type { ChunkManager } from '../world/ChunkManager';
 import { inPlayerView } from '../world/spawnRules';
+import type { Lake } from '../world/Lakes';
 import type { Terrain } from '../world/Terrain';
 import { Bird, rand, type BirdWorld, type TargetKind } from './Bird';
 import { buildBirdGeometry, type BirdGeometry } from './birdGeometry';
 import { SPECIES, type Species } from './species';
 
 const _spot = new THREE.Vector3();
+const _lakes: Lake[] = [];
 const _v = new THREE.Vector3();
 const _threat = new THREE.Vector3();
 
@@ -127,8 +129,15 @@ export class BirdManager implements BirdWorld {
 
   // ------------------------------------------------------------------ BirdWorld
 
+  /** Superfície onde um pássaro (ou um corpo) para: o chão, ou a lâmina de água dos lagos. */
   groundAt(x: number, z: number): number {
-    return this.terrain.heightAt(x, z);
+    const h = this.terrain.heightAt(x, z);
+    const lake = this.terrain.lakes.at(x, z);
+    return lake ? Math.max(h, lake.level) : h;
+  }
+
+  swim(pos: THREE.Vector3): number | null {
+    return this.terrain.lakes.clampInside(pos, 0.92);
   }
 
   releasePerch(bird: Bird): void {
@@ -145,7 +154,10 @@ export class BirdManager implements BirdWorld {
     // Membros de bando seguem o destino do líder.
     const L = bird.leader;
     if (L && L !== bird && L.active && L.flockId === bird.flockId) {
-      if (L.targetKind === 'ground' && this.findGroundSpot(L.target.x, L.target.z, 1, 6, _spot)) {
+      if (L.targetKind === 'ground' && sp.water && this.findWaterSpot(L.target.x, L.target.z, 30, _spot)) {
+        return this.setDestination(bird, 'ground', _spot, null);
+      }
+      if (L.targetKind === 'ground' && !sp.water && this.findGroundSpot(L.target.x, L.target.z, 1, 6, _spot)) {
         return this.setDestination(bird, 'ground', _spot, null);
       }
       if (L.targetKind === 'perch' && this.findPerch(bird, L.target.x, L.target.z, 2, 18, _spot)) {
@@ -170,7 +182,10 @@ export class BirdManager implements BirdWorld {
     const cx = far ? (bird.pos.x + P.x) * 0.5 : bird.pos.x;
     const cz = far ? (bird.pos.z + P.z) * 0.5 : bird.pos.z;
     const r = Math.random();
-    if (r < sp.groundChance && this.findGroundSpot(cx, cz, 15, 70, _spot)) {
+    if (sp.water) {
+      // Patos só descem na água: outro canto do mesmo lago, ou um lago vizinho.
+      if (this.findWaterSpot(cx, cz, 130, _spot)) return this.setDestination(bird, 'ground', _spot, null);
+    } else if (r < sp.groundChance && this.findGroundSpot(cx, cz, 15, 70, _spot)) {
       return this.setDestination(bird, 'ground', _spot, null);
     }
     if (r < sp.groundChance + sp.perchChance && this.findPerch(bird, cx, cz, 15, 90, _spot)) {
@@ -241,6 +256,9 @@ export class BirdManager implements BirdWorld {
         bird.flockId = flockId;
         bird.leader = leader ?? bird;
         bird.flyAt(_spot, heading, this);
+      } else if (sp.water) {
+        if (!this.findWaterSpot(cx, cz, 90, _spot)) continue;
+        bird = this.spawnPerched(sp, _spot, true, null);
       } else if (sp.groundChance > 0 && Math.random() < sp.groundChance && this.findGroundSpot(cx, cz, 0, 12, _spot)) {
         bird = this.spawnPerched(sp, _spot, true, null);
       } else if (this.findPerch(null, cx, cz, 0, 25, _spot, sp)) {
@@ -262,13 +280,29 @@ export class BirdManager implements BirdWorld {
   private pickSpecies(): Species | null {
     const counts = new Map<Species, number>();
     for (const b of this.active) if (b.alive) counts.set(b.species, (counts.get(b.species) ?? 0) + 1);
-    const available = SPECIES.filter((sp) => (counts.get(sp) ?? 0) < sp.max);
+    const P = this.player.position;
+    const hasLake = this.terrain.lakes.near(P.x, P.z, CONFIG.birds.spawnMax, _lakes).length > 0;
+    const available = SPECIES.filter((sp) => (counts.get(sp) ?? 0) < sp.max && (!sp.water || hasLake));
     let r = Math.random() * available.reduce((sum, sp) => sum + sp.weight, 0);
     for (const sp of available) {
       r -= sp.weight;
       if (r <= 0) return sp;
     }
     return available[available.length - 1] ?? null;
+  }
+
+  /** Ponto na lâmina de água de algum lago a até `maxR` (sem chegar na beira). */
+  private findWaterSpot(x: number, z: number, maxR: number, out: THREE.Vector3): boolean {
+    const lakes = this.terrain.lakes.near(x, z, maxR, _lakes);
+    if (lakes.length === 0) return false;
+    for (let i = 0; i < 8; i++) {
+      const lake = lakes[Math.floor(Math.random() * lakes.length)];
+      const a = Math.random() * TAU;
+      const d = Math.sqrt(Math.random()) * 0.8;
+      out.set(lake.x + Math.cos(a) * lake.r * d, lake.level, lake.z + Math.sin(a) * lake.r * d);
+      if (this.terrain.lakes.depthAt(out.x, out.z) > 0.4) return true;
+    }
+    return false;
   }
 
   private findGroundSpot(x: number, z: number, minR: number, maxR: number, out: THREE.Vector3): boolean {
@@ -279,6 +313,7 @@ export class BirdManager implements BirdWorld {
       const pz = z + Math.sin(a) * r;
       // Pássaros descem no chão em clareiras e bordas, longe de troncos e pedras.
       if (this.biome.forest(px, pz) > 0.6 || !this.chunks.isClear(px, pz, 1)) continue;
+      if (!this.terrain.lakes.dry(px, pz, 0.1)) continue;
       out.set(px, this.terrain.heightAt(px, pz), pz);
       return true;
     }

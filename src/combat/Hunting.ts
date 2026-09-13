@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Boar, HitZone } from '../animals/Boar';
 import type { BoarManager } from '../animals/BoarManager';
 import type { AudioSystem } from '../audio/AudioSystem';
-import { playBirdHit, playFleshHit, playImpact } from '../audio/weaponSounds';
+import { playBirdHit, playFleshHit, playImpact, playSplash } from '../audio/weaponSounds';
 import type { Bird } from '../birds/Bird';
 import type { BirdManager } from '../birds/BirdManager';
 import { CONFIG } from '../config';
@@ -11,7 +11,7 @@ import type { HUD } from '../ui/HUD';
 import type { ChunkManager } from '../world/ChunkManager';
 import type { Terrain } from '../world/Terrain';
 
-type BlockKind = 'terrain' | 'trunk' | 'rock' | 'none';
+type BlockKind = 'terrain' | 'trunk' | 'rock' | 'water' | 'none';
 export type HitKind = BlockKind | 'bird' | 'boar';
 
 export interface ShotResult {
@@ -27,7 +27,8 @@ export interface ShotResult {
   points: number;
 }
 
-const DEBRIS_COLOR = { terrain: 0x5a4631, trunk: 0x6a5038, rock: 0x8a857a } as const;
+const _hit = new THREE.Vector3();
+const DEBRIS_COLOR = { terrain: 0x5a4631, trunk: 0x6a5038, rock: 0x8a857a, water: 0x8fb0b8 } as const;
 
 /**
  * Resolve cada disparo com hitscan exato na direção do tiro: relevo, troncos/pedras, pássaros e
@@ -54,6 +55,12 @@ export class Hunting {
     const C = CONFIG.combat;
     let blockT = this.terrain.raycast(origin, dir, C.range);
     let kind: BlockKind = Number.isFinite(blockT) ? 'terrain' : 'none';
+    // O relevo dentro do lago é o fundo: se o tiro cruza a superfície antes, quem para a bala é a água.
+    const waterT = this.waterSurface(origin, dir, blockT);
+    if (waterT !== null) {
+      blockT = waterT;
+      kind = 'water';
+    }
     const obstacle = this.chunks.raycastObstacles(origin, dir, Math.min(blockT, C.range));
     if (obstacle.kind && obstacle.t < blockT) {
       blockT = obstacle.t;
@@ -110,6 +117,10 @@ export class Hunting {
         birdHit.bird.scare(origin, this.birds);
       }
       playBirdHit(this.audio, birdHit.t, result.point);
+    } else if (kind === 'water') {
+      result.point.copy(origin).addScaledVector(dir, blockT);
+      this.particles.splash(result.point, 14);
+      playSplash(this.audio, blockT, result.point);
     } else if (kind !== 'none') {
       result.point.copy(origin).addScaledVector(dir, blockT);
       this.particles.debris(result.point, DEBRIS_COLOR[kind], 7);
@@ -120,6 +131,16 @@ export class Hunting {
     this.boars.scare(origin, CONFIG.boars.shotScare);
     this.lastShot = result;
     return result;
+  }
+
+  /** Onde o tiro fura a lâmina de água, se ela vier antes do fundo. */
+  private waterSurface(origin: THREE.Vector3, dir: THREE.Vector3, blockT: number): number | null {
+    if (dir.y >= 0 || !Number.isFinite(blockT)) return null;
+    _hit.copy(origin).addScaledVector(dir, blockT);
+    const lake = this.terrain.lakes.at(_hit.x, _hit.z);
+    if (!lake || _hit.y >= lake.level) return null;
+    const t = (lake.level - origin.y) / dir.y;
+    return t > 0 && t < blockT ? t : null;
   }
 
   private addKill(points: number, label: string): void {

@@ -1,0 +1,84 @@
+[
+ {
+  "wait": 3000
+ },
+ {
+  "eval": "(() => { const L = game.terrain.lakes, out = []; L.near(0, 0, 700, out); return { lagosAte700m: out.length, maisProximo: out.map(l => ({ x: +l.x.toFixed(1), z: +l.z.toFixed(1), r: +l.r.toFixed(1), nivel: +l.level.toFixed(2), prof: +l.depth.toFixed(2), dist: +Math.hypot(l.x, l.z).toFixed(0) })).sort((a, b) => a.dist - b.dist).slice(0, 4) }; })()",
+  "label": "lagos gerados"
+ },
+ {
+  "eval": "(() => { const L = game.terrain.lakes, T = game.terrain, out = []; L.near(0, 0, 700, out); const l = out.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0]; window.__lake = l; const at = (d) => +(T.heightAt(l.x + d * l.r, l.z) - l.level).toFixed(2); return { lago: { x: +l.x.toFixed(0), z: +l.z.toFixed(0), r: +l.r.toFixed(1) }, alturaRelativaAAgua: { centro: at(0), meio: at(0.5), beira: at(1.0), margem: at(1.2), fora: at(1.6) }, profundidadeCentro: +L.depthAt(l.x, l.z).toFixed(2) }; })()",
+  "label": "perfil da bacia (0 = linha d'água)"
+ },
+ {
+  "eval": "(() => { const g = game, l = window.__lake, p = g.player; const a = 0.6; p.position.set(l.x + Math.cos(a) * (l.r + 8), 0, l.z + Math.sin(a) * (l.r + 8)); p.position.y = g.terrain.heightAt(p.position.x, p.position.z); p.velocity.set(0, 0, 0); p.yaw = Math.atan2(-(l.x - p.position.x), -(l.z - p.position.z)); p.pitch = -0.06; g.chunks.warmup(p.position); return { pos: [+p.position.x.toFixed(1), +p.position.z.toFixed(1)], alturaAcimaDaAgua: +(p.position.y - l.level).toFixed(2) }; })()",
+  "label": "jogador na margem"
+ },
+ {
+  "wait": 4000
+ },
+ {
+  "shot": "s10-01-margem"
+ },
+ {
+  "eval": "(() => { const g = game, l = window.__lake; window.__view = (ang, dist, pitch) => { const p = g.player; const R = g.terrain.lakes ? 1 : 1; p.position.set(l.x + Math.cos(ang) * dist, 0, l.z + Math.sin(ang) * dist); p.position.y = g.terrain.heightAt(p.position.x, p.position.z); p.velocity.set(0, 0, 0); p.yaw = Math.atan2(-(l.x - p.position.x), -(l.z - p.position.z)); p.pitch = pitch; g.chunks.warmup(p.position); return { alturaAcimaDaAgua: +(p.position.y - l.level).toFixed(2), distanciaDoCentro: +dist.toFixed(0) }; }; return 'ok'; })()"
+ },
+ {
+  "eval": "__view(0.6, __lake.r + 12, -0.12)",
+  "label": "margem, 17h"
+ },
+ {
+  "wait": 4000
+ },
+ {
+  "shot": "s10-01-margem"
+ },
+ {
+  "eval": "(() => { game.atmosphere.setHour(18.15); return [game.atmosphere.clock, __view(2.6, __lake.r + 10, -0.1)]; })()",
+  "label": "pôr do sol"
+ },
+ {
+  "wait": 4000
+ },
+ {
+  "shot": "s10-02-por-do-sol"
+ },
+ {
+  "eval": "(() => { const A = game.atmosphere; A.setHour(23.2); const l = __lake; const ang = Math.atan2(-A.moonDir.z, -A.moonDir.x); __view(ang, l.r + 10, -0.02); return A.clock; })()",
+  "label": "noite, lua sobre a água"
+ },
+ {
+  "wait": 4000
+ },
+ {
+  "shot": "s10-03-noite"
+ },
+ {
+  "eval": "(() => { game.atmosphere.setHour(12); return [game.atmosphere.clock, __view(0.6, __lake.r + 12, -0.12)]; })()",
+  "label": "meio-dia"
+ },
+ {
+  "wait": 4000
+ },
+ {
+  "shot": "s10-04-meio-dia"
+ },
+ {
+  "eval": "(() => { __view(0.6, __lake.r * 0.2, -0.05); const p = game.player, l = __lake; return { profundidade: +game.terrain.lakes.depthAt(p.position.x, p.position.z).toFixed(2), distanciaDoCentro: +Math.hypot(p.position.x - l.x, p.position.z - l.z).toFixed(1) }; })()",
+  "label": "empurrado para a parte rasa"
+ },
+ {
+  "wait": 3000
+ },
+ {
+  "shot": "s10-05-dentro-dagua"
+ },
+ {
+  "eval": "(() => { const g = game, l = window.__lake; let dentro = 0, total = 0; for (const c of g.chunks.loaded ? g.chunks.loaded.values() : []) { for (let i = 0; i < c.colliders.length; i += 3) { total++; if (Math.hypot(c.colliders[i] - l.x, c.colliders[i + 1] - l.z) < l.r) dentro++; } } return { obstaculosDentroDoLago: dentro, totalCarregado: total }; })()",
+  "label": "vegetação dentro da água"
+ },
+ {
+  "eval": "(() => { const t0 = performance.now(); const T = game.terrain; let h = 0; for (let i = 0; i < 20000; i++) h += T.heightAt(i * 0.7, i * 0.3); const custo = (performance.now() - t0) / 20; return { msPor1000HeightAt: +custo.toFixed(3), soma: +h.toFixed(0) }; })()",
+  "label": "custo do heightAt com lagos"
+ }
+]

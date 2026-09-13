@@ -1,0 +1,60 @@
+[
+ {
+  "wait": 3000
+ },
+ {
+  "eval": "(() => { const g = game, L = g.terrain.lakes, out = []; L.near(0, 0, 700, out); const l = out.sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0]; window.__lake = l; const p = g.player; const ang = 0.6; p.position.set(l.x + Math.cos(ang) * (l.r + 10), 0, l.z + Math.sin(ang) * (l.r + 10)); p.position.y = g.terrain.heightAt(p.position.x, p.position.z); p.velocity.set(0, 0, 0); p.yaw = Math.atan2(-(l.x - p.position.x), -(l.z - p.position.z)); p.pitch = -0.1; g.chunks.warmup(p.position); g.audio.unlock(); return { lago: [+l.x.toFixed(0), +l.z.toFixed(0)], raio: +l.r.toFixed(1) }; })()",
+  "label": "jogador na margem do lago"
+ },
+ {
+  "eval": "(() => { const g = game, l = window.__lake; const sp = g.birds.speciesList.find(s => s.id === 'pato'); const V = g.player.position.constructor; const patos = []; for (let i = 0; i < 5; i++) { const a = 0.6 + (i - 2) * 0.35; const d = 0.35 + i * 0.09; const spot = new V(l.x + Math.cos(a) * l.r * d, l.level, l.z + Math.sin(a) * l.r * d); patos.push(g.birds.spawnPerched(sp, spot, true, null)); } window.__patos = patos; return { patos: patos.length, estados: patos.map(p => p.state), naAgua: patos.map(p => p.onWater), alturaSobreAAgua: patos.map(p => +(p.pos.y - l.level).toFixed(2)) }; })()",
+  "label": "patos na água"
+ },
+ {
+  "wait": 4000
+ },
+ {
+  "shot": "s11-01-patos"
+ },
+ {
+  "eval": "(() => { const g = game; g.weapon.scoped = true; g.weapon.aimT = 1; return 'luneta'; })()"
+ },
+ {
+  "wait": 3000
+ },
+ {
+  "shot": "s11-02-luneta"
+ },
+ {
+  "eval": "(() => { const g = game; g.weapon.scoped = false; g.weapon.aimT = 0; const l = window.__lake, patos = window.__patos; let foraDagua = 0, voos = 0, pousos = 0, minProf = 9; const estados = {}; for (let i = 0; i < 1800; i++) { g.birds.update(1 / 30); g.voices.update(1 / 30, g.birds.active, g.engine.camera.position); for (const p of patos) { if (!p.active) continue; if (p.state === 'perched') { const prof = g.terrain.lakes.depthAt(p.pos.x, p.pos.z); minProf = Math.min(minProf, prof); if (prof <= 0) foraDagua++; } } } for (const p of patos) estados[p.state] = (estados[p.state] || 0) + 1; return { simulacaoSegundos: 60, estadosNoFim: estados, quadrosPousadosForaDagua: foraDagua, menorProfundidadeSobUmPato: +minProf.toFixed(2), vivos: g.birds.living }; })()",
+  "label": "60 s de simulação"
+ },
+ {
+  "eval": "(() => { const g = game, patos = window.__patos.filter(p => p.active && p.alive); if (!patos.length) return 'nenhum pato vivo'; const alvo = patos[0]; const V = g.player.position.constructor; const o = new V(g.player.position.x, g.player.position.y + 1.7, g.player.position.z); const dir = new V(alvo.pos.x - o.x, alvo.pos.y - o.y, alvo.pos.z - o.z).normalize(); const antes = g.hunting.score; const r = g.hunting.shoot(o, dir); return { tipo: r.kind, especie: r.bird && r.bird.species.name, letal: r.lethal, pontos: r.points, distancia: +r.distance.toFixed(1), placar: g.hunting.score - antes }; })()",
+  "label": "tiro num pato"
+ },
+ {
+  "eval": "(() => { const g = game, l = window.__lake; for (let i = 0; i < 150; i++) { g.birds.update(1 / 30); g.voices.update(1 / 30, g.birds.active, g.engine.camera.position); } const mortos = window.__patos.filter(p => !p.alive); return { corpos: mortos.length, alturaDoCorpoSobreAAgua: mortos.map(p => +(p.pos.y - l.level).toFixed(2)), estados: mortos.map(p => p.state), sons: g.voices.stats }; })()",
+  "label": "corpo boiando"
+ },
+ {
+  "wait": 3000
+ },
+ {
+  "shot": "s11-03-corpo"
+ },
+ {
+  "eval": "(async () => { const A = game.audio, S = game.sounds; const out = {}; const run = async (name, secs, fn) => { const r = await A.debugRender(secs, fn); out[name] = { pico: +r.peak.toFixed(3), rms: +r.rms.toFixed(4), invalido: r.invalid }; }; await run('quá-quá', 2, a => S.SONGS.pato(a, null, false)); await run('quá-quá alarme', 2, a => S.SONGS.pato(a, null, true)); await run('chape na água', 1, a => S.waterSplash(a, null, 1)); await run('tiro na água', 1, a => S.playSplash(a, 20, game.player.position)); return out; })()",
+  "label": "sons novos (render offline)"
+ },
+ {
+  "eval": "(() => { const g = game, l = window.__lake; const A = g.atmosphere; A.setHour(17.4); const p = g.player; p.position.set(l.x + Math.cos(2.4) * (l.r + 6), 0, l.z + Math.sin(2.4) * (l.r + 6)); p.position.y = g.terrain.heightAt(p.position.x, p.position.z); p.yaw = Math.atan2(-(l.x - p.position.x), -(l.z - p.position.z)); p.pitch = -0.12; g.chunks.warmup(p.position); const sp = g.birds.speciesList.find(s => s.id === 'pato'); const V = p.position.constructor; for (let i = 0; i < 4; i++) { const a = 2.4 + (i - 1.5) * 0.3; const spot = new V(l.x + Math.cos(a) * l.r * 0.45, l.level, l.z + Math.sin(a) * l.r * 0.45); g.birds.spawnPerched(sp, spot, true, null); } return 'ok'; })()",
+  "label": "patos vistos de perto"
+ },
+ {
+  "wait": 4000
+ },
+ {
+  "shot": "s11-04-perto"
+ }
+]

@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import type { Bird, BirdState } from '../birds/Bird';
 import type { AudioSystem } from './AudioSystem';
-import { corpseThud, SONGS, wingFlutter } from './birdSongs';
+import { corpseThud, SONGS, waterSplash, wingFlutter } from './birdSongs';
 
 interface Voice {
   /** Intervalo entre cantos quando pousado (s); voando, canta menos. */
@@ -19,6 +19,7 @@ const VOICES: Record<string, Voice> = {
   gralha: { gap: [8, 20], range: 160, ref: 10 },
   rolinha: { gap: [7, 18], range: 110, ref: 6 },
   gaviao: { gap: [15, 35], range: 300, ref: 20 },
+  pato: { gap: [6, 16], range: 170, ref: 10 },
 };
 
 /** Máximo de cantos soando ao mesmo tempo. */
@@ -32,7 +33,7 @@ const r = (a: number, b: number) => a + Math.random() * (b - a);
  * Detecta as mudanças de estado observando os pássaros (sem acoplar áudio ao comportamento).
  */
 export class BirdVoices {
-  readonly stats = { songs: 0, alarms: 0, flutters: 0, thuds: 0 };
+  readonly stats = { songs: 0, alarms: 0, flutters: 0, thuds: 0, splashes: 0 };
   private readonly timers = new WeakMap<Bird, number>();
   private readonly states = new WeakMap<Bird, BirdState>();
   private busyUntil: number[] = [];
@@ -68,17 +69,30 @@ export class BirdVoices {
   private onTransition(bird: Bird, prev: BirdState, state: BirdState, d: number, v: Voice): void {
     const a = this.audio;
     const wasSitting = prev === 'perched' || prev === 'landing';
+    const water = bird.species.water === true;
     if (wasSitting && (state === 'flying' || state === 'fleeing') && d < 35) {
       wingFlutter(a, a.spatial(bird.pos, 'birds', 2), bird.species.flapHz);
+      // Pato saindo da água leva a água junto.
+      if (water) waterSplash(a, a.spatial(bird.pos, 'birds', 4), 1.2);
       this.stats.flutters++;
+    }
+    if (water && prev === 'landing' && state === 'perched' && d < 70) {
+      waterSplash(a, a.spatial(bird.pos, 'birds', 5));
+      this.stats.splashes++;
     }
     if (state === 'fleeing' && d < v.range * 0.7 && Math.random() < 0.7 && this.busyUntil.length < MAX_VOICES) {
       this.sing(bird, v, true);
     }
     if (prev === 'falling' && state === 'dead' && d < 60) {
-      corpseThud(a, a.spatial(bird.pos, 'birds', 3));
+      if (this.onWater(bird)) waterSplash(a, a.spatial(bird.pos, 'birds', 4), 1.4);
+      else corpseThud(a, a.spatial(bird.pos, 'birds', 3));
       this.stats.thuds++;
     }
+  }
+
+  /** O corpo parou na água (patos, ou qualquer pássaro abatido sobre um lago). */
+  private onWater(bird: Bird): boolean {
+    return bird.onWater || bird.species.water === true;
   }
 
   private sing(bird: Bird, v: Voice, alarm: boolean): void {
