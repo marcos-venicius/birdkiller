@@ -70,10 +70,10 @@ export class Ambience {
       const gust = THREE.MathUtils.clamp(0.5 + 0.3 * Math.sin(t * 0.21) + 0.2 * Math.sin(t * 0.53 + 1.3) + 0.1 * Math.sin(t * 1.7), 0, 1);
       const p = player.position;
       const forest = this.biome.forest(p.x, p.z);
-      set(loops.wind.gain, 0.05 + 0.11 * gust, now, 0.6);
+      set(loops.wind.gain, 0.035 + 0.055 * gust, now, 0.6);
       set(loops.wind.freq, 220 + 420 * gust, now, 0.6);
       set(loops.wind.pan, Math.sin(t * 0.11) * 0.35, now, 1);
-      const leaves = (0.012 + 0.05 * gust) * (0.35 + 0.65 * forest);
+      const leaves = (0.01 + 0.03 * gust) * (0.35 + 0.65 * forest);
       set(loops.leavesL.gain, leaves * (0.8 + 0.2 * Math.sin(t * 0.7)), now, 0.4);
       set(loops.leavesR.gain, leaves * (0.8 + 0.2 * Math.cos(t * 0.6)), now, 0.4);
       set(loops.leavesL.freq, 2600 + 1400 * gust, now, 0.5);
