@@ -6,8 +6,10 @@ import type { Biome } from '../world/Biome';
 import type { ChunkManager } from '../world/ChunkManager';
 import { inPlayerView } from '../world/spawnRules';
 import type { Terrain } from '../world/Terrain';
-import { Boar, type BoarWorld, type HitZone } from './Boar';
-import { BOAR_PALETTES, buildBoarGeometry, type BoarGeometry } from './boarModel';
+import { Quadruped, type AnimalWorld, type HitZone } from './Quadruped';
+import type { AnimalKind } from './kinds';
+import type { QuadrupedGeometry } from './quadrupedModel';
+
 
 const _v = new THREE.Vector3();
 const _threat = new THREE.Vector3();
@@ -15,24 +17,25 @@ const _threat = new THREE.Vector3();
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
 /**
- * Javalis: spawn de bandos fora da visão (dentro da mata), percepção do jogador, fuga do bando,
- * tiros (abate/ferimento), limite de corpos e reuso via pool. Implementa o BoarWorld.
+ * Uma população de quadrúpedes (javalis ou veados, conforme o `AnimalKind`): spawn de bandos fora
+ * da visão, percepção do jogador, fuga do bando, tiros (abate/ferimento), limite de corpos e reuso
+ * via pool. Implementa o AnimalWorld consultado por cada bicho.
  */
-export class BoarManager implements BoarWorld {
-  readonly active: Boar[] = [];
-  /** Depuração: congela os javalis (capturas de tela). */
+export class QuadrupedManager implements AnimalWorld {
+  readonly active: Quadruped[] = [];
+  /** Depuração: congela os bichos (capturas de tela). */
   frozen = false;
-  /** Depuração/testes: chamado a cada javali criado. */
-  onSpawn?: (boar: Boar, initial: boolean) => void;
+  /** Depuração/testes: chamado a cada bicho criado. */
+  onSpawn?: (animal: Quadruped, initial: boolean) => void;
 
-  private readonly pools = new Map<BoarGeometry, Boar[]>();
-  private readonly geometries = BOAR_PALETTES.map((p) => buildBoarGeometry(p));
+  private readonly pools = new Map<QuadrupedGeometry, Quadruped[]>();
   private readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, dithering: true });
-  private readonly corpses: Boar[] = [];
+  private readonly corpses: Quadruped[] = [];
   private spawnTimer = rand(4, 10);
   private herds = 0;
 
   constructor(
+    readonly kind: AnimalKind,
     private readonly scene: THREE.Scene,
     private readonly terrain: Terrain,
     private readonly biome: Biome,
@@ -42,7 +45,7 @@ export class BoarManager implements BoarWorld {
   ) {}
 
   populate(): void {
-    for (let i = 0; i < CONFIG.boars.initialGroups; i++) this.trySpawn(true);
+    for (let i = 0; i < this.kind.cfg.initialGroups; i++) this.trySpawn(true);
   }
 
   get living(): number {
@@ -53,7 +56,7 @@ export class BoarManager implements BoarWorld {
 
   update(dt: number): void {
     if (this.frozen) return;
-    const C = CONFIG.boars;
+    const C = this.kind.cfg;
     const P = this.player;
     const pp = P.position;
     // Faro e ouvido: correr é notado de longe; agachado e parado, quase nada.
@@ -94,37 +97,37 @@ export class BoarManager implements BoarWorld {
   }
 
   /** Javali vivo mais próximo atingido pelo raio (d normalizado) antes de maxT. */
-  raycast(o: THREE.Vector3, d: THREE.Vector3, maxT: number): { boar: Boar; t: number; zone: HitZone } | null {
-    let best: { boar: Boar; t: number; zone: HitZone } | null = null;
-    for (const boar of this.active) {
-      const hit = boar.raycast(o, d, best ? best.t : maxT, CONFIG.boars.hitboxScale);
-      if (hit) best = { boar, t: hit.t, zone: hit.zone };
+  raycast(o: THREE.Vector3, d: THREE.Vector3, maxT: number): { animal: Quadruped; t: number; zone: HitZone } | null {
+    let best: { animal: Quadruped; t: number; zone: HitZone } | null = null;
+    for (const animal of this.active) {
+      const hit = animal.raycast(o, d, best ? best.t : maxT, this.kind.cfg.hitboxScale);
+      if (hit) best = { animal, t: hit.t, zone: hit.zone };
     }
     return best;
   }
 
   /** Tiro: vital (cabeça/peito) ou segundo tiro mata; na traseira, fere e o bando foge. */
-  hit(boar: Boar, dir: THREE.Vector3, vital: boolean, origin: THREE.Vector3): 'killed' | 'wounded' {
-    if (vital || boar.health <= 1) {
-      boar.kill(dir);
-      this.corpses.push(boar);
-      while (this.corpses.length > CONFIG.boars.maxCorpses) this.corpses.shift()!.sink();
+  hit(animal: Quadruped, dir: THREE.Vector3, vital: boolean, origin: THREE.Vector3): 'killed' | 'wounded' {
+    if (vital || animal.health <= 1) {
+      animal.kill(dir);
+      this.corpses.push(animal);
+      while (this.corpses.length > this.kind.cfg.maxCorpses) this.corpses.shift()!.sink();
       return 'killed';
     }
-    boar.wound();
-    this.startFlee(boar, origin);
+    animal.wound();
+    this.startFlee(animal, origin);
     return 'wounded';
   }
 
   /** Cria um javali fuçando em `pos` (y é recalculado pelo relevo). */
-  spawn(pos: THREE.Vector3, yaw: number, scale: number, palette: number): Boar {
-    const geo = this.geometries[palette % this.geometries.length];
+  spawn(pos: THREE.Vector3, yaw: number, scale: number, palette: number): Quadruped {
+    const geo = this.kind.geometries[palette % this.kind.geometries.length];
     let pool = this.pools.get(geo);
     if (!pool) {
       pool = [];
       this.pools.set(geo, pool);
     }
-    const boar = pool.pop() ?? new Boar(geo, this.material);
+    const boar = pool.pop() ?? new Quadruped(geo, this.material, this.kind);
     boar.reset(pos, yaw, scale);
     boar.active = true;
     boar.herdId = 0;
@@ -134,7 +137,7 @@ export class BoarManager implements BoarWorld {
     return boar;
   }
 
-  // ------------------------------------------------------------------ BoarWorld
+  // ------------------------------------------------------------------ AnimalWorld
 
   groundAt(x: number, z: number): number {
     return this.terrain.heightAt(x, z);
@@ -142,11 +145,19 @@ export class BoarManager implements BoarWorld {
 
   resolveCollision(pos: THREE.Vector3, radius: number): void {
     this.chunks.resolveCollision(pos, radius);
-    // Javalis também param na beira do lago (só os patos entram na água).
+    // Bicho de pata também para na beira do lago (só os patos entram na água).
     this.terrain.lakes.block(pos, radius);
   }
 
-  pickForageSpot(boar: Boar, out: THREE.Vector3): void {
+  pickDrinkSpot(animal: Quadruped, out: THREE.Vector3): { x: number; z: number } | null {
+    const lake = this.terrain.lakes.drinkSpot(animal.pos.x, animal.pos.z, this.kind.cfg.drinkRange, out);
+    if (!lake) return null;
+    // A margem tem que ser alcançável: nada de descer num barranco cheio de tronco.
+    if (!this.chunks.isClear(out.x, out.z, 1.2)) return null;
+    return lake;
+  }
+
+  pickForageSpot(boar: Quadruped, out: THREE.Vector3): void {
     const P = this.player.position;
     const L = boar.leader;
     let cx = boar.pos.x;
@@ -159,7 +170,7 @@ export class BoarManager implements BoarWorld {
       cz = L.target.z;
       minR = 1;
       maxR = 5;
-    } else if (Math.hypot(boar.pos.x - P.x, boar.pos.z - P.z) > CONFIG.boars.homeRadius) {
+    } else if (Math.hypot(boar.pos.x - P.x, boar.pos.z - P.z) > this.kind.cfg.homeRadius) {
       cx = (boar.pos.x + P.x) / 2;
       cz = (boar.pos.z + P.z) / 2;
     }
@@ -168,8 +179,9 @@ export class BoarManager implements BoarWorld {
       const r = rand(minR, maxR);
       const x = cx + Math.cos(a) * r;
       const z = cz + Math.sin(a) * r;
-      // Preferem a mata; nas últimas tentativas aceitam clareira.
-      if (i < 6 && this.biome.forest(x, z) < 0.3) continue;
+      // Javali prefere a mata; veado pasta no aberto. Nas últimas tentativas qualquer lugar serve.
+      const forest = this.biome.forest(x, z);
+      if (i < 6 && (this.kind.open ? forest > 0.45 : forest < 0.3)) continue;
       if (!this.chunks.isClear(x, z, 1.2) || !this.terrain.lakes.dry(x, z, 0.1)) continue;
       out.set(x, 0, z);
       return;
@@ -179,7 +191,7 @@ export class BoarManager implements BoarWorld {
 
   // ------------------------------------------------------------------ spawn
 
-  private startFlee(boar: Boar, from: THREE.Vector3): void {
+  private startFlee(boar: Quadruped, from: THREE.Vector3): void {
     boar.flee(from);
     // O bando foge junto.
     for (const other of this.active) {
@@ -190,7 +202,7 @@ export class BoarManager implements BoarWorld {
   }
 
   private trySpawn(initial: boolean): void {
-    const C = CONFIG.boars;
+    const C = this.kind.cfg;
     const P = this.player.position;
     for (let attempt = 0; attempt < 14; attempt++) {
       const a = Math.random() * TAU;
@@ -198,21 +210,23 @@ export class BoarManager implements BoarWorld {
       const x = P.x + Math.cos(a) * d;
       const z = P.z + Math.sin(a) * d;
       if (!initial && inPlayerView(this.player, this.camera, x, z, C.hiddenDistance, C.viewMargin)) continue;
-      if (this.biome.forest(x, z) < 0.3 || !this.chunks.isClear(x, z, 1.5)) continue;
+      const forest = this.biome.forest(x, z);
+      if ((this.kind.open ? forest > 0.5 : forest < 0.3) || !this.chunks.isClear(x, z, 1.5)) continue;
       if (!this.terrain.lakes.dry(x, z, 0.2)) continue;
 
-      const r = Math.random();
-      const n = Math.min(r < 0.4 ? 1 : r < 0.75 ? 2 : 3, C.maxActive - this.living);
+      const n = Math.min(Math.round(rand(C.herd[0], C.herd[1])), C.maxActive - this.living);
       if (n <= 0) return;
       const herdId = ++this.herds;
-      const palette = Math.floor(Math.random() * BOAR_PALETTES.length);
-      let leader: Boar | null = null;
+      const palette = Math.floor(Math.random() * this.kind.geometries.length);
+      let leader: Quadruped | null = null;
       for (let k = 0; k < n; k++) {
         const px = x + (k === 0 ? 0 : rand(-5, 5));
         const pz = z + (k === 0 ? 0 : rand(-5, 5));
         if (k > 0 && !this.chunks.isClear(px, pz, 1)) continue;
         // O primeiro é o maior (macho adulto); os outros, menores.
-        const boar = this.spawn(_v.set(px, 0, pz), Math.random() * TAU, k === 0 ? rand(0.95, 1.15) : rand(0.75, 0.95), palette);
+        const scale = k === 0 ? rand(C.scaleLeader[0], C.scaleLeader[1]) : rand(C.scaleOther[0], C.scaleOther[1]);
+        // O primeiro do bando usa a primeira paleta (macho adulto); os outros variam.
+        const boar = this.spawn(_v.set(px, 0, pz), Math.random() * TAU, scale, k === 0 ? palette : palette + k);
         boar.herdId = herdId;
         boar.leader = leader ?? boar;
         leader ??= boar;

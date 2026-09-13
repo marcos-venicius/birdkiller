@@ -56,6 +56,9 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
   o pato abatido cai e fica boiando. Dá para entrar na parte rasa, mas não para nadar.
 - **Bússola**: uma fita discreta no topo com o rumo e marcas para a água num raio de 600 m, com a distância —
   é assim que você acha os lagos. Tecla L desliga, se preferir a tela limpa.
+- **Veados**: a caça grande. Pastam em clareiras e beiras de mata, ouvem de longe demais para quem chega
+  correndo, param para olhar antes de decidir e disparam aos saltos. Valem 120 pontos — chegue agachado.
+  Veados e javalis vão beber na beira do lago de tempos em tempos: vale a pena esperar escondido por perto.
 - **Javalis**: andam em bandos pela mata, fuçando o chão. Têm faro e ouvido bons — chegue agachado e devagar.
   Tiro na cabeça ou no peito abate; na traseira ele fica ferido e foge (o próximo tiro mata). Eles não atacam.
 - **Caça**: tiro exato para onde a arma aponta; troncos, pedras e morros bloqueiam. Corpo ou cabeça é abate

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { Boar, HitZone } from '../animals/Boar';
-import type { BoarManager } from '../animals/BoarManager';
+import type { HitZone, Quadruped } from '../animals/Quadruped';
+import type { QuadrupedManager } from '../animals/QuadrupedManager';
 import type { AudioSystem } from '../audio/AudioSystem';
 import { playBirdHit, playFleshHit, playImpact, playSplash } from '../audio/weaponSounds';
 import type { Bird } from '../birds/Bird';
@@ -12,7 +12,7 @@ import type { ChunkManager } from '../world/ChunkManager';
 import type { Terrain } from '../world/Terrain';
 
 type BlockKind = 'terrain' | 'trunk' | 'rock' | 'water' | 'none';
-export type HitKind = BlockKind | 'bird' | 'boar';
+export type HitKind = BlockKind | 'bird' | 'animal';
 
 export interface ShotResult {
   kind: HitKind;
@@ -20,8 +20,9 @@ export interface ShotResult {
   distance: number;
   point: THREE.Vector3;
   bird: Bird | null;
-  boar: Boar | null;
-  /** Zona atingida no javali (cabeça/peito = vital; traseira = ferimento). */
+  /** Javali ou veado atingido. */
+  animal: Quadruped | null;
+  /** Zona atingida (cabeça/peito = vital; traseira = ferimento). */
   zone: HitZone | null;
   lethal: boolean;
   points: number;
@@ -32,7 +33,7 @@ const DEBRIS_COLOR = { terrain: 0x5a4631, trunk: 0x6a5038, rock: 0x8a857a, water
 
 /**
  * Resolve cada disparo com hitscan exato na direção do tiro: relevo, troncos/pedras, pássaros e
- * javalis. Aplica abate, raspão ou ferimento, efeitos, sons e a pontuação.
+ * os quadrúpedes (javalis, veados). Aplica abate, raspão ou ferimento, efeitos, sons e a pontuação.
  */
 export class Hunting {
   score = 0;
@@ -43,7 +44,7 @@ export class Hunting {
     private readonly terrain: Terrain,
     private readonly chunks: ChunkManager,
     private readonly birds: BirdManager,
-    private readonly boars: BoarManager,
+    private readonly animals: readonly QuadrupedManager[],
     private readonly particles: Particles,
     private readonly hud: HUD,
     private readonly audio: AudioSystem,
@@ -70,35 +71,39 @@ export class Hunting {
     // Um obstáculo só bloqueia se estiver claramente antes do animal (quem pousa em cima de um tronco, p. ex.).
     const maxT = Math.min(blockT + C.occlusionSlack, C.range);
     const birdHit = this.birds.raycast(origin, dir, maxT);
-    const boarHit = this.boars.raycast(origin, dir, birdHit ? birdHit.t : maxT);
+    let animalHit: { animal: Quadruped; t: number; zone: HitZone; manager: QuadrupedManager } | null = null;
+    for (const manager of this.animals) {
+      const hit = manager.raycast(origin, dir, animalHit ? animalHit.t : birdHit ? birdHit.t : maxT);
+      if (hit) animalHit = { animal: hit.animal, t: hit.t, zone: hit.zone, manager };
+    }
     const result: ShotResult = {
       kind,
       distance: blockT,
       point: new THREE.Vector3(),
       bird: null,
-      boar: null,
+      animal: null,
       zone: null,
       lethal: false,
       points: 0,
     };
 
-    if (boarHit) {
-      result.kind = 'boar';
-      result.distance = boarHit.t;
-      result.boar = boarHit.boar;
-      result.zone = boarHit.zone;
-      result.point.copy(origin).addScaledVector(dir, boarHit.t);
-      const outcome = this.boars.hit(boarHit.boar, dir, boarHit.zone !== 'rear', origin);
+    if (animalHit) {
+      const kind = animalHit.manager.kind;
+      result.kind = 'animal';
+      result.distance = animalHit.t;
+      result.animal = animalHit.animal;
+      result.zone = animalHit.zone;
+      result.point.copy(origin).addScaledVector(dir, animalHit.t);
+      const outcome = animalHit.manager.hit(animalHit.animal, dir, animalHit.zone !== 'rear', origin);
       result.lethal = outcome === 'killed';
       if (result.lethal) {
-        result.points = CONFIG.boars.points + Math.floor(boarHit.t / 10);
-        this.addKill(result.points, `Javali · ${Math.round(boarHit.t)} m`);
+        result.points = kind.cfg.points + Math.floor(animalHit.t / 10);
+        this.addKill(result.points, `${kind.name} · ${Math.round(animalHit.t)} m`);
       } else {
-        this.hud.toast('Javali ferido');
+        this.hud.toast(`${kind.name} ferido`);
       }
-      const p = boarHit.boar.geo.palette;
-      this.particles.tufts(result.point, [p.fur, p.mane, p.belly], result.lethal ? 12 : 7, dir);
-      playFleshHit(this.audio, boarHit.t, result.point);
+      this.particles.tufts(result.point, animalHit.animal.geo.tufts, result.lethal ? 12 : 7, dir);
+      playFleshHit(this.audio, animalHit.t, result.point);
     } else if (birdHit) {
       result.kind = 'bird';
       result.distance = birdHit.t;
@@ -128,7 +133,7 @@ export class Hunting {
     }
 
     this.birds.scare(origin, CONFIG.birds.shotScare);
-    this.boars.scare(origin, CONFIG.boars.shotScare);
+    for (const manager of this.animals) manager.scare(origin, manager.kind.cfg.shotScare);
     this.lastShot = result;
     return result;
   }

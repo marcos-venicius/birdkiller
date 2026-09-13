@@ -215,6 +215,55 @@ export const CONFIG = {
     /** Pontos base por abate (mais 1 a cada 10 m). */
     points: 60,
     maxCorpses: 5,
+    /** Tempo parado olhando antes de decidir, e a chance de disparar em vez de voltar a comer. */
+    alertTime: [1.2, 2.6],
+    boltChance: 0.35,
+    /** Sede: intervalo entre idas ao lago (s), tempo bebendo (s) e distância que aceita andar. */
+    drinkInterval: [120, 300],
+    drinkTime: [8, 16],
+    drinkRange: 130,
+    /** Tamanho do bando e escala do líder e dos demais. */
+    herd: [1, 3],
+    scaleLeader: [0.95, 1.15],
+    scaleOther: [0.75, 0.95],
+  },
+
+  deer: {
+    /** Máximo de veados vivos ao mesmo tempo. */
+    maxActive: 4,
+    initialGroups: 1,
+    /** Distâncias de spawn ao redor do jogador (m). */
+    initialMin: 80,
+    spawnMin: 100,
+    spawnMax: 190,
+    /** Além desta distância a névoa esconde o surgimento. */
+    hiddenDistance: 150,
+    viewMargin: 20,
+    spawnInterval: [16, 34],
+    despawnDistance: 250,
+    homeRadius: 140,
+    /** Ouvido e faro muito melhores que os do javali: parado, 60% disso. */
+    senseWalk: 55,
+    senseRun: 95,
+    senseCrouch: 24,
+    /** Um disparo espanta os veados de longe. */
+    shotScare: 220,
+    walkSpeed: 1.4,
+    fleeSpeed: 12.5,
+    hitboxScale: 1.05,
+    /** Pontos base por abate (mais 1 a cada 10 m) — a melhor caça do jogo. */
+    points: 120,
+    maxCorpses: 3,
+    /** Fica mais tempo olhando antes de decidir, e quase sempre dispara. */
+    alertTime: [2.5, 5],
+    boltChance: 0.6,
+    /** Veado bebe com mais frequência (e demora menos, sempre de orelha em pé). */
+    drinkInterval: [90, 220],
+    drinkTime: [6, 12],
+    drinkRange: 170,
+    herd: [1, 3],
+    scaleLeader: [1, 1.15],
+    scaleOther: [0.8, 0.95],
   },
 
   combat: {

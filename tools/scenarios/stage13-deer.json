@@ -1,0 +1,54 @@
+[
+ {
+  "wait": 3000
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, w = g.weapon, inp = g.input, K = g.deer; g.audio.unlock(); window.__K = K; window.__look = (pt) => { const e = g.engine.camera.position; const dx = pt.x - e.x, dy = pt.y - e.y, dz = pt.z - e.z; p.yaw = Math.atan2(-dx, -dz); p.pitch = Math.atan2(dy, Math.hypot(dx, dz)); p.update(1 / 30); g.engine.camera.updateMatrixWorld(); }; window.__scope = (on) => { if (on !== w.aimToggled) inp.buttonsPressed |= 4; for (let i = 0; i < 12; i++) { p.update(1 / 30); w.update(1 / 30); inp.endFrame(); } }; window.__fire = () => { for (let i = 0; i < 90 && w.state !== 'ready'; i++) { p.update(1 / 30); w.update(1 / 30); inp.endFrame(); } inp.buttonsPressed |= 1; w.update(1 / 30); inp.endFrame(); return g.hunting.lastShot; }; p.position.set(-29, g.terrain.heightAt(-29, -28), -28); p.velocity.set(0, 0, 0); g.chunks.warmup(p.position); for (let i = K.active.length - 1; i >= 0; i--) K.release(i); return { veadosIniciais: K.active.length, mata: +g.biome.forest(-29, -28).toFixed(2) }; })()",
+  "label": "preparo na clareira"
+ },
+ {
+  "eval": "(() => { const g = game, K = __K, p = g.player, e = g.engine.camera.position; K.frozen = true; const f = { x: -Math.sin(p.yaw), z: -Math.cos(p.yaw) }, r = { x: Math.cos(p.yaw), z: -Math.sin(p.yaw) }; const at = (dx, dist) => { const v = e.clone(); v.x += f.x * dist + r.x * dx; v.z += f.z * dist + r.z * dx; v.y = 0; return v; }; window.__show = [K.spawn(at(-3.2, 9), p.yaw + Math.PI / 2, 1.15, 0), K.spawn(at(0.4, 10), p.yaw + Math.PI + 0.4, 1.0, 1), K.spawn(at(3.8, 9.5), p.yaw + Math.PI / 2 + 0.3, 0.85, 2)]; __show[0].pose('forage', 0); __show[1].pose('gallop', 1.9); __show[2].pose('walk', 0.8); __look({ x: at(0.4, 10).x, y: p.position.y + 1.0, z: at(0.4, 10).z }); return __show.map(d => d.state); })()",
+  "label": "vitrine: pastando, aos saltos, andando"
+ },
+ {
+  "wait": 4000
+ },
+ {
+  "shot": "s13-01-vitrine"
+ },
+ {
+  "eval": "(() => { const K = __K; for (const d of __show) { const i = K.active.indexOf(d); if (i >= 0) K.release(i); } K.frozen = false; return K.active.length; })()"
+ },
+ {
+  "eval": "(() => { const g = game, K = __K, p = g.player; const res = {}; const d = K.spawn(p.position.clone().setX(p.position.x + 40), 0, 1, 0); const place = (dist, crouched, vx) => { d.forage(); p.running = vx > 6; p.position.set(d.pos.x + Math.cos(1.1) * dist, 0, d.pos.z + Math.sin(1.1) * dist); p.position.y = g.terrain.heightAt(p.position.x, p.position.z); p.crouched = crouched; p.velocity.set(vx, 0, 0); for (let i = 0; i < 20; i++) K.update(1 / 30); return d.state; }; res.agachadoParado20m = place(20, true, 0); res.andando45m = place(45, false, 3); res.andando25m = place(25, false, 3); res.correndo80m = place(80, false, 9); const i = K.active.indexOf(d); if (i >= 0) K.release(i); p.crouched = false; p.velocity.set(0, 0, 0); return res; })()",
+  "label": "percepção (ouve de bem mais longe que o javali)"
+ },
+ {
+  "eval": "(() => { const g = game, K = __K, p = g.player; let alertas = 0, fugas = 0, voltas = 0; for (let n = 0; n < 30; n++) { const d = K.spawn(p.position.clone().setX(p.position.x + 60 + n), 0, 1, 0); d.alert(p.position); alertas++; for (let i = 0; i < 300; i++) K.update(1 / 30); if (d.state === 'flee') fugas++; else voltas++; const i = K.active.indexOf(d); if (i >= 0) K.release(i); } return { alertados: alertas, dispararam: fugas, voltaramAPastar: voltas }; })()",
+  "label": "depois de olhar, dispara ou volta a pastar?"
+ },
+ {
+  "eval": "(() => { const g = game, K = __K, p = g.player; K.frozen = true; for (let i = K.active.length - 1; i >= 0; i--) K.release(i); const e = g.engine.camera; p.update(1 / 30); e.updateMatrixWorld(); let spot = null; for (let a = 0; a < 6.28 && !spot; a += 0.1) { const x = p.position.x + Math.cos(a) * 30, z = p.position.z + Math.sin(a) * 30; const y = g.terrain.heightAt(x, z) + 1.2; const dir = new p.position.constructor(x - e.position.x, y - e.position.y, z - e.position.z).normalize(); const dist = Math.hypot(x - e.position.x, z - e.position.z); if (g.terrain.raycast(e.position, dir, dist) < dist) continue; if (g.chunks.raycastObstacles(e.position, dir, dist).kind) continue; if (!g.chunks.isClear(x, z, 1.5)) continue; spot = { x, z, a }; } window.__spot = spot; const d = K.spawn(new p.position.constructor(spot.x, 0, spot.z), -spot.a + 0.6, 1.1, 0); window.__deer = d; d.pose('forage', 0); __scope(true); __look(d.zonePoint('chest', d.pos.clone())); const r = __fire(); return { tipo: r.kind, zona: r.zone, letal: r.lethal, pontos: r.pontos || r.points, distancia: +r.distance.toFixed(1), placar: g.hunting.score, aviso: document.querySelector('.hud-kill').textContent }; })()",
+  "label": "tiro no peito (vital)"
+ },
+ {
+  "eval": "(() => { const K = __K; K.frozen = false; for (let i = 0; i < 90; i++) K.update(1 / 30); const d = __deer; return { estado: d.state, alturaDoCentro: +(d.group.position.y - game.terrain.heightAt(d.pos.x, d.pos.z)).toFixed(2), deitado: +Math.abs(d.group.rotation.z).toFixed(2) }; })()",
+  "label": "corpo depois de 3 s"
+ },
+ {
+  "eval": "(() => { const g = game, K = __K, p = g.player; K.frozen = true; const d = K.spawn(new p.position.constructor(__spot.x, 0, __spot.z), -__spot.a, 1.0, 1); window.__deer2 = d; d.pose('forage', 0); __scope(true); __look(d.zonePoint('rear', d.pos.clone())); const r1 = __fire(); const depois = { estado: d.state, saude: d.health }; d.forage(); d.update(0, K); __look(d.zonePoint('rear', d.pos.clone())); const r2 = __fire(); return { tiro1: { zona: r1.zone, letal: r1.lethal }, depois, tiro2: { zona: r2.zone, letal: r2.lethal, pontos: r2.points } }; })()",
+  "label": "traseira: fere e o segundo tiro mata"
+ },
+ {
+  "eval": "(() => { const g = game, K = __K, d = __deer2 || __deer; K.frozen = true; d.pose('forage', 0); const head = d.zonePoint('head', d.pos.clone()); const alto = { y: +(head.y - g.terrain.heightAt(d.pos.x, d.pos.z)).toFixed(2) }; d.state = 'alert'; d.update(0.5, K); d.update(0.5, K); const head2 = d.zonePoint('head', d.pos.clone()); return { cabecaPastando: alto, obs: 'zonePoint não gira com o pescoço; o raycast gira', estadoAgora: d.state }; })()",
+  "label": "cabeça acompanha o pescoço?"
+ },
+ {
+  "eval": "(() => { const g = game, K = __K, p = g.player; K.frozen = false; for (let i = K.active.length - 1; i >= 0; i--) K.release(i); K.spawnTimer = 0.1; const log = []; K.onSpawn = (d) => log.push({ mata: +g.biome.forest(d.pos.x, d.pos.z).toFixed(2), dist: Math.round(Math.hypot(d.pos.x - p.position.x, d.pos.z - p.position.z)) }); for (let i = 0; i < 6000; i++) K.update(1 / 30); K.onSpawn = undefined; return { nascidos: log.length, vivos: K.living, mataMedia: +(log.reduce((s, l) => s + l.mata, 0) / Math.max(log.length, 1)).toFixed(2), distancias: log.map(l => l.dist) }; })()",
+  "label": "spawn (200 s): nascem em área aberta?"
+ },
+ {
+  "eval": "(async () => { const A = game.audio, S = game.sounds, V = game.player.position.constructor; const out = {}; const at = (name, dist, fn) => A.debugRender(2, (a) => fn(a, a.spatial(new V(dist, 0, 0), 'birds', 6))).then(r => { out[name] = { pico: +r.peak.toFixed(3), invalido: r.invalid }; }); await at('balido 20 m', 20, (a, d) => S.bleat(a, d)); await at('latido de alarme 40 m', 40, (a, d) => S.bark(a, d)); await at('berro 30 m', 30, (a, d) => S.deerCry(a, d, true)); await at('saltos 30 m', 30, (a, d) => S.deerGallop(a, d)); await at('pastando 10 m', 10, (a, d) => S.grazing(a, d)); await at('referência: bufada do javali 20 m', 20, (a, d) => S.snort(a, d)); return out; })()",
+  "label": "sons do veado (render offline)"
+ }
+]

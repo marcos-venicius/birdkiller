@@ -1,13 +1,15 @@
 import './style.css';
 import * as THREE from 'three';
-import { BoarManager } from './animals/BoarManager';
+import { boarKind, deerKind } from './animals/kinds';
+import { QuadrupedManager } from './animals/QuadrupedManager';
 import { Ambience } from './audio/Ambience';
 import * as animalSounds from './audio/animalSounds';
 import { AudioSystem } from './audio/AudioSystem';
 import * as birdSongs from './audio/birdSongs';
 import { BirdVoices } from './audio/BirdVoices';
 import * as boarSounds from './audio/boarSounds';
-import { BoarVoices } from './audio/BoarVoices';
+import * as deerSounds from './audio/deerSounds';
+import { AnimalVoices } from './audio/AnimalVoices';
 import { Footsteps } from './audio/Footsteps';
 import { Music } from './audio/Music';
 import * as weaponSounds from './audio/weaponSounds';
@@ -62,13 +64,16 @@ chunks.resolveCollision(player.position, CONFIG.player.radius);
 const weapon = new Weapon(engine, input, player, hud, audio, atmosphere);
 const birds = new BirdManager(engine.scene, terrain, biome, chunks, player, engine.camera);
 birds.populate();
-const boars = new BoarManager(engine.scene, terrain, biome, chunks, player, engine.camera);
+const boars = new QuadrupedManager(boarKind(), engine.scene, terrain, biome, chunks, player, engine.camera);
 boars.populate();
+const deer = new QuadrupedManager(deerKind(), engine.scene, terrain, biome, chunks, player, engine.camera);
+deer.populate();
 const particles = new Particles(engine.scene, terrain);
-const hunting = new Hunting(terrain, chunks, birds, boars, particles, hud, audio);
+const hunting = new Hunting(terrain, chunks, birds, [boars, deer], particles, hud, audio);
 const ambience = new Ambience(audio, biome, terrain.lakes);
 const voices = new BirdVoices(audio);
-const boarVoices = new BoarVoices(audio);
+const boarVoices = new AnimalVoices(audio, boarKind().sounds);
+const deerVoices = new AnimalVoices(audio, deerKind().sounds);
 const footsteps = new Footsteps(audio, biome);
 const music = new Music(audio);
 weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
@@ -117,11 +122,13 @@ engine.renderer.setAnimationLoop(() => {
   birds.activity = 1 - atmosphere.night * 0.65;
   birds.update(dt);
   boars.update(dt);
+  deer.update(dt);
   particles.update(dt);
   audio.updateListener(engine.camera);
   ambience.update(dt, player, engine.camera.position, atmosphere.night);
   voices.update(dt, birds.active, engine.camera.position, atmosphere.night);
   boarVoices.update(dt, boars.active, engine.camera.position);
+  deerVoices.update(dt, deer.active, engine.camera.position);
   footsteps.update(dt, player);
   music.update();
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
@@ -182,7 +189,7 @@ engine.renderer.setAnimationLoop(() => {
       hud.setDebug(
         `${fps} fps  qualidade ${quality.name}  hora ${atmosphere.clock}\n${cpu}\ndraw ${info.calls}  tris ${info.triangles}\n` +
           `chunks ${s.loaded}  fila ${s.queued}  grama ${s.grass}\n` +
-          `pássaros ${birds.living}  javalis ${boars.living}  corpos ${birds.active.length - birds.living + boars.active.length - boars.living}  partículas ${particles.count}\n` +
+          `pássaros ${birds.living}  javalis ${boars.living}  veados ${deer.living}  corpos ${birds.active.length - birds.living + boars.active.length - boars.living + deer.active.length - deer.living}  partículas ${particles.count}\n` +
           `pos ${p.x.toFixed(1)} ${p.y.toFixed(1)} ${p.z.toFixed(1)}`,
       );
     }
@@ -206,18 +213,20 @@ if (import.meta.env.DEV) {
       weapon,
       birds,
       boars,
+      deer,
       particles,
       hunting,
       ambience,
       voices,
       boarVoices,
+      deerVoices,
       footsteps,
       music,
       quality,
       setPaused: (value: boolean) => {
         paused = value;
       },
-      sounds: { ...weaponSounds, ...birdSongs, ...animalSounds, ...boarSounds },
+      sounds: { ...weaponSounds, ...birdSongs, ...animalSounds, ...boarSounds, ...deerSounds },
     },
   });
 }

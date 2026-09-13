@@ -27,6 +27,8 @@ const BLEND = 1.6;
 /** Inclinação da margem fora da água (m de subida por metro de raio). */
 const BANK = 0.12;
 
+const _spots: Lake[] = [];
+
 function cellKey(i: number, j: number): number {
   return (i + 32768) * 65536 + (j + 32768);
 }
@@ -104,6 +106,31 @@ export class Lakes {
         if (Math.abs(d) < Math.abs(best)) best = d;
       }
     }
+    return best;
+  }
+
+  /**
+   * Um ponto de bebida na margem do lago mais próximo (logo fora da água, virado para ela).
+   * Devolve o lago, ou null se não há nenhum a até `maxR`.
+   */
+  drinkSpot(x: number, z: number, maxR: number, out: THREE.Vector3): Lake | null {
+    const lakes = this.near(x, z, maxR, _spots);
+    let best: Lake | null = null;
+    let bestD = Infinity;
+    for (const lake of lakes) {
+      const d = Math.hypot(x - lake.x, z - lake.z);
+      if (d < bestD) {
+        bestD = d;
+        best = lake;
+      }
+    }
+    if (!best) return null;
+    // Chega pelo lado em que já está, com uma folga aleatória.
+    const ang = Math.atan2(z - best.z, x - best.x) + (Math.random() - 0.5) * 1.2;
+    // Alvo um pouco dentro da água: o bicho para antes de chegar nele e fica com o focinho na beira
+    // (a parte funda continua barrada pelo block()).
+    const r = lakeRadius(best, ang) * 0.94;
+    out.set(best.x + Math.cos(ang) * r, 0, best.z + Math.sin(ang) * r);
     return best;
   }
 

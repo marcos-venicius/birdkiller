@@ -44,6 +44,10 @@ capturas às 17h, pôr do sol, lua nascendo, noite, amanhecer e meio-dia),
 vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 `stage11-ducks.json` (patos boiando, 60 s de simulação sem sair do lago, abate, corpo boiando, sons novos),
 `stage12-compass.json` (posição das marcas na fita lendo o DOM, liga/desliga, some na luneta),
+`stage13-deer.json` (vitrine das poses, percepção a 20/25/45/80 m, alerta → dispara ou volta a pastar,
+tiro vital/traseira, corpo, spawn em área aberta, sons),
+`stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
+longe de lago nenhum o bicho não trava),
 `smoke.json` (build de produção: sem requisições externas). O Chrome headless roda com autoplay liberado, então
 `game.audio.unlock()` funciona (não dá para ouvir, mas erros de áudio aparecem no console).
 
@@ -101,6 +105,39 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   `Lakes.near()`; nada de minimapa (mundo infinito e procedural, e mostrar bicho acabaria com a caça).
   Tecla L liga/desliga (lembrada em `localStorage`), e ela some sozinha com a luneta no olho.
 
+- [x] **12. Veados** (pedido do usuário) — a caça grande do jogo, e a desculpa para generalizar o sistema dos
+  javalis: `Boar`/`BoarManager` viraram `Quadruped`/`QuadrupedManager`, e cada espécie é um `AnimalKind`
+  (`animals/kinds.ts`) com modelo, números (`CONFIG.boars`/`CONFIG.deer`) e conjunto de sons. O modelo
+  (`quadrupedModel.ts`) carrega os próprios pivôs, medidas e esferas de acerto, então uma espécie nova é só um
+  arquivo de geometria. Veado: 3 pelagens (macho com galhada, fêmea, escuro), pescoço comprido que desce até o
+  chão para pastar — a esfera de acerto da cabeça acompanha a inclinação do pescoço —, corrida aos saltos,
+  vive em clareiras e beiras de mata. Ouve de muito longe (55 m andando, 95 correndo, 24 agachado; 60% disso
+  parado), fica 2,5–5 s parado olhando e dispara em 60% das vezes — chegar perto exige agachar e ir devagar.
+  120 pontos + distância, máximo 4 vivos. Sons próprios: balido, latido de alarme (ouvido de longe), berro,
+  saltos e o barulho de pastar.
+- [x] **12b. Javali e veado bebem no lago** (pedido do usuário) — cada bicho tem sede (`thirst`): de tempos em
+  tempos (javali 2–5 min, veado 1,5–3,5 min) larga o que está fazendo e anda até a margem do lago mais próximo
+  (`Lakes.drinkSpot`, alvo logo dentro d'água para ele parar com o focinho na beira), fica de frente para a água
+  e bebe por 6–16 s de cabeça baixa, com som de lambida. Sem lago por perto ele desiste e tenta de novo depois.
+  Isso faz do lago um ponto de espera para o jogador — e o susto funciona igual enquanto ele bebe.
+
+## A fazer (combinado com o usuário, nesta ordem)
+Depois da etapa dos veados o usuário escolheu, de uma lista de sugestões, seguir com:
+
+- [ ] **13. Chuva e neblina** — clima passageiro só como atmosfera: chuva riscando a luz, pingos batendo no lago,
+  som da chuva, neblina baixa de madrugada. **Não pode prejudicar o jogador** (a spec §2 proíbe clima que atrapalhe):
+  no máximo muda a visibilidade e o humor da cena. Encaixa em `Atmosphere` (densidade/cor da névoa já são
+  interpoladas por elevação do sol) + um sistema de partículas de chuva + `Ambience`.
+- [ ] **14. Queda da bala, com rastro visível** — trocar o hitscan por tiro com tempo de voo e gravidade, para o tiro
+  longo com a luneta virar perícia. O usuário pediu explicitamente: **é preciso ver o "rastro" da bala** para saber
+  onde ela está batendo (um traço/risco curto acompanhando o projétil). Mexe em `Hunting.shoot` (hoje resolve tudo
+  num quadro) e provavelmente vira um `combat/Projectile.ts` com atualização por quadro + marcação do impacto.
+
+Sugestões que ficaram de fora por ora (o usuário pode retomar): **apito de caça** (tecla que imita o chamado e
+atrai a bicharada por alguns segundos) e **rastros/sinais** (pegadas de javali, penas, grama amassada, dizendo
+que passou algo por ali há pouco). O usuário recusou minimapa: um mapa de floresta infinita não ajuda a se
+orientar e mostrar bichos acabaria com a caça — por isso a bússola.
+
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
 | --- | --- | --- |
@@ -109,6 +146,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 | 3 | Floresta variada, fim de tarde, sombras | `Vegetation`, `Biome`, `Atmosphere` (começa no fim de tarde; o ciclo dia/noite foi pedido pelo usuário), `Lakes`/`Water` |
 | 4 | Mundo infinito por chunks | `ChunkManager` (streaming + pool) |
 | 5 | Pássaros com spawn dinâmico fora da visão, comportamentos e variações | `BirdManager`, `Bird`, `species.ts` |
+| 5–6 | Outras caças (javali, veado, pato) — pedidas pelo usuário | `QuadrupedManager`, `kinds.ts`, `species.ts` |
 | 6–7 | Caça livre, morte com queda física, corpo inerte, remoção de corpos antigos | `Hunting`, `Bird` (falling/dead), `CONFIG.combat` |
 | 8 | Pontuação discreta, sem loja/níveis/progressão | HUD "Pontos · Abates" |
 | 9–10 | Kar98k visível, tiro com efeito e som, luneta, carregador limitado, munição infinita, "Recarregando..." | `Kar98kModel`, `Weapon`, `weaponSounds` |
@@ -174,11 +212,15 @@ src/
   core/Quality.ts         qualidade adaptativa (pixel ratio + mapa de sombras) e ?quality=0..4
   core/math.ts            + angleDiff, raySphere (compartilhados por pássaros e javalis)
   world/spawnRules.ts     inPlayerView(): regra "fora do campo de visão" usada por pássaros e javalis
+  animals/quadrupedModel.ts  tipos e medidas de um quadrúpede (pivôs, esferas de acerto, tufos) + helpers de pintura
   animals/boarModel.ts    geometria do javali (corpo+crina, cabeça c/ focinho/presas/orelhas, pata, rabo), paletas
-  animals/Boar.ts         um javali: estados, andar desviando de troncos, galope em zigue-zague, morte, raycast por zona
-  animals/BoarManager.ts  spawn de bandos, percepção do jogador, fuga do bando, hit() (abate/ferido), corpos, pool
+  animals/deerModel.ts    geometria do veado (pescoço+cabeça numa peça, galhada do macho, patas longas), paletas
+  animals/kinds.ts        AnimalKind: modelo + números + sons de cada espécie (boarKind(), deerKind())
+  animals/Quadruped.ts    um javali/veado: estados, andar desviando de troncos, galope ou saltos, morte, raycast por zona
+  animals/QuadrupedManager.ts  spawn de bandos, percepção, fuga do bando, hit() (abate/ferido), corpos, pool
   audio/boarSounds.ts     grunt, snort, squeal, hooves, trot, rooting, heavyThud
-  audio/BoarVoices.ts     sons dos javalis por observação de estado (como o BirdVoices)
+  audio/deerSounds.ts     bleat, bark, deerCry, deerGallop, deerWalk, grazing
+  audio/AnimalVoices.ts   sons dos quadrúpedes por observação de estado, com o conjunto de sons da espécie
   audio/Music.ts          música generativa (seções, frases por motivos, instrumentos via AudioSystem.voice),
                           agendamento com lookahead de 1,2 s; toggle() da tecla M; debugSchedule() p/ testes
   effects/Particles.ts    penas e lascas (um InstancedMesh, pool de 240)
@@ -229,6 +271,10 @@ src/
   `wadeDepth`, distância de render). Cada lago cabe inteiro na sua célula, então consultar a célula do ponto basta —
   `heightAt` não ficou mais caro de forma mensurável (~0,7 µs por chamada, igual ao relevo puro). A água é um disco
   por lago com material próprio (poucos em cena); o disco tem 98,5% do raio da bacia para a beira não brigar com a margem.
+- Sede: `CONFIG.<espécie>.drinkInterval/drinkTime/drinkRange`. O alvo fica a 94% do raio do lago (dentro d'água):
+  o bicho para ~1,5 m antes dele e fica na beira; a parte funda continua barrada pelo `Lakes.block`.
+- Quadrúpedes: uma espécie nova = um `*Model.ts` (geometria + pivôs + zonas) e uma entrada em `kinds.ts`
+  com o bloco de `CONFIG`. `Quadruped` e `QuadrupedManager` não conhecem javali nem veado.
 - Patos: espécie normal com `water: true`. `BirdManager.groundAt` devolve a lâmina d'água dentro dos lagos — é isso
   que faz pato e corpo boiarem. Susto: raio 14 m × wary 1,15, então chegar na margem levanta o bando.
 - Grama e samambaia usam faces de trás duplicadas na geometria (não `DoubleSide`, que inverte a normal e escurece).

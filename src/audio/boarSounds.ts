@@ -56,3 +56,12 @@ export function heavyThud(a: AudioSystem, dest: Dest): void {
   a.noiseBurst({ duration: 0.2, type: 'lowpass', freq: 150, gain: 2.2, dest });
   a.noiseBurst({ duration: 0.12, type: 'bandpass', freq: 600, q: 1, gain: 0.7, dest });
 }
+
+/** Bebendo: lambidas curtas na água. */
+export function lapping(a: AudioSystem, dest: Dest): void {
+  for (let i = 0; i < 3; i++) {
+    const at = i * 0.16 + r(0, 0.04);
+    a.noiseBurst({ at, duration: 0.05, type: 'bandpass', freq: r(900, 1500), q: 1.5, gain: 0.7, dest });
+    a.tone({ at, duration: 0.07, freq: r(240, 340), freqEnd: 180, type: 'sine', gain: 0.32, attack: 0.005, dest });
+  }
+}
