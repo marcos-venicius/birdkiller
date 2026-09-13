@@ -37,6 +37,7 @@ Clique na tela para controlar (o navegador também libera o som nesse clique).
 | Música de fundo (liga/desliga) | M |
 | Bússola (liga/desliga) | L |
 | Infravermelho da luneta | V |
+| Caderno de campo (segurar) | Tab |
 | Soltar o mouse | Esc |
 
 O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho
@@ -74,6 +75,9 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
   no tempo fechado, como no equipamento de verdade.
 - **Caça**: troncos, pedras e morros bloqueiam o tiro. Corpo ou cabeça é abate
   (o pássaro cai de verdade e fica no chão); pegar só a asa é raspão. Pontos por espécie e distância.
+- **Caderno de campo**: segure Tab para ver o que você já viveu — as espécies que avistou (as que nunca viu
+  aparecem como "???"), quantas abateu, o tiro mais longo, o maior javali e o maior veado, a melhor sessão e a
+  primeira caçada noturna. Fica salvo no navegador entre uma visita e outra. Não destrava nada: é só memória.
 - **Som**: cantos vindos de onde cada pássaro está, vento, folhas, grilos, animais ao longe, passos e uma
   música de fundo generativa bem baixinha.
 

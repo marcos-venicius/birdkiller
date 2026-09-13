@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage18-journal.json` (caderno limpo, fora do cone não registra, à vista registra e avisa, abates com
+recordes e peso, caçada noturna, Tab abre/fecha, gravado no navegador e intacto depois de recarregar a página),
 `stage17-infrared.json` (tecla V com a luneta, marca IV, veados quentes contra o mundo frio, mesma cena de
 noite com chuva, custo por quadro),
 `stage16-rangefinder.json` (some sem luneta, mede o relevo e um veado a 60/80 m, custo por medida),
@@ -70,6 +72,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - R: recarga manual quando falta munição (cartucho a cartucho: 0,7 s + 0,4 s por cartucho). Vazio = automática (2,6 s).
 - M: liga/desliga a música de fundo (lembra a escolha).
 - L: liga/desliga a bússola (lembra a escolha). Ela some sozinha enquanto a luneta está no olho.
+- Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
 - `?hora=22` (ou `?hora=5.5`) na URL começa em outra hora; o padrão é 17h. `?debug` mostra o relógio.
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
@@ -129,55 +132,31 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   e bebe por 6–16 s de cabeça baixa, com som de lambida. Sem lago por perto ele desiste e tenta de novo depois.
   Isso faz do lago um ponto de espera para o jogador — e o susto funciona igual enquanto ele bebe.
 
+- [x] **17. Caderno de campo** (plano de retenção do usuário) — `ui/Journal.ts` guarda no navegador
+  (`localStorage['birdkiller.caderno']`, JSON versionado) o que o jogador viveu: espécies avistadas e abatidas
+  (com o tiro mais longo de cada), tiro mais longo da vida, maior javali e maior veado (kg = 90/85 × escala³),
+  melhor sessão, primeira caçada noturna e os totais (abates, tempo em campo). **Tab segurado** abre o painel;
+  espécie nunca vista aparece como "???". Avisos na hora numa segunda linha abaixo do aviso de abate
+  (`HUD.note`): "Novo no caderno: Veado", "Recorde: tiro de 312 m", "Recorde: maior veado — 104 kg",
+  "Primeira caçada noturna", "Melhor sessão até hoje" (uma vez por sessão). **Avistar**: a cada 0,5 s, bicho
+  de espécie ainda não vista, a até 150 m, dentro da tela (FOV real, a luneta conta) e com linha de visão livre
+  (relevo + troncos/pedras) — só espécies novas são testadas, então o custo some com o caderno completo
+  (0,003 ms por verificação). Grava agrupando mudanças por 2 s, a cada 30 s pelo tempo em campo e ao sair da
+  página. É registro, não progressão: nada destrava nada (spec §8).
+
 ## A fazer (combinado com o usuário, nesta ordem)
-Depois da etapa dos veados o usuário escolheu, de uma lista de sugestões, seguir com:
+Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
+obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
 
-Sugestões que ficaram de fora por ora (o usuário pode retomar): **apito de caça** (tecla que imita o chamado e
-atrai a bicharada por alguns segundos) e **rastros/sinais** (pegadas de javali, penas, grama amassada, dizendo
-que passou algo por ali há pouco). O usuário recusou minimapa: um mapa de floresta infinita não ajuda a se
-orientar e mostrar bichos acabaria com a caça — por isso a bússola.
+- [ ] **18. Bichos raros** — veado albino, macho velho de galhada enorme, ave rara ao amanhecer. Alimentam o caderno.
+- [ ] **19. Lugares para descobrir** — pontos de interesse raros e procedurais: torre de caça (subir e ver longe,
+  casa com telêmetro e balística), cabana abandonada, riacho ligando lagos, árvore gigante.
+- [ ] **20. Continuar e compartilhar** — voltar de onde parou (posição, hora, clima, pontuação da sessão) e
+  `?seed=` para mandar o mesmo mundo para outra pessoa.
 
-- [x] **13. Chuva e neblina** (pedido do usuário) — `world/Weather.ts`: o tempo fecha e abre sozinho (bom por
-  7–18 min, chuva de 2–5 min, transições de 40–80 s; 70% das vezes que fecha vira chuva, senão fica só nublado).
-  Nublado abafa a luz principal (−80%), acinzenta céu/névoa/horizonte, esconde sol, lua e estrelas e sobe um
-  pouco a exposição; a chuva engrossa a névoa (3,7× a densidade), pica a superfície dos lagos e cala os grilos.
-  Chuva desenhada num só `LineSegments` de 2600 riscos com shader (cilindro de 16 m que segue a câmera, gota
-  posicionada no vertex shader por fase — custo de CPU zero, 1 draw call). Som: chiado parelho + tamborilar nas
-  folhas (mais forte na mata). Neblina de madrugada entre ~4h e o nascer do sol, independente da chuva.
-  **Não atrapalha o jogador** (spec §2): não mexe em velocidade, pontaria nem alcance do tiro — só na visibilidade
-  e no humor. Menos pássaros na chuva (`birds.activity`). `?chuva=1` na URL começa chovendo (testes).
-
-- [x] **14. Queda da bala e rastro** (pedido do usuário) — o hitscan virou projétil (`combat/Ballistics.ts`):
-  bala a 500 m/s com gravidade, resolvida trecho a trecho a cada quadro (o alvo pode se mexer durante o voo).
-  Zeragem em 100 m: a queda em relação à mira é −0,02 m a 50 m, 0 a 100, −0,23 a 200, −0,87 a 300 e −1,90 a 400,
-  com 0,21 s de voo a 100 m e 0,8 s a 400 m. **Rastro** desenhado como fita virada para a câmera, com largura
-  proporcional à distância (linha de 1 px some na tela): enquanto voa aparece o pedaço final; ao bater, a
-  trajetória inteira fica 0,45 s apagando. A largura é calculada por ponta (pela distância de cada vértice até
-  a câmera), senão o trecho que sai do cano vira uma cunha grossa na tela. O rastro **começa na boca do cano** (direita/abaixo do olho) só para
-  desenhar — a bala voa exatamente na linha da mira, então a precisão é a mesma de antes; sem esse deslocamento o
-  rastro projetaria num ponto só no meio da tela. **Clarão** no ponto de impacto (0,3 s, cresce com a distância):
-  é ele que mostra onde o tiro bateu a 300 m.
-
-- [x] **15. Telêmetro da luneta** (pedido do usuário) — com a luneta no olho, a distância do que está na mira
-  aparece discreta ao lado do retículo ("79 m"). `Hunting.measure()` lança o mesmo raio do tiro contra relevo,
-  água, troncos, pedras, pássaros e quadrúpedes e devolve o primeiro que aparecer; 10 medidas por segundo
-  (0,34 ms cada, só enquanto está mirando). Some junto com a luneta. Com a queda da bala, é ele que diz quanto
-  levantar a mira.
-
-- [x] **16. Luneta infravermelha** (pedido do usuário, tecla V) — no `Engine`, a passada do mundo vira duas:
-  o cenário inteiro com um material frio (azul/verde, contraste pela inclinação da superfície) e, por cima e com
-  o mesmo teste de profundidade, só os bichos com um material quente (branco/laranja). Eles ficam na camada 1
-  (`markWarm()` no construtor de `Bird` e `Quadruped`); a câmera enxerga as duas camadas na renderização normal.
-  No térmico a névoa e as sombras são desligadas — é isso que faz o modo valer a pena na chuva e de madrugada.
-  Os materiais usam os chunks padrão do Three (`begin_vertex`/`project_vertex`), então instancing continua
-  funcionando. Custo medido no headless: 2,1 ms/quadro no térmico contra 2,6 ms no normal (mais barato: sem
-  sombras e com shaders simples). Tronco e relevo continuam escondendo o bicho — não é visão através de parede.
-- [x] **16b. O térmico piora no sol** (pedido do usuário) — o contraste agora depende do cenário, como num
-  equipamento de verdade: com o sol alto o chão e as pedras viradas para ele acumulam calor, a imagem vira uma
-  papa morna e o bicho se perde no meio; de madrugada, na chuva, sob nuvem ou neblina o cenário esfria e ele
-  volta a saltar aos olhos. O valor (`heat`) sai da elevação do sol × (1 − 0,85·chuva) × (1 − 0,55·nuvem) ×
-  (1 − 0,5·neblina) e entra como uniform nos dois materiais (`Engine.setThermalHeat`). Medido: 0 às 4h, 0,31
-  às 17h, 1,00 ao meio-dia e 0,07 ao meio-dia debaixo de chuva. Ninguém proíbe ligar de dia — só não compensa.
+Sugestões ainda na gaveta: **apito de caça** (tecla que imita o chamado e atrai a bicharada por alguns segundos)
+e **rastros/sinais** (pegadas de javali, penas, grama amassada). O usuário recusou minimapa: um mapa de floresta
+infinita não ajuda a se orientar e mostrar bichos acabaria com a caça — por isso a bússola.
 
 ## Requisitos do CLAUDE.md — auditoria final
 | § | Requisito | Onde |
@@ -234,6 +213,7 @@ src/
   audio/AudioSystem.ts    AudioContext (desbloqueado no 1º gesto), compressor, reverb de floresta por convolução,
                           noiseBurst()/tone() com envelope — base para a Etapa 6
   audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
+  ui/Journal.ts           caderno de campo: modelo, regras de recorde e persistência (sem DOM)
   ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setScoped, setCrosshairVisible, flash,
                           setDebug, setCompass/setCompassEnabled (fita de rumo + marcas de água), setRange (telêmetro)
   birds/species.ts        definição das espécies (cores, tamanho, voo, destinos, bando, peso/máximo, cautela)

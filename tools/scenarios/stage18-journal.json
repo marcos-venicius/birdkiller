@@ -1,0 +1,70 @@
+[
+ {
+  "wait": 4000
+ },
+ {
+  "eval": "(() => { const g = game, J = g.journal; J.clear(); const v = J.view(); return { vistas: v.seen + ' de ' + v.total, nomes: v.rows.map(r => r.name), recordes: v.records }; })()",
+  "label": "caderno limpo"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, w = g.weapon, inp = g.input, V = p.position.constructor, cam = g.engine.camera; p.position.set(-29, g.terrain.heightAt(-29, -28), -28); p.velocity.set(0, 0, 0); p.yaw = 1.0; p.pitch = -0.02; g.chunks.warmup(p.position); p.update(1 / 30); cam.updateMatrixWorld(); g.engine.render(); window.__look = (pt) => { const e = cam.position; const dx = pt.x - e.x, dy = pt.y - e.y, dz = pt.z - e.z; p.yaw = Math.atan2(-dx, -dz); p.pitch = Math.atan2(dy, Math.hypot(dx, dz)); p.update(1 / 30); cam.updateMatrixWorld(); g.engine.render(); }; window.__scope = (on) => { if (on !== w.aimToggled) inp.buttonsPressed |= 4; for (let i = 0; i < 20; i++) { p.update(1 / 30); w.update(1 / 30); inp.endFrame(); } }; window.__fire = () => { for (let i = 0; i < 90 && w.state !== 'ready'; i++) { p.update(1 / 30); w.update(1 / 30); inp.endFrame(); } w.magazine = 5; inp.buttonsPressed |= 1; w.update(1 / 30); inp.endFrame(); for (let i = 0; i < 400 && !g.hunting.lastShot; i++) g.hunting.update(1 / 60); return g.hunting.lastShot; }; window.__clearSpot = (dist) => { for (let a = 0; a < 6.28; a += 0.06) { const x = p.position.x + Math.cos(a) * dist, z = p.position.z + Math.sin(a) * dist; const y = g.terrain.heightAt(x, z) + 1.0; const dir = new V(x - cam.position.x, y - cam.position.y, z - cam.position.z); const dd = dir.length(); dir.divideScalar(dd); if (g.terrain.raycast(cam.position, dir, dd) < dd) continue; if (g.chunks.raycastObstacles(cam.position, dir, dd).kind) continue; if (!g.chunks.isClear(x, z, 2)) continue; return { x, z }; } return null; }; for (const M of [g.boars, g.deer]) { for (let i = M.active.length - 1; i >= 0; i--) M.release(i); M.frozen = true; M.spawnTimer = 1e9; } for (let i = g.birds.active.length - 1; i >= 0; i--) g.birds.active[i].removable = true; g.birds.update(0.016); g.birds.frozen = true; return 'pronto'; })()",
+  "label": "preparo (sem bichos em volta)"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, V = p.position.constructor, J = g.journal; const fx = -Math.sin(p.yaw), fz = -Math.cos(p.yaw); const atras = g.deer.spawn(new V(p.position.x - fx * 30, 0, p.position.z - fz * 30), 0, 1.1, 0); atras.pose('forage', 0); g.spotAnimals(); const r1 = J.isUnseen('deer'); const i = g.deer.active.indexOf(atras); g.deer.release(i); return { veadoPelasCostasContinuaSemVer: r1 }; })()",
+  "label": "fora do cone: não entra"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, V = p.position.constructor, J = g.journal; const s = __clearSpot(40); if (!s) return 'sem ponto livre'; const d = g.deer.spawn(new V(s.x, 0, s.z), Math.atan2(p.position.x - s.x, p.position.z - s.z) + Math.PI / 2, 1.1, 0); d.pose('forage', 0); window.__deer = d; __look(d.group.position); g.spotAnimals(); return { entrouNoCaderno: !J.isUnseen('deer'), aviso: document.querySelector('.hud-note').textContent, vistas: J.view().seen }; })()",
+  "label": "veado a 40 m, à vista: entra"
+ },
+ {
+  "eval": "(() => { const g = game, J = g.journal; g.hunting.lastShot = null; __scope(true); __look(__deer.zonePoint('chest', new game.player.position.constructor())); const r = __fire(); const v = J.view(); return { tiro: r && { tipo: r.kind, letal: r.lethal, dist: +r.distance.toFixed(1) }, linhaVeado: v.rows.find(x => x.name === 'Veado'), recordes: v.records, totais: v.totals }; })()",
+  "label": "abate: entra no caderno"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, V = p.position.constructor, J = g.journal; __scope(false); const s = __clearSpot(75); if (!s) return 'sem ponto a 75 m'; const d = g.deer.spawn(new V(s.x, 0, s.z), Math.atan2(p.position.x - s.x, p.position.z - s.z) + Math.PI / 2, 1.2, 0); d.pose('forage', 0); __scope(true); __look(d.zonePoint('chest', new V())); g.hunting.lastShot = null; const r = __fire(); return { tiro: r && { letal: r.lethal, dist: +r.distance.toFixed(1) }, aviso: document.querySelector('.hud-note').textContent, recordes: J.view().records }; })()",
+  "label": "segundo veado, mais longe e maior: recordes"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, V = p.position.constructor, J = g.journal; g.atmosphere.setHour(23); __scope(false); const s = __clearSpot(30); const b = g.boars.spawn(new V(s.x, 0, s.z), Math.atan2(p.position.x - s.x, p.position.z - s.z) + Math.PI / 2, 1.0, 0); b.pose('forage', 0); __scope(true); __look(b.zonePoint('chest', new V())); g.hunting.lastShot = null; const r = __fire(); g.atmosphere.setHour(17); return { tiro: r && { letal: r.lethal }, aviso: document.querySelector('.hud-note').textContent, cacadaNoturna: J.view().records.find(x => x[0].startsWith('Primeira'))[1] }; })()",
+  "label": "abate às 23h: primeira caçada noturna"
+ },
+ {
+  "eval": "(() => { const g = game; __scope(false); g.input.down.add('Tab'); return 'Tab segurado'; })()"
+ },
+ {
+  "wait": 2500
+ },
+ {
+  "eval": "(() => { const el = document.querySelector('.hud-journal'); return { painelVisivel: !el.hidden, rodape: el.querySelector('footer') && el.querySelector('footer').textContent }; })()",
+  "label": "painel aberto com Tab"
+ },
+ {
+  "shot": "s18-01-caderno"
+ },
+ {
+  "eval": "(() => { game.input.down.delete('Tab'); return 'soltou'; })()"
+ },
+ {
+  "wait": 2500
+ },
+ {
+  "eval": "(() => { return { painelEscondido: document.querySelector('.hud-journal').hidden }; })()",
+  "label": "soltou o Tab"
+ },
+ {
+  "eval": "(() => { const g = game, J = g.journal; J.flush(); const salvo = JSON.parse(localStorage.getItem('birdkiller.caderno')); const t0 = performance.now(); for (let i = 0; i < 100; i++) g.spotAnimals(); return { salvo: { abates: salvo.kills, especies: Object.keys(salvo.species), tiroMaisLongo: Math.round(salvo.longestShot.m), noturna: !!salvo.firstNight }, msPorVerificacao: +((performance.now() - t0) / 100).toFixed(3) }; })()",
+  "label": "gravado no navegador + custo da verificação"
+ },
+ {
+  "eval": "(() => { location.reload(); return 'recarregando'; })()"
+ },
+ {
+  "wait": 6000
+ },
+ {
+  "eval": "(() => { const v = game.journal.view(); return { depoisDeRecarregar: { vistas: v.seen + ' de ' + v.total, veado: v.rows.find(r => r.name === 'Veado'), javali: v.rows.find(r => r.name === 'Javali'), recordes: v.records, totais: v.totals } }; })()",
+  "label": "página recarregada: continua tudo lá"
+ }
+]

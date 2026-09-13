@@ -15,6 +15,15 @@ import type { Terrain } from '../world/Terrain';
 type BlockKind = 'terrain' | 'trunk' | 'rock' | 'water' | 'none';
 export type HitKind = BlockKind | 'bird' | 'animal';
 
+/** Um abate, para quem registra (caderno de campo). */
+export interface KillInfo {
+  id: string;
+  name: string;
+  distance: number;
+  /** Escala do bicho (quadrúpedes). */
+  scale?: number;
+}
+
 export interface ShotResult {
   kind: HitKind;
   /** Distância até o impacto (m); Infinity se o tiro se perdeu no céu. */
@@ -41,6 +50,8 @@ export class Hunting {
   score = 0;
   kills = 0;
   lastShot: ShotResult | null = null;
+  /** Chamado a cada abate (o caderno de campo escuta aqui); não mexe na pontuação. */
+  onKill?: (info: KillInfo) => void;
 
   constructor(
     private readonly terrain: Terrain,
@@ -137,6 +148,7 @@ export class Hunting {
       if (result.lethal) {
         result.points = kind.cfg.points + Math.floor(result.distance / 10);
         this.addKill(result.points, `${kind.name} · ${Math.round(result.distance)} m`);
+        this.onKill?.({ id: kind.id, name: kind.name, distance: result.distance, scale: animalHit.animal.scale });
       } else {
         this.hud.toast(`${kind.name} ferido`);
       }
@@ -153,6 +165,7 @@ export class Hunting {
         this.birds.kill(birdHit.bird, dir);
         result.points = sp.points + Math.floor(result.distance / 10);
         this.addKill(result.points, `${sp.name} · ${Math.round(result.distance)} m`);
+        this.onKill?.({ id: sp.id, name: sp.name, distance: result.distance });
         this.particles.feathers(result.point, sp.colors, 16, dir);
       } else {
         // Raspão na asa: algumas penas e o pássaro foge.

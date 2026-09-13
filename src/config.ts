@@ -286,6 +286,17 @@ export const CONFIG = {
     scaleOther: [0.8, 0.95],
   },
 
+  journal: {
+    /** Até esta distância (e com linha de visão livre) um bicho novo entra no caderno. */
+    spotDistance: 150,
+    /** Intervalo entre verificações de avistamento (s). */
+    spotInterval: 0.5,
+    /** Acima disto de "noite" (0..1) o abate conta como caçada noturna. */
+    nightThreshold: 0.6,
+    /** Peso de um adulto de escala 1 (kg); o bicho abatido pesa isso × escala³. */
+    weightKg: { boar: 90, deer: 85 },
+  },
+
   combat: {
     /** Alcance máximo do tiro (m). */
     range: 400,

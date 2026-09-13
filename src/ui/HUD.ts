@@ -1,3 +1,5 @@
+import type { JournalView } from './Journal';
+
 /** Graus visíveis para cada lado do centro da fita da bússola. */
 const COMPASS_SPAN = 62;
 /** Pixels por grau na fita. */
@@ -32,6 +34,8 @@ export class HUD {
   private readonly crosshairEl: HTMLElement;
   private readonly scopeEl: HTMLElement;
   private readonly flashEl: HTMLElement;
+  private readonly noteEl: HTMLElement;
+  private readonly journalEl: HTMLElement;
   private readonly rangeEl: HTMLElement;
   private readonly irEl: HTMLElement;
   private readonly compassEl: HTMLElement;
@@ -64,11 +68,13 @@ export class HUD {
       </div>
       <div class="hud-crosshair"></div>
       <div class="hud-kill"></div>
+      <div class="hud-note"></div>
+      <div class="hud-journal" hidden></div>
       <div class="hud-reload" hidden>Recarregando...</div>
       <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
       <div class="hud-hint">
         Clique para controlar
-        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · V infravermelho · Esc soltar o mouse</small>
+        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · V infravermelho · Tab caderno · Esc soltar o mouse</small>
       </div>
       <div class="hud-range" hidden></div>
       <div class="hud-ir" hidden>IV</div>
@@ -85,6 +91,8 @@ export class HUD {
     this.crosshairEl = root.querySelector('.hud-crosshair')!;
     this.scopeEl = root.querySelector('.hud-scope')!;
     this.flashEl = root.querySelector('.hud-flash')!;
+    this.noteEl = root.querySelector('.hud-note')!;
+    this.journalEl = root.querySelector('.hud-journal')!;
     this.rangeEl = root.querySelector('.hud-range')!;
     this.irEl = root.querySelector('.hud-ir')!;
     this.compassEl = root.querySelector('.hud-compass')!;
@@ -118,6 +126,43 @@ export class HUD {
     void el.offsetWidth;
     el.style.transition = 'opacity 0.8s ease-in 1.4s';
     el.style.opacity = '0';
+  }
+
+  /** Segunda linha, logo abaixo do aviso de abate: novidades do caderno de campo. */
+  note(text: string): void {
+    const el = this.noteEl;
+    el.textContent = text;
+    el.style.transition = 'none';
+    el.style.opacity = '1';
+    void el.offsetWidth;
+    el.style.transition = 'opacity 1s ease-in 2.6s';
+    el.style.opacity = '0';
+  }
+
+  /** Painel do caderno de campo (Tab segurado). */
+  showJournal(v: JournalView): void {
+    const rows = v.rows
+      .map((r) => `<tr class="${r.seen ? '' : 'unseen'}"><td>${r.name}</td><td>${r.seen ? r.kills : ''}</td><td>${r.seen ? r.longest : ''}</td></tr>`)
+      .join('');
+    const pairs = (list: [string, string][]) => list.map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('');
+    this.journalEl.innerHTML = `
+      <h2>Caderno de campo</h2>
+      <div class="cols">
+        <section>
+          <h3>Espécies</h3>
+          <table><thead><tr><th></th><th>abates</th><th>mais longe</th></tr></thead><tbody>${rows}</tbody></table>
+        </section>
+        <section>
+          <h3>Recordes</h3><dl>${pairs(v.records)}</dl>
+          <h3>Totais</h3><dl>${pairs(v.totals)}</dl>
+        </section>
+      </div>
+      <footer>${v.seen} de ${v.total} espécies avistadas</footer>`;
+    this.journalEl.hidden = false;
+  }
+
+  hideJournal(): void {
+    this.journalEl.hidden = true;
   }
 
   setAmmo(inMagazine: number): void {

@@ -1,6 +1,6 @@
 /** Teclas que o jogo usa — evitamos o comportamento padrão do navegador para elas. */
 const GAME_KEYS = new Set([
-  'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyC', 'KeyR', 'Space',
+  'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyC', 'KeyR', 'Space', 'Tab',
   'ShiftLeft', 'ShiftRight', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
 ]);
 

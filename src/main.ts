@@ -24,6 +24,7 @@ import { Quality } from './core/Quality';
 import { Input } from './core/Input';
 import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
+import { Journal } from './ui/Journal';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
 import type { Lake } from './world/Lakes';
@@ -82,6 +83,50 @@ const deerVoices = new AnimalVoices(audio, deerKind().sounds);
 const footsteps = new Footsteps(audio, biome);
 const music = new Music(audio);
 weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
+
+// Caderno de campo: espécies avistadas/abatidas, recordes e totais, guardados entre sessões.
+const journal = new Journal([
+  ...birds.speciesList.map((s) => ({ id: s.id, name: s.name })),
+  { id: boars.kind.id, name: boars.kind.name },
+  { id: deer.kind.id, name: deer.kind.name },
+]);
+hunting.onKill = (info) => {
+  const night = atmosphere.night > CONFIG.journal.nightThreshold;
+  const news = journal.recordKill({ ...info, night, clock: atmosphere.clock }, hunting.score);
+  if (news.length) hud.note(news.join('  ·  '));
+};
+window.addEventListener('pagehide', () => journal.flush());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) journal.flush();
+});
+const spotDir = new THREE.Vector3();
+const spotNdc = new THREE.Vector3();
+let spotTimer = 0;
+let journalOpen = false;
+let journalRefresh = 0;
+
+/** Bicho de espécie ainda não avistada, na tela, perto e sem nada no caminho: entra no caderno. */
+function spotAnimals(): void {
+  if (journal.complete) return;
+  const cam = engine.camera;
+  const news: string[] = [];
+  const check = (id: string, p: THREE.Vector3): void => {
+    if (!journal.isUnseen(id)) return;
+    const d = cam.position.distanceTo(p);
+    if (d > CONFIG.journal.spotDistance || d < 0.5) return;
+    spotNdc.copy(p).project(cam);
+    if (spotNdc.z > 1 || Math.abs(spotNdc.x) > 1 || Math.abs(spotNdc.y) > 1) return;
+    spotDir.subVectors(p, cam.position).divideScalar(d);
+    const clear = d - 0.8;
+    if (terrain.raycast(cam.position, spotDir, clear) < clear) return;
+    if (chunks.raycastObstacles(cam.position, spotDir, clear).kind) return;
+    const msg = journal.spot(id);
+    if (msg) news.push(msg);
+  };
+  for (const b of birds.active) if (b.alive) check(b.species.id, b.pos);
+  for (const m of [boars, deer]) for (const a of m.active) if (a.alive) check(m.kind.id, a.group.position);
+  if (news.length) hud.note(news.join('  ·  '));
+}
 input.onLockChange = (locked) => {
   hud.setHintVisible(!locked);
   if (!locked) weapon.cancelAim();
@@ -142,6 +187,24 @@ engine.renderer.setAnimationLoop(() => {
   footsteps.update(dt, player);
   music.update();
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
+  // Caderno de campo: tempo em campo, avistamentos e o painel com Tab segurado.
+  journal.tick(Math.min(realDt, 1));
+  spotTimer -= dt;
+  if (spotTimer <= 0) {
+    spotTimer = CONFIG.journal.spotInterval;
+    spotAnimals();
+  }
+  if (input.isDown('Tab')) {
+    journalRefresh -= dt;
+    if (!journalOpen || journalRefresh <= 0) {
+      hud.showJournal(journal.view());
+      journalOpen = true;
+      journalRefresh = 0.5;
+    }
+  } else if (journalOpen) {
+    hud.hideJournal();
+    journalOpen = false;
+  }
   if (input.wasPressed('KeyV')) {
     infrared = !infrared;
     hud.toast(infrared ? 'Infravermelho ligado' : 'Infravermelho desligado');
@@ -253,6 +316,8 @@ if (import.meta.env.DEV) {
       particles,
       hunting,
       ballistics,
+      journal,
+      spotAnimals,
       ambience,
       voices,
       boarVoices,
