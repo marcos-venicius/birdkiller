@@ -1,3 +1,4 @@
+import { CONFIG } from '../config';
 import type { JournalView } from './Journal';
 
 /** Graus visíveis para cada lado do centro da fita da bússola. */
@@ -41,6 +42,9 @@ export class HUD {
   private readonly compassEl: HTMLElement;
   private readonly dirEls: HTMLElement[] = [];
   private readonly markEls: HTMLElement[] = [];
+  /** Marcadores de direção: um na fita da bússola e um no mundo (quando o ponto está na tela). */
+  private readonly pinEls: HTMLElement[] = [];
+  private readonly worldPinEls: HTMLElement[] = [];
   private compassOn = false;
   private scoped = false;
 
@@ -74,7 +78,7 @@ export class HUD {
       <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
       <div class="hud-hint">
         Clique para controlar
-        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · V infravermelho · Tab caderno · Esc soltar o mouse</small>
+        <small>WASD mover · Shift correr · C agachar · Espaço pular · Botão direito mira (liga/desliga) · Botão esquerdo atirar · R recarregar · M música · L bússola · V infravermelho · Q marcador · Tab caderno · Esc soltar o mouse</small>
       </div>
       <div class="hud-range" hidden></div>
       <div class="hud-ir" hidden>IV</div>
@@ -109,6 +113,20 @@ export class HUD {
       el.innerHTML = '<b>≈</b> <i></i>';
       this.compassEl.append(el);
       this.markEls.push(el);
+    }
+    for (let i = 0; i < CONFIG.markers.max; i++) {
+      const el = document.createElement('span');
+      el.className = 'pin';
+      el.innerHTML = '<b></b> <i></i>';
+      this.compassEl.append(el);
+      this.pinEls.push(el);
+
+      const world = document.createElement('div');
+      world.className = 'hud-pin';
+      world.hidden = true;
+      world.innerHTML = '<b>◆</b><span></span><i></i>';
+      root.append(world);
+      this.worldPinEls.push(world);
     }
   }
 
@@ -200,6 +218,25 @@ export class HUD {
     if (this.irEl.hidden === on) this.irEl.hidden = !on;
   }
 
+  /**
+   * Marcadores no mundo: `x`, `y` em pixels da tela (o losango fica centrado no ponto marcado).
+   * Os que não vierem na lista ficam escondidos (fora da tela ou atrás da câmera).
+   */
+  setWorldPins(pins: readonly { n: number; x: number; y: number; distance: number }[]): void {
+    for (let i = 0; i < this.worldPinEls.length; i++) {
+      const el = this.worldPinEls[i];
+      const pin = pins[i];
+      if (!pin) {
+        if (!el.hidden) el.hidden = true;
+        continue;
+      }
+      el.hidden = false;
+      el.style.transform = `translate(${(pin.x - 6).toFixed(1)}px, ${pin.y.toFixed(1)}px) translateY(-50%)`;
+      el.querySelector('span')!.textContent = String(pin.n);
+      el.querySelector('i')!.textContent = `${Math.round(pin.distance)} m`;
+    }
+  }
+
   /** Liga/desliga a fita da bússola (tecla L). */
   setCompassEnabled(on: boolean): void {
     this.compassOn = on;
@@ -210,8 +247,23 @@ export class HUD {
    * Atualiza a fita: `heading` em graus (0 = norte, 90 = leste) e a água por perto,
    * cada marca com o rumo em graus e a distância em metros.
    */
-  setCompass(heading: number, marks: readonly { bearing: number; distance: number }[]): void {
+  setCompass(
+    heading: number,
+    marks: readonly { bearing: number; distance: number }[],
+    pins: readonly { n: number; bearing: number; distance: number }[] = [],
+  ): void {
     if (this.compassEl.hidden) return;
+    for (let i = 0; i < this.pinEls.length; i++) {
+      const el = this.pinEls[i];
+      const pin = pins[i];
+      if (!pin) {
+        el.style.opacity = '0';
+        continue;
+      }
+      this.place(el, wrapDeg(pin.bearing - heading), 1);
+      el.querySelector('b')!.textContent = `◆${pin.n}`;
+      el.querySelector('i')!.textContent = `${Math.round(pin.distance)} m`;
+    }
     for (let i = 0; i < CARDINALS.length; i++) this.place(this.dirEls[i], wrapDeg(CARDINALS[i][1] - heading), 1);
     for (let i = 0; i < this.markEls.length; i++) {
       const el = this.markEls[i];

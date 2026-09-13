@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage19-markers.json` (marca um veado pela mira, rumo/distância na fita e losango na tela, some ao virar de
+costas, distância cai ao andar, Q olhando apaga, 4º marcador derruba o mais antigo),
 `stage18-journal.json` (caderno limpo, fora do cone não registra, à vista registra e avisa, abates com
 recordes e peso, caçada noturna, Tab abre/fecha, gravado no navegador e intacto depois de recarregar a página),
 `stage17-infrared.json` (tecla V com a luneta, marca IV, veados quentes contra o mundo frio, mesma cena de
@@ -72,6 +74,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - R: recarga manual quando falta munição (cartucho a cartucho: 0,7 s + 0,4 s por cartucho). Vazio = automática (2,6 s).
 - M: liga/desliga a música de fundo (lembra a escolha).
 - L: liga/desliga a bússola (lembra a escolha). Ela some sozinha enquanto a luneta está no olho.
+- Q: marcador de direção no ponto da mira (Q de novo olhando para ele apaga; até 3, o mais antigo sai).
 - Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
 - `?hora=22` (ou `?hora=5.5`) na URL começa em outra hora; o padrão é 17h. `?debug` mostra o relógio.
@@ -144,6 +147,16 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   (0,003 ms por verificação). Grava agrupando mudanças por 2 s, a cada 30 s pelo tempo em campo e ao sair da
   página. É registro, não progressão: nada destrava nada (spec §8).
 
+- [x] **17b. Marcadores de direção** (pedido do usuário: marcar o rumo de um bicho enquanto confere outro) —
+  **Q** marca o ponto para onde a mira aponta, usando o mesmo raio do telêmetro (`Hunting.measure`); mirando o
+  céu, vai para 250 m na linha da mira. Guarda o **ponto**, não só o rumo, então rumo e distância continuam certos
+  enquanto o jogador anda. Aparece como "◆1 85 m" em âmbar numa terceira linha da fita da bússola (abaixo das
+  marcas de água, para não encavalar quando os dois apontam para o mesmo lado) e como um losango numerado com a
+  distância no mundo, projetado na tela a cada quadro quando o ponto está à vista (também dentro da luneta).
+  Q olhando a até 5° de um marcador apaga ele; no máximo 3, numerados 1–3 com reaproveitamento, e o mais antigo
+  sai. Valem só na sessão. Lógica em `ui/Markers.ts` (sem DOM), desenho em `HUD.setCompass(…, pins)` e
+  `HUD.setWorldPins`.
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
@@ -213,6 +226,7 @@ src/
   audio/AudioSystem.ts    AudioContext (desbloqueado no 1º gesto), compressor, reverb de floresta por convolução,
                           noiseBurst()/tone() com envelope — base para a Etapa 6
   audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
+  ui/Markers.ts           marcadores de direção (tecla Q): toggle pela mira, máximo 3, números reaproveitados
   ui/Journal.ts           caderno de campo: modelo, regras de recorde e persistência (sem DOM)
   ui/HUD.ts               setScore, setAmmo, setReloading, setHintVisible, setScoped, setCrosshairVisible, flash,
                           setDebug, setCompass/setCompassEnabled (fita de rumo + marcas de água), setRange (telêmetro)

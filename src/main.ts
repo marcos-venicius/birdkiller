@@ -25,6 +25,7 @@ import { Input } from './core/Input';
 import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
 import { Journal } from './ui/Journal';
+import { Markers } from './ui/Markers';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
 import type { Lake } from './world/Lakes';
@@ -144,6 +145,13 @@ hud.setCompassEnabled(compassOn);
 const compassMarks: { bearing: number; distance: number }[] = [];
 const compassLakes: Lake[] = [];
 let compassTimer = 0;
+// Marcadores de direção (tecla Q): marcam o ponto na mira, aparecem na bússola e no mundo.
+const markers = new Markers();
+const compassPins: { n: number; bearing: number; distance: number }[] = [];
+const worldPins: { n: number; x: number; y: number; distance: number }[] = [];
+const markDir = new THREE.Vector3();
+const markTarget = new THREE.Vector3();
+const pinNdc = new THREE.Vector3();
 const rangeDir = new THREE.Vector3();
 // Luneta infravermelha (tecla V): só enxerga térmico com a luneta no olho.
 let infrared = false;
@@ -205,6 +213,16 @@ engine.renderer.setAnimationLoop(() => {
     hud.hideJournal();
     journalOpen = false;
   }
+  if (input.wasPressed('KeyQ')) {
+    // Marca o que está na mira (mesmo raio do telêmetro); mirando o céu, um ponto longe na mesma linha.
+    const cam = engine.camera;
+    cam.getWorldDirection(markDir);
+    const d = hunting.measure(cam.position, markDir);
+    markTarget.copy(cam.position).addScaledVector(markDir, Number.isFinite(d) ? d : CONFIG.markers.skyDistance);
+    const r = markers.toggle(cam.position, markDir, markTarget);
+    hud.toast(r.action === 'added' ? `Marcador ${r.n}` : `Marcador ${r.n} removido`);
+    compassTimer = 0;
+  }
   if (input.wasPressed('KeyV')) {
     infrared = !infrared;
     hud.toast(infrared ? 'Infravermelho ligado' : 'Infravermelho desligado');
@@ -255,8 +273,31 @@ engine.renderer.setAnimationLoop(() => {
     }
     compassMarks.sort((a, b) => a.distance - b.distance);
     // Câmera olhando para -Z quando yaw = 0: o rumo é o oposto do yaw.
-    hud.setCompass((THREE.MathUtils.radToDeg(-player.yaw) + 360) % 360, compassMarks);
+    compassPins.length = 0;
+    for (const m of markers.list) {
+      const dx = m.pos.x - p.x;
+      const dz = m.pos.z - p.z;
+      compassPins.push({ n: m.n, bearing: (THREE.MathUtils.radToDeg(Math.atan2(dx, -dz)) + 360) % 360, distance: Math.hypot(dx, dz) });
+    }
+    hud.setCompass((THREE.MathUtils.radToDeg(-player.yaw) + 360) % 360, compassMarks, compassPins);
   }
+  // Marcadores no mundo: projetados na tela a cada quadro (poucos, só transform de DOM).
+  worldPins.length = 0;
+  if (markers.list.length > 0) {
+    const cam = engine.camera;
+    cam.updateMatrixWorld();
+    for (const m of markers.list) {
+      pinNdc.copy(m.pos).project(cam);
+      if (pinNdc.z > 1 || Math.abs(pinNdc.x) > 1.02 || Math.abs(pinNdc.y) > 1.02) continue;
+      worldPins.push({
+        n: m.n,
+        x: (pinNdc.x * 0.5 + 0.5) * window.innerWidth,
+        y: (-pinNdc.y * 0.5 + 0.5) * window.innerHeight,
+        distance: Math.hypot(m.pos.x - player.position.x, m.pos.z - player.position.z),
+      });
+    }
+  }
+  hud.setWorldPins(worldPins);
   chunks.update(player.position);
   weather.update(dt, engine.camera, atmosphere);
   atmosphere.update(player.position, engine.camera, dt);
@@ -318,6 +359,7 @@ if (import.meta.env.DEV) {
       ballistics,
       journal,
       spotAnimals,
+      markers,
       ambience,
       voices,
       boarVoices,

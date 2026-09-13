@@ -162,7 +162,7 @@ body {
   top: 14px;
   left: 50%;
   width: 260px;
-  height: 40px;
+  height: 52px;
   margin-left: -130px;
   font-size: 12px;
   letter-spacing: 0.08em;
@@ -180,7 +180,8 @@ body {
 }
 
 .hud-compass .dir,
-.hud-compass .mark {
+.hud-compass .mark,
+.hud-compass .pin {
   position: absolute;
   left: 50%;
   transform: translateX(0);
@@ -345,4 +346,61 @@ body {
   font-size: 11px;
   opacity: 0.55;
   text-align: center;
+}
+
+/* Marcadores de direção na fita da bússola: terceira linha, abaixo da água, em âmbar. */
+.hud-compass .pin {
+  top: 39px;
+  margin-left: -30px;
+  width: 60px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: rgba(255, 196, 110, 0.98);
+}
+
+.hud-compass .pin b {
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.hud-compass .pin i {
+  font-style: normal;
+  opacity: 0.85;
+}
+
+/*
+ * Marcador no mundo: losango no ponto marcado, com número e distância ao lado (em linha, para não
+ * encavalar com os avisos centrados acima do retículo quando o marcador está na mira).
+ */
+.hud-pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  color: rgba(255, 196, 110, 0.95);
+  font-size: 10px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.hud-pin b {
+  width: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.hud-pin span {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.hud-pin i {
+  font-style: normal;
+  opacity: 0.8;
 }

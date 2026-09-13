@@ -286,6 +286,15 @@ export const CONFIG = {
     scaleOther: [0.8, 0.95],
   },
 
+  markers: {
+    /** Quantos marcadores de direção ao mesmo tempo (o mais antigo sai). */
+    max: 3,
+    /** Q olhando a até este ângulo (graus) de um marcador apaga ele em vez de criar outro. */
+    removeAngle: 5,
+    /** Mirando o céu (nada no alcance), o marcador vai para este ponto na linha da mira (m). */
+    skyDistance: 250,
+  },
+
   journal: {
     /** Até esta distância (e com linha de visão livre) um bicho novo entra no caderno. */
     spotDistance: 150,
