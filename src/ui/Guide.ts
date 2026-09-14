@@ -46,6 +46,7 @@ export const GUIDE: { title: string; items: string[] }[] = [
     items: [
       '**L** bússola · **Q** marca o ponto da mira (Q de novo olhando para ele apaga)',
       '**Tab** (segurar) caderno de campo: espécies, recordes e lugares achados',
+      '**−** e **=** diminuem e aumentam a sensibilidade do mouse; com a luneta no olho, ajustam a da luneta',
       '**M** música · **Esc** solta o mouse',
     ],
   },

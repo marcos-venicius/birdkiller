@@ -43,6 +43,7 @@ aparecem sozinhas, uma única vez, quando a situação chega (a primeira noite, 
 | Caderno de campo (segurar) | Tab |
 | Copiar o link do seu mundo | K |
 | Guia de campo | H |
+| Sensibilidade do mouse (na luneta, a da luneta) | − / = |
 | Soltar o mouse | Esc |
 
 O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho

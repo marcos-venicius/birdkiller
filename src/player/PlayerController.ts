@@ -22,6 +22,8 @@ export class PlayerController {
   onGround = true;
   /** Multiplicador de sensibilidade (a luneta reduz). */
   lookScale = 1;
+  /** Sensibilidade escolhida pelo jogador (teclas − e =). */
+  sensitivity = 1;
   /** Mirando: anda mais devagar e não corre (definido pela arma). */
   aiming = false;
   /** Deslocamento extra do olhar (x = pitch, y = yaw): coice e respiração, definido pela arma. */
@@ -57,7 +59,7 @@ export class PlayerController {
 
     const { dx, dy } = input.consumeMouseDelta();
     this.lookDelta.set(dx, dy);
-    const sens = P.mouseSensitivity * this.lookScale;
+    const sens = P.mouseSensitivity * this.sensitivity * this.lookScale;
     this.yaw -= dx * sens;
     this.pitch = THREE.MathUtils.clamp(this.pitch - dy * sens, -MAX_PITCH, MAX_PITCH);
 

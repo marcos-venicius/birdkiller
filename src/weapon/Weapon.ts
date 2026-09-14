@@ -50,6 +50,9 @@ export class Weapon {
   /** Mira ligada (o botão direito alterna). */
   aimToggled = false;
   /** Luneta efetivamente no olho (depois da animação) — quem liga o telêmetro. */
+  /** Sensibilidade da luneta escolhida pelo jogador, relativa à padrão (teclas − e = com a luneta). */
+  scopeSensitivity = 1;
+
   get inScope(): boolean {
     return this.scoped;
   }
@@ -138,7 +141,7 @@ export class Weapon {
       cam.fov = fov;
       cam.updateProjectionMatrix();
     }
-    P.lookScale = THREE.MathUtils.lerp(1, W.scopeLookScale, zoom);
+    P.lookScale = THREE.MathUtils.lerp(1, W.scopeLookScale * this.scopeSensitivity, zoom);
 
     const scoped = this.aim > 0.93;
     if (scoped !== this.scoped) {

@@ -2,6 +2,7 @@
 const GAME_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyC', 'KeyR', 'Space', 'Tab',
   'ShiftLeft', 'ShiftRight', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+  'Minus', 'Equal', 'NumpadSubtract', 'NumpadAdd',
 ]);
 
 /** Ignora picos espúrios de movementX/Y que alguns navegadores emitem com pointer lock. */

@@ -27,6 +27,7 @@ import { HUD } from './ui/HUD';
 import { Journal } from './ui/Journal';
 import { Markers } from './ui/Markers';
 import { Tips } from './ui/Tips';
+import { Sensitivity, formatSensitivity } from './player/Sensitivity';
 import { browserStore, resolveWorldSeed, SessionStore, shareUrl } from './ui/Session';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
@@ -230,6 +231,11 @@ input.onLockChange = (locked) => {
   if (!locked) weapon.cancelAim();
 };
 
+// Sensibilidade do mouse (teclas − e =; com a luneta, a da luneta), lembrada no navegador.
+const sensitivity = new Sensitivity();
+player.sensitivity = sensitivity.look;
+weapon.scopeSensitivity = sensitivity.scope;
+
 // Bússola: o jogador liga/desliga com L e a escolha é lembrada.
 const COMPASS_KEY = 'birdkiller.bussola';
 let compassOn = true;
@@ -398,6 +404,15 @@ engine.renderer.setAnimationLoop(() => {
     engine.setThermalHeat(THREE.MathUtils.clamp(heat, 0, 1), atmosphere.sunDir);
   }
   hud.setInfrared(engine.thermal);
+  const sensDir = input.wasPressed('Equal') || input.wasPressed('NumpadAdd') ? 1
+    : input.wasPressed('Minus') || input.wasPressed('NumpadSubtract') ? -1 : 0;
+  if (sensDir !== 0) {
+    const scoped = weapon.inScope;
+    const v = sensitivity.adjust(scoped, sensDir);
+    if (scoped) weapon.scopeSensitivity = v;
+    else player.sensitivity = v;
+    hud.toast(`Sensibilidade ${scoped ? 'da luneta' : 'do mouse'}: ${formatSensitivity(v)}   (− diminui · = aumenta)`);
+  }
   if (input.wasPressed('KeyL')) {
     compassOn = !compassOn;
     hud.setCompassEnabled(compassOn);
@@ -529,6 +544,7 @@ if (import.meta.env.DEV) {
       discoverPlaces,
       world,
       tips,
+      sensitivity,
       session,
       saveSession,
       shareUrl,

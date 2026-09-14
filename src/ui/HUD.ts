@@ -83,7 +83,7 @@ export class HUD {
       <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
       <div class="hud-hint">
         Clique para controlar
-        <small>WASD anda · botão direito liga a luneta · botão esquerdo atira · <kbd>H</kbd> guia de campo com todos os controles e o que procurar</small>
+        <small>WASD anda · botão direito liga a luneta · botão esquerdo atira · <kbd>−</kbd> <kbd>=</kbd> sensibilidade do mouse · <kbd>H</kbd> guia de campo com todos os controles e o que procurar</small>
       </div>
       <div class="hud-range" hidden></div>
       <div class="hud-ir" hidden>IV</div>

@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage24-sensitivity.json` (− e = mudam o giro por pixel do mouse, a da luneta é separada, limites,
+lembrada depois de recarregar),
 `stage23-guide.json` (H abre e fecha o guia, dicas oferecidas pela situação e mostradas uma vez só,
 intervalo entre dicas, nada repete depois de recarregar, capturas do guia e de uma dica),
 `stage22-session.json` (qual mundo abrir em cada situação, link de compartilhar, sessão salva em cima da
@@ -91,6 +93,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   Espaço solta da escada.
 - Q: marcador de direção no ponto da mira (Q de novo olhando para ele apaga; até 3, o mais antigo sai).
 - H: abre/fecha o guia de campo (o jogo não pausa).
+- − / =: diminui/aumenta a sensibilidade do mouse (com a luneta no olho, a da luneta).
 - K: copia o link do seu mundo (`?seed=`), para mandar a outra pessoa.
 - Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
@@ -222,12 +225,34 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   na vida** (`localStorage['birdkiller.dicas']`), uma de cada vez com 12 s de intervalo, embaixo no centro.
   Abrir o guia apaga a dica que o sugere. A spec proíbe tutorial obrigatório: nada disso bloqueia ou pausa.
 
+- [x] **22. Sensibilidade do mouse** (pedido do usuário) — sem menu: as teclas **−** e **=** (e − / + do
+  teclado numérico) diminuem e aumentam a sensibilidade em passos de 0,1× (de 0,2× a 3×), com um aviso do valor.
+  Com a luneta no olho, as mesmas teclas ajustam a sensibilidade **da luneta**, separada (relativa à redução
+  padrão da luneta). `player/Sensitivity.ts`, guardado em `localStorage['birdkiller.sensibilidade']`. Aparece
+  na caixa "Clique para controlar" e no guia (H).
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
 
 - [ ] **19b. Riacho ligando lagos** — ficou de fora da etapa 19: precisa escavar leito no relevo ao longo de um
   caminho e desenhar água nele (quase uma etapa inteira sozinho).
+
+Ideias anotadas pelo usuário (ainda sem ordem nem plano):
+- [ ] **Machado e madeira** — cortar árvores com um machado para juntar madeira. Pontos a decidir: como trocar
+  entre rifle e machado (tecla), animação e som do golpe, a árvore cai e vira toco (e o toco precisa ficar
+  guardado por mundo, como os lugares), quanto de madeira cada árvore dá. A spec pede "sem inventário
+  complexo": a madeira deve ser um número só, visível só quando importa (não uma mochila).
+- [ ] **Construir torres com a madeira** — erguer uma torre de caça de tamanhos diferentes (ex.: baixa, média,
+  alta, cada uma custando mais madeira) no ponto que o jogador escolher, o "meu ponto de caça". Reaproveita o
+  modelo, a escada e as colisões das torres da etapa 19 (`world/Places.ts`, `world/PlaceView.ts`); precisa de
+  prévia de onde vai ficar (fantasma no chão), regra de terreno (não em lago, não em cima de árvore/cabana) e
+  persistência por mundo (`localStorage`, junto da sessão do seed). Não pode virar progressão: construir é
+  escolha do jogador, não desbloqueio.
+- [ ] **Meus lugares favoritos** — marcar de forma permanente os pontos preferidos (minhas cabanas, minhas
+  torres, meus lagos ou qualquer lugar) para achar de novo. Diferente dos marcadores Q (temporários, de direção):
+  ficam guardados por mundo, com um tipo/ícone, e aparecem na bússola e no mundo como os marcadores; entram no
+  caderno (Tab). As torres construídas pelo jogador podem virar favoritas automaticamente.
 
 Sugestões ainda na gaveta: **apito de caça** (tecla que imita o chamado e atrai a bicharada por alguns segundos)
 e **rastros/sinais** (pegadas de javali, penas, grama amassada). O usuário recusou minimapa: um mapa de floresta
@@ -292,6 +317,7 @@ src/
   audio/weaponSounds.ts   disparo (estalo + corpo + ecos), ferrolho, recarga com pente
   ui/Guide.ts             conteúdo do guia de campo (tecla H)
   ui/Tips.ts              dicas na hora certa: fila, intervalo e o que já foi visto
+  player/Sensitivity.ts   sensibilidade do mouse e da luneta (teclas − e =)
   ui/Session.ts           mundo por jogador (resolveWorldSeed), link de compartilhar e a sessão salva por mundo
   ui/Markers.ts           marcadores de direção (tecla Q): toggle pela mira, máximo 3, números reaproveitados
   ui/Journal.ts           caderno de campo: modelo, regras de recorde e persistência (sem DOM)
