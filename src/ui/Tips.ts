@@ -18,7 +18,7 @@ export const TIPS = {
   javali: 'Javali: tiro na cabeça ou no peito abate; na traseira ele foge ferido e o próximo tiro mata.',
   marcador: 'Q marca na bússola o ponto da mira: não perde o bicho de vista enquanto olha para outro lado.',
   caderno: 'Segure Tab para ver o caderno de campo: espécies, recordes e os lugares que você já achou.',
-  longe: 'Longe assim, a bala cai: a 300 m ela passa quase 1 m abaixo da mira. Levante um pouco.',
+  longe: 'Longe assim, a bala cai: ponha no alvo o tracinho da distância (2, 3 e 4 = 200, 300 e 400 m).',
   ferramentas: 'Tecla 2 pega o machado para cortar árvores e juntar madeira; 1 volta para o rifle.',
   machado: 'Machado: golpeie o tronco com o botão esquerdo. Árvore grossa pede mais golpes; derrubada, E recolhe a madeira.',
   tronco: 'E recolhe a madeira deste tronco. Troncos caídos na mata também servem, sem precisar cortar nada.',

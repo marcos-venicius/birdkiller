@@ -16,7 +16,8 @@ export const GUIDE: { title: string; items: string[] }[] = [
     title: 'Atirar',
     items: [
       '**Botão direito** liga a luneta · **Botão esquerdo** atira · **R** completa o carregador',
-      'A bala leva tempo e cai: até ~150 m mire direto; a 300 m, quase 1 m acima',
+      'A bala leva tempo e cai: até ~150 m mire direto; mais longe, use os tracinhos da luneta',
+      'Tracinhos abaixo do centro da luneta: 2, 3 e 4 = 200, 300 e 400 m. Leia a distância no telêmetro e ponha o tracinho dela no alvo',
       'Na luneta, o telêmetro mostra a distância do que está na mira',
       '**V** liga o infravermelho da luneta: ótimo de noite, na chuva e na neblina; ruim sob sol forte',
       'Cabeça ou peito abate; pássaro pego só na asa foge; javali e veado feridos na traseira fogem',

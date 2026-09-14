@@ -48,6 +48,8 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage27-bdc.json` (cada tracinho na tela onde a câmera da luneta projeta um ponto 200/300/400 m abaixo da
+linha da mira; bala simulada mirando pelo tracinho cai no alvo, erro em cm),
 `stage25-axe.json` (tecla 2, golpes até cair conforme o raio, rifle sem atirar, queda e toco, resto do chunk
 idêntico, E recolhe a derrubada e um tronco da mata, persistência depois de recarregar),
 `stage26-build.json` (tecla 3, fantasma vermelho sem madeira e verde com, as três alturas, os motivos de não poder,
@@ -256,6 +258,12 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   qualquer altura (travamento em X a cada ~4 m, pernas mais grossas na alta). Escadas: parede invisível atrás
   da escada e o jogador preso à largura dela (`holdOnLadder`) — na torre de 20 m, W meio torto tirava o jogador
   da escada no meio da subida.
+
+- [x] **25. Tracinhos de compensação na luneta** (pedido do usuário) — três marcas abaixo do centro, **2 · 3 · 4** =
+  200, 300 e 400 m, cada uma um pouco mais larga. A posição vem da própria balística (zerada em 100 m, a bala passa
+  g·(d − 100)/(2v²) rad abaixo da mira: ~2, 3,9 e 5,9 mrad) e do campo de visão da luneta, refeita ao
+  redimensionar a tela (`HUD.layoutReticle`). A ponta do poste de baixo desceu para abrir espaço. Uso: telêmetro
+  diz a distância, o tracinho dela vai no alvo.
 
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking

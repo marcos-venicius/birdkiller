@@ -25,6 +25,13 @@ function wrapDeg(d: number): number {
 }
 
 /** HUD mínima em DOM: pontuação, munição, retículo, luneta, recarga, bússola e dica de controle. */
+/** Tracinhos da luneta: distância (m), meia-largura (unidades da SVG), rótulo e de que lado ele fica. */
+const BDC_MARKS = [
+  { d: 200, w: 2.2, label: '2', side: 1 },
+  { d: 300, w: 3.2, label: '3', side: -1 },
+  { d: 400, w: 4.2, label: '4', side: 1 },
+];
+
 export class HUD {
   private readonly scoreEl: HTMLElement;
   private readonly killsEl: HTMLElement;
@@ -39,6 +46,7 @@ export class HUD {
   private readonly noteEl: HTMLElement;
   private readonly journalEl: HTMLElement;
   private readonly guideEl: HTMLElement;
+  private readonly bdcEl: SVGGElement;
   private readonly reserveEl: HTMLElement;
   private readonly toolEl: HTMLElement;
   private readonly woodBoxEl: HTMLElement;
@@ -69,9 +77,10 @@ export class HUD {
           <g fill="#060606" stroke="rgba(255,240,220,0.25)" stroke-width="0.12">
             <rect x="-50" y="-0.45" width="44" height="0.9" />
             <rect x="6" y="-0.45" width="44" height="0.9" />
-            <path d="M -1.3 50 L 1.3 50 L 1.3 5.5 L 0 2.5 L -1.3 5.5 Z" />
+            <path d="M -1.3 50 L 1.3 50 L 1.3 9.5 L 0 6.5 L -1.3 9.5 Z" />
             <rect x="-0.08" y="-50" width="0.16" height="46" />
             <circle r="0.22" />
+            <g data-bdc></g>
           </g>
         </svg>
       </div>
@@ -113,6 +122,9 @@ export class HUD {
     this.debugEl = root.querySelector('.hud-debug')!;
     this.crosshairEl = root.querySelector('.hud-crosshair')!;
     this.scopeEl = root.querySelector('.hud-scope')!;
+    this.bdcEl = root.querySelector('.hud-scope [data-bdc]')!;
+    this.layoutReticle();
+    window.addEventListener('resize', () => this.layoutReticle());
     this.flashEl = root.querySelector('.hud-flash')!;
     this.noteEl = root.querySelector('.hud-note')!;
     this.journalEl = root.querySelector('.hud-journal')!;
@@ -149,6 +161,27 @@ export class HUD {
       root.append(world);
       this.worldPinEls.push(world);
     }
+  }
+
+  /**
+   * Tracinhos de compensação da queda da bala abaixo do centro da luneta. Zerada em 100 m, a bala passa
+   * g·(d − zero)/(2v²) radianos abaixo da linha da mira a d metros; a posição na tela depende do campo de
+   * visão da luneta e de quanto a SVG ocupa (93vmin de 100 unidades), então é refeita ao redimensionar.
+   */
+  private layoutReticle(): void {
+    const C = CONFIG.combat;
+    const k = C.gravity / (2 * C.muzzleVelocity * C.muzzleVelocity);
+    const tanHalf = Math.tan((CONFIG.weapon.scopeFov * Math.PI) / 360);
+    const unitPx = (0.93 * Math.min(window.innerWidth, window.innerHeight)) / 100;
+    const scale = window.innerHeight / 2 / tanHalf / unitPx;
+    this.bdcEl.innerHTML = BDC_MARKS.map(({ d, w, label, side }) => {
+      const y = Math.tan(k * (d - C.zeroDistance)) * scale;
+      const tx = side > 0 ? w + 0.7 : -w - 0.7;
+      return (
+        `<rect x="${-w}" y="${(y - 0.13).toFixed(3)}" width="${2 * w}" height="0.26" />` +
+        `<text x="${tx}" y="${(y + 0.5).toFixed(3)}" font-size="1.45" text-anchor="${side > 0 ? 'start' : 'end'}">${label}</text>`
+      );
+    }).join('');
   }
 
   setScore(score: number, kills: number): void {
