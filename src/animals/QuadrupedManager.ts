@@ -91,6 +91,15 @@ export class QuadrupedManager implements AnimalWorld {
     }
   }
 
+  /**
+   * Rastro para o cão: um bando fora da vista entre `minD` e `maxD` do jogador. Devolve o líder, ou null
+   * se não coube (população cheia ou nenhum lugar bom).
+   */
+  spawnTrail(minD: number, maxD: number): Quadruped | null {
+    if (this.living >= this.kind.cfg.maxActive) return null;
+    return this.trySpawn(false, minD, maxD);
+  }
+
   /** Espanta os javalis num raio (disparo). */
   scare(origin: THREE.Vector3, radius: number): void {
     for (const b of this.active) if (b.alive && b.pos.distanceTo(origin) < radius) this.startFlee(b, origin);
@@ -203,12 +212,12 @@ export class QuadrupedManager implements AnimalWorld {
     }
   }
 
-  private trySpawn(initial: boolean): void {
+  private trySpawn(initial: boolean, minD?: number, maxD?: number): Quadruped | null {
     const C = this.kind.cfg;
     const P = this.player.position;
     for (let attempt = 0; attempt < 14; attempt++) {
       const a = Math.random() * TAU;
-      const d = rand(initial ? C.initialMin : C.spawnMin, C.spawnMax);
+      const d = rand(minD ?? (initial ? C.initialMin : C.spawnMin), maxD ?? C.spawnMax);
       const x = P.x + Math.cos(a) * d;
       const z = P.z + Math.sin(a) * d;
       if (!initial && inPlayerView(this.player, this.camera, x, z, C.hiddenDistance, C.viewMargin)) continue;
@@ -217,7 +226,7 @@ export class QuadrupedManager implements AnimalWorld {
       if (!this.terrain.lakes.dry(x, z, 0.2)) continue;
 
       const n = Math.min(Math.round(rand(C.herd[0], C.herd[1])), C.maxActive - this.living);
-      if (n <= 0) return;
+      if (n <= 0) return null;
       const herdId = ++this.herds;
       const palette = Math.floor(Math.random() * this.kind.commonPalettes);
       // De vez em quando o líder do bando é um raro (veado albino, velho galheiro).
@@ -243,8 +252,9 @@ export class QuadrupedManager implements AnimalWorld {
         leader ??= boar;
         this.onSpawn?.(boar, initial);
       }
-      return;
+      return leader;
     }
+    return null;
   }
 
   /** Sorteia uma variação rara para o líder — no máximo uma de cada viva ao mesmo tempo. */

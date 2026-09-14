@@ -47,6 +47,7 @@ aparecem sozinhas, uma única vez, quando a situação chega (a primeira noite, 
 | Rifle / machado / construir | 1 / 2 / 3 |
 | Recolher madeira (árvore derrubada ou tronco caído) | E |
 | Construindo: trocar a altura / construir | Botão direito / botão esquerdo |
+| Cão: farejar javali / farejar veado / junto | F |
 | Soltar o mouse | Esc |
 
 O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho

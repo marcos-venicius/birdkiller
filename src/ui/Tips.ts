@@ -24,6 +24,7 @@ export const TIPS = {
   tronco: 'E recolhe a madeira deste tronco. Troncos caídos na mata também servem, sem precisar cortar nada.',
   construir: 'Já dá para construir uma torre: tecla 3 mostra onde ela fica, e o botão esquerdo constrói.',
   fantasma: 'Botão direito troca a altura: 3, 8 ou 20 m. Verde pode construir; vermelho diz o que falta.',
+  cao: 'Seu cão fareja para você: F manda procurar javali, de novo veado, e de novo volta a ficar junto.',
 } as const;
 
 export type TipId = keyof typeof TIPS;

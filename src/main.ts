@@ -2,6 +2,7 @@ import './style.css';
 import * as THREE from 'three';
 import { boarKind, deerKind } from './animals/kinds';
 import { QuadrupedManager } from './animals/QuadrupedManager';
+import { Dog } from './animals/Dog';
 import { Ambience } from './audio/Ambience';
 import * as animalSounds from './audio/animalSounds';
 import { AudioSystem } from './audio/AudioSystem';
@@ -10,6 +11,7 @@ import { BirdVoices } from './audio/BirdVoices';
 import * as boarSounds from './audio/boarSounds';
 import * as deerSounds from './audio/deerSounds';
 import { AnimalVoices } from './audio/AnimalVoices';
+import { DogVoice } from './audio/DogVoice';
 import { Footsteps } from './audio/Footsteps';
 import { Music } from './audio/Music';
 import * as weaponSounds from './audio/weaponSounds';
@@ -136,6 +138,8 @@ const boars = new QuadrupedManager(boarKind(), engine.scene, terrain, biome, chu
 boars.populate();
 const deer = new QuadrupedManager(deerKind(), engine.scene, terrain, biome, chunks, player, engine.camera);
 deer.populate();
+// O cão de caça (tecla F): junto, ou farejando javali ou veado.
+const dog = new Dog(engine.scene, terrain, chunks, player, { boar: boars, deer });
 const particles = new Particles(engine.scene, terrain);
 const ballistics = new Ballistics(engine.scene);
 const hunting = new Hunting(terrain, chunks, birds, [boars, deer], particles, hud, audio, ballistics);
@@ -143,6 +147,7 @@ const ambience = new Ambience(audio, biome, terrain.lakes);
 const voices = new BirdVoices(audio);
 const boarVoices = new AnimalVoices(audio, boarKind().sounds);
 const deerVoices = new AnimalVoices(audio, deerKind().sounds);
+const dogVoice = new DogVoice(audio);
 const footsteps = new Footsteps(audio, biome);
 const music = new Music(audio);
 weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
@@ -150,6 +155,13 @@ weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
 const felled = new FelledTrees(engine.scene, terrain, vegetation, edits);
 // Construir (tecla 3): torre-fantasma onde a mira aponta, três alturas.
 const builder = new Builder(engine, input, player, hud, audio, terrain, chunks, placeView, edits);
+const QUARRY = {
+  boar: { one: 'javali', many: 'javalis', alone: 'um javali sozinho' },
+  deer: { one: 'veado', many: 'veados', alone: 'um veado sozinho' },
+} as const;
+dog.onFound = (n, kind) => hud.note(`O cão achou ${n === 1 ? QUARRY[kind].alone : `um bando de ${n} ${QUARRY[kind].many}`}`);
+dog.onNoTrail = (kind) => hud.note(`O cão não acha rastro de ${QUARRY[kind].one} por aqui`);
+dog.onHeel = () => hud.toast('Cão: junto');
 const tools = new Tools(engine, input, player, hud, audio, weapon, terrain, chunks, particles, birds, [boars, deer], felled, edits, builder);
 
 // Caderno de campo: espécies avistadas/abatidas, recordes e totais, guardados entre sessões.
@@ -165,6 +177,7 @@ const journal = new Journal([
 const tips = new Tips((text) => hud.tip(text));
 tips.offer('guia');
 tips.offer('ferramentas');
+tips.offer('cao');
 let guideOpen = false;
 let tipTimer = 0;
 
@@ -350,6 +363,7 @@ engine.renderer.setAnimationLoop(() => {
   birds.update(dt);
   boars.update(dt);
   deer.update(dt);
+  dog.update(dt);
   hunting.update(dt, engine.camera.position);
   particles.update(dt);
   audio.updateListener(engine.camera);
@@ -357,6 +371,7 @@ engine.renderer.setAnimationLoop(() => {
   voices.update(dt, birds.active, engine.camera.position, atmosphere.night);
   boarVoices.update(dt, boars.active, engine.camera.position);
   deerVoices.update(dt, deer.active, engine.camera.position);
+  dogVoice.update(dt, dog, engine.camera.position);
   footsteps.update(dt, player);
   music.update();
   if (input.wasPressed('KeyM')) hud.toast(music.toggle() ? 'Música ligada' : 'Música desligada');
@@ -400,6 +415,10 @@ engine.renderer.setAnimationLoop(() => {
     compassTimer = 0;
   }
   if (input.wasPressed('KeyK')) shareWorld();
+  if (input.wasPressed('KeyF')) {
+    const mode = dog.cycle();
+    hud.toast(mode === 'heel' ? 'Cão: junto' : `Cão: farejando ${QUARRY[mode].one}`);
+  }
   if (input.wasPressed('KeyH')) {
     guideOpen = !guideOpen;
     hud.setGuideVisible(guideOpen);
@@ -479,7 +498,11 @@ engine.renderer.setAnimationLoop(() => {
       const dz = m.pos.z - p.z;
       compassPins.push({ n: m.n, bearing: (THREE.MathUtils.radToDeg(Math.atan2(dx, -dz)) + 360) % 360, distance: Math.hypot(dx, dz) });
     }
-    hud.setCompass((THREE.MathUtils.radToDeg(-player.yaw) + 360) % 360, compassMarks, compassPins);
+    const ddx = dog.pos.x - p.x;
+    const ddz = dog.pos.z - p.z;
+    const dd = Math.hypot(ddx, ddz);
+    const dogMark = dd > 12 ? { bearing: (THREE.MathUtils.radToDeg(Math.atan2(ddx, -ddz)) + 360) % 360, distance: dd } : null;
+    hud.setCompass((THREE.MathUtils.radToDeg(-player.yaw) + 360) % 360, compassMarks, compassPins, dogMark);
   }
   // Marcadores no mundo: projetados na tela a cada quadro (poucos, só transform de DOM).
   worldPins.length = 0;
@@ -570,6 +593,8 @@ if (import.meta.env.DEV) {
       felled,
       tools,
       builder,
+      dog,
+      dogVoice,
       session,
       saveSession,
       shareUrl,

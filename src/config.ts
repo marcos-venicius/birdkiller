@@ -327,6 +327,26 @@ export const CONFIG = {
     treeClearance: 0.9,
   },
 
+  dog: {
+    /** Velocidades (m/s): andando junto, trotando no faro e correndo para alcançar. */
+    walkSpeed: 1.6,
+    trotSpeed: 4.2,
+    runSpeed: 7,
+    /** Onde fica "junto": atrás e ao lado do jogador (m). */
+    heelBack: 2.4,
+    heelSide: 1.1,
+    /** Coleira: farejando, passou disto do jogador ele espera; volta a seguir quando o jogador chega a `resume`. */
+    leash: 28,
+    resume: 14,
+    /** Para e aponta a esta distância da caça (m): o jogador ainda precisa chegar agachado. */
+    point: { boar: 35, deer: 60 },
+    /** Até onde procura um bando (a partir do jogador) e onde surge o rastro quando não há nenhum. */
+    search: 240,
+    trail: [150, 220],
+    /** Mais longe que isto do jogador, reaparece atrás dele. */
+    respawn: 90,
+  },
+
   places: {
     /** Lado da célula que pode ter um lugar para descobrir (m) e a chance de ter. */
     cell: 420,

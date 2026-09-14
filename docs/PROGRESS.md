@@ -48,6 +48,9 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage28-dog.json` (F cicla os modos, junto acompanha e senta, farejar javali vai na direção do bando, espera
+o jogador na coleira e aponta com a contagem, sem bicho por perto surge um rastro fora da vista, abate → vai até
+a caça e senta, tiro não acerta o cão, custo por quadro),
 `stage27-bdc.json` (cada tracinho na tela onde a câmera da luneta projeta um ponto 200/300/400 m abaixo da
 linha da mira; bala simulada mirando pelo tracinho cai no alvo, erro em cm),
 `stage25-axe.json` (tecla 2, golpes até cair conforme o raio, rifle sem atirar, queda e toco, resto do chunk
@@ -102,6 +105,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - − / =: diminui/aumenta a sensibilidade do mouse (com a luneta no olho, a da luneta).
 - 1 / 2 / 3: rifle / machado / construir. E: recolhe madeira (árvore derrubada ou tronco caído).
 - Construindo: botão direito troca a altura da torre, botão esquerdo constrói.
+- F: cão farejando javali → farejando veado → junto.
 - K: copia o link do seu mundo (`?seed=`), para mandar a outra pessoa.
 - Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
@@ -265,6 +269,17 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   redimensionar a tela (`HUD.layoutReticle`). A ponta do poste de baixo desceu para abrir espaço. Uso: telêmetro
   diz a distância, o tracinho dela vai no alvo.
 
+- [x] **26. O cão de caça** (pedido do usuário) — **F** alterna farejar javali → farejar veado → junto
+  (`animals/Dog.ts`, `animals/dogModel.ts`: perdigueiro low-poly, coleira vermelha, quente no infravermelho;
+  não é caça — o tiro, o telêmetro e o marcador passam por ele). Junto: 2–4 m atrás, senta quando o jogador
+  para, deita depois de 15 s, espera embaixo da torre. Farejando: segue o bando mais perto da espécie (até
+  240 m; sem nenhum, `QuadrupedManager.spawnTrail` faz surgir um fora da vista a 150–220 m), trotando com o
+  focinho no chão e esperando quando o jogador passa de 28 m (retoma a 14 m). A 35 m do javali / 60 m do
+  veado **aponta** (pata levantada, rabo esticado, ganido baixo) e avisa "achou um bando de 3 javalis" ou "um
+  veado sozinho"; bando fugindo, espera; abatido, corre até a caça e senta do lado até o jogador chegar, e
+  volta a ficar junto. Os bichos não percebem o cão. Preso ou longe demais: reaparece atrás do jogador.
+  Marcador "cão" na bússola a mais de 12 m. Sons em `audio/DogVoice.ts` (fungada, ganido, arfar, passos).
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
@@ -278,6 +293,14 @@ Ideias anotadas pelo usuário (ainda sem ordem nem plano):
   torres, meus lagos ou qualquer lugar) para achar de novo. Diferente dos marcadores Q (temporários, de direção):
   ficam guardados por mundo, com um tipo/ícone, e aparecem na bússola e no mundo como os marcadores; entram no
   caderno (Tab). As torres construídas pelo jogador podem virar favoritas automaticamente.
+- [ ] **Bicho ferido diferente dos outros** — hoje o tiro não letal não deixa marca nenhuma: o javali/veado
+  ferido (`health = 1`) foge igual aos outros — até 15% mais rápido (`Quadruped` na fuga) — e a ave pega na asa
+  só sai voando (`Bird.scare`). Na vida real: o **quadrúpede ferido manca** (mais lento, passada irregular, fica
+  para trás do bando, para para descansar e acaba deitando depois de um tempo); **deixa rastro de sangue**
+  (gotas no chão que dá para seguir — casa com os rastros/pegadas da gaveta e com o **cão**, que poderia seguir
+  o sangue até o bicho); a **ave com a asa atingida não voa** (cai, bate a asa no chão, corre ou só dá voos
+  curtos e baixos). Pensar também em como isso aparece de longe (luneta/infravermelho) e no som (gemido, asa
+  batendo no mato).
 
 Sugestões ainda na gaveta: **apito de caça** (tecla que imita o chamado e atrai a bicharada por alguns segundos)
 e **rastros/sinais** (pegadas de javali, penas, grama amassada). O usuário recusou minimapa: um mapa de floresta
@@ -343,6 +366,9 @@ src/
   ui/Guide.ts             conteúdo do guia de campo (tecla H)
   ui/Tips.ts              dicas na hora certa: fila, intervalo e o que já foi visto
   player/Sensitivity.ts   sensibilidade do mouse e da luneta (teclas − e =)
+  animals/Dog.ts          o cão: junto, farejando, esperando, apontando, indo até a caça
+  animals/dogModel.ts     cão procedural (perdigueiro)
+  audio/DogVoice.ts       sons do cão (observa os estados, como o AnimalVoices)
   tools/Tools.ts          ferramenta na mão (1 rifle, 2 machado, 3 construir), golpe, E recolher
   tools/AxeModel.ts       machado procedural
   tools/Builder.ts        torre-fantasma, alturas, custo e o que impede de construir

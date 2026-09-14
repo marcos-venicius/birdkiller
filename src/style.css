@@ -538,3 +538,8 @@ body {
   text-transform: uppercase;
   opacity: 0.85;
 }
+
+/* O cão na bússola: mesma linha dos marcadores, em creme. */
+.hud-compass .pin.dog {
+  color: rgba(236, 228, 206, 0.95);
+}

@@ -70,6 +70,15 @@ export const GUIDE: { title: string; items: string[] }[] = [
     ],
   },
   {
+    title: 'O cão',
+    items: [
+      '**F** manda o cão farejar: javali → veado → junto',
+      'Farejando, ele trota na frente com o focinho no chão e espera se você ficar para trás',
+      'Quando acha, aponta: para, levanta a pata e fica olhando para a caça. Chegue agachado',
+      'Abateu? Ele vai até a caça e espera do lado. Na bússola, "cão" mostra onde ele está',
+    ],
+  },
+  {
     title: 'Seu mundo',
     items: [
       'O dia passa (~42 min), às vezes chove e de madrugada baixa neblina',

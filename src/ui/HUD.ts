@@ -47,6 +47,7 @@ export class HUD {
   private readonly journalEl: HTMLElement;
   private readonly guideEl: HTMLElement;
   private readonly bdcEl: SVGGElement;
+  private readonly dogEl: HTMLElement;
   private readonly reserveEl: HTMLElement;
   private readonly toolEl: HTMLElement;
   private readonly woodBoxEl: HTMLElement;
@@ -161,6 +162,10 @@ export class HUD {
       root.append(world);
       this.worldPinEls.push(world);
     }
+    this.dogEl = document.createElement('span');
+    this.dogEl.className = 'pin dog';
+    this.dogEl.innerHTML = '<b>cão</b> <i></i>';
+    this.compassEl.append(this.dogEl);
   }
 
   /**
@@ -348,6 +353,7 @@ export class HUD {
     heading: number,
     marks: readonly { bearing: number; distance: number }[],
     pins: readonly { n: number; bearing: number; distance: number }[] = [],
+    dog: { bearing: number; distance: number } | null = null,
   ): void {
     if (this.compassEl.hidden) return;
     for (let i = 0; i < this.pinEls.length; i++) {
@@ -360,6 +366,13 @@ export class HUD {
       this.place(el, wrapDeg(pin.bearing - heading), 1);
       el.querySelector('b')!.textContent = `◆${pin.n}`;
       el.querySelector('i')!.textContent = `${Math.round(pin.distance)} m`;
+    }
+    // O cão, quando está longe o bastante para sumir no mato.
+    if (dog) {
+      this.place(this.dogEl, wrapDeg(dog.bearing - heading), 1);
+      this.dogEl.querySelector('i')!.textContent = `${Math.round(dog.distance)} m`;
+    } else {
+      this.dogEl.style.opacity = '0';
     }
     for (let i = 0; i < CARDINALS.length; i++) this.place(this.dirEls[i], wrapDeg(CARDINALS[i][1] - heading), 1);
     for (let i = 0; i < this.markEls.length; i++) {
