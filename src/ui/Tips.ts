@@ -27,6 +27,7 @@ export const TIPS = {
   cao: 'Seu cão fareja para você: F manda procurar javali, de novo veado, e de novo volta a ficar junto.',
   ferido: 'Bicho ferido manca e deixa sangue no chão: siga as gotas — ou mande o cão (F) atrás dele.',
   asa: 'Ave com a asa ferida não voa mais: ela foge pulando pelo chão. Um tiro no corpo resolve.',
+  rastreio: 'Rifle de rastreio: silencioso, não espanta ninguém. O dardo marca o javali ou veado na bússola (⌖) até ele morrer.',
 } as const;
 
 export type TipId = keyof typeof TIPS;

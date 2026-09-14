@@ -543,3 +543,19 @@ body {
 .hud-compass .pin.dog {
   color: rgba(236, 228, 206, 0.95);
 }
+
+/* Bichos marcados pelo rastreio: mesma linha dos marcadores, em verde, com o nome. */
+.hud-compass .pin.tag {
+  margin-left: -55px;
+  width: 110px;
+  color: rgba(140, 220, 170, 0.95);
+}
+
+/* Rótulo da arma ao lado da munição (rifle de rastreio). */
+.hud-ammo .kind {
+  margin-right: 8px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}

@@ -56,6 +56,8 @@ export class Hunting {
   onKill?: (info: KillInfo) => void;
   /** Tiro não letal (bicho ferido ou asa atingida) — para as dicas. */
   onWound?: (kind: 'animal' | 'bird') => void;
+  /** Ordem das marcações do rastreio (a mais antiga cai quando passa do máximo). */
+  private tagCount = 0;
 
   constructor(
     private readonly terrain: Terrain,
@@ -77,10 +79,14 @@ export class Hunting {
     this.hud.setScore(score, kills);
   }
 
-  /** Puxa o gatilho: solta a bala e o estampido espanta a bicharada em volta na hora. */
-  shoot(origin: THREE.Vector3, dir: THREE.Vector3): void {
+  /**
+   * Puxa o gatilho: solta a bala e o estampido espanta a bicharada em volta na hora. O dardo do rifle de
+   * rastreio sai pelo supressor: não espanta ninguém.
+   */
+  shoot(origin: THREE.Vector3, dir: THREE.Vector3, dart = false): void {
     this.lastShot = null;
-    this.ballistics.fire(origin, dir);
+    this.ballistics.fire(origin, dir, dart);
+    if (dart) return;
     this.birds.scare(origin, CONFIG.birds.shotScare);
     for (const manager of this.animals) manager.scare(origin, manager.kind.cfg.shotScare);
   }
@@ -108,11 +114,11 @@ export class Hunting {
 
   /** Avança as balas no ar. */
   update(dt: number, eye?: THREE.Vector3): void {
-    this.ballistics.update(dt, (from, dir, maxT, travelled) => this.resolve(from, dir, maxT, travelled), eye);
+    this.ballistics.update(dt, (from, dir, maxT, travelled, dart) => this.resolve(from, dir, maxT, travelled, dart), eye);
   }
 
   /** Resolve o trecho percorrido num quadro; true se a bala parou aí. */
-  private resolve(origin: THREE.Vector3, dir: THREE.Vector3, maxT: number, travelled: number): boolean {
+  private resolve(origin: THREE.Vector3, dir: THREE.Vector3, maxT: number, travelled: number, dart = false): boolean {
     const C = CONFIG.combat;
     let blockT = this.terrain.raycast(origin, dir, maxT);
     let kind: BlockKind = Number.isFinite(blockT) ? 'terrain' : 'none';
@@ -136,7 +142,8 @@ export class Hunting {
 
     // Um obstáculo só bloqueia se estiver claramente antes do animal (quem pousa em cima de um tronco, p. ex.).
     const limit = Math.min(blockT + C.occlusionSlack, maxT);
-    const birdHit = this.birds.raycast(origin, dir, limit);
+    // O dardo é para bicho grande: passa pelos pássaros.
+    const birdHit = dart ? null : this.birds.raycast(origin, dir, limit);
     let animalHit: { animal: Quadruped; t: number; zone: HitZone; manager: QuadrupedManager } | null = null;
     for (const manager of this.animals) {
       const hit = manager.raycast(origin, dir, animalHit ? animalHit.t : birdHit ? birdHit.t : limit);
@@ -161,21 +168,31 @@ export class Hunting {
       result.animal = animalHit.animal;
       result.zone = animalHit.zone;
       result.point.copy(origin).addScaledVector(dir, animalHit.t);
-      const outcome = animalHit.manager.hit(animalHit.animal, dir, animalHit.zone !== 'rear', origin);
-      result.lethal = outcome === 'killed';
       // Raro (albino, galheiro) tem nome e pontos próprios; o peso conta no recorde da espécie.
       const rare = animalHit.animal.rare;
       const name = rare?.name ?? kind.name;
-      if (result.lethal) {
-        result.points = (rare?.points ?? kind.cfg.points) + Math.floor(result.distance / 10);
-        this.addKill(result.points, `${name} · ${Math.round(result.distance)} m`);
-        this.onKill?.({ id: rare?.id ?? kind.id, name, distance: result.distance, scale: animalHit.animal.scale, weightId: kind.id });
+      if (dart) {
+        // Dardo rastreador: não fere nem pontua — marca o bicho na bússola, e ele leva um susto.
+        this.tagAnimal(animalHit.manager, animalHit.animal, origin);
+        this.hud.toast(`${name} marcado`);
+        this.particles.tufts(result.point, animalHit.animal.geo.tufts, 2, dir);
+        playBirdHit(this.audio, result.distance, result.point);
       } else {
-        this.hud.toast(`${name} ferido`);
-        this.onWound?.('animal');
+        const tagged = animalHit.animal.tagged;
+        const outcome = animalHit.manager.hit(animalHit.animal, dir, animalHit.zone !== 'rear', origin);
+        result.lethal = outcome === 'killed';
+        if (result.lethal) {
+          result.points = (rare?.points ?? kind.cfg.points) + Math.floor(result.distance / 10);
+          this.addKill(result.points, `${name} · ${Math.round(result.distance)} m`);
+          this.onKill?.({ id: rare?.id ?? kind.id, name, distance: result.distance, scale: animalHit.animal.scale, weightId: kind.id });
+          if (tagged) this.hud.note(`${name} rastreado abatido`);
+        } else {
+          this.hud.toast(`${name} ferido`);
+          this.onWound?.('animal');
+        }
+        this.particles.tufts(result.point, animalHit.animal.geo.tufts, result.lethal ? 12 : 7, dir);
+        playFleshHit(this.audio, result.distance, result.point);
       }
-      this.particles.tufts(result.point, animalHit.animal.geo.tufts, result.lethal ? 12 : 7, dir);
-      playFleshHit(this.audio, result.distance, result.point);
     } else if (birdHit) {
       result.kind = 'bird';
       result.distance = travelled + birdHit.t;
@@ -210,6 +227,14 @@ export class Hunting {
     this.ballistics.markImpact(result.point);
     this.lastShot = result;
     return true;
+  }
+
+  /** Marca o bicho; passando do máximo de marcados, o mais antigo perde a marca. */
+  private tagAnimal(manager: QuadrupedManager, animal: Quadruped, origin: THREE.Vector3): void {
+    manager.tag(animal, origin, ++this.tagCount);
+    const tagged = this.animals.flatMap((m) => m.active.filter((a) => a.tagged && a.alive));
+    const extra = tagged.length - CONFIG.tracker.maxTagged;
+    if (extra > 0) for (const a of tagged.sort((x, y) => x.tagOrder - y.tagOrder).slice(0, extra)) a.tagged = false;
   }
 
   /** Onde a bala fura a lâmina de água dentro deste trecho, se furar. */

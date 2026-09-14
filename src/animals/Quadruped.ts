@@ -54,6 +54,9 @@ export class Quadruped {
   bleed = 0;
   /** Já deixou a poça de sangue onde deitou. */
   pooled = false;
+  /** Marcado pelo dardo do rifle de rastreio (aparece na bússola até morrer), e a ordem da marcação. */
+  tagged = false;
+  tagOrder = 0;
   /** O destino atual é a margem do lago. */
   private drinking = false;
   private readonly water = new THREE.Vector3();
@@ -130,6 +133,7 @@ export class Quadruped {
     this.bleed = 0;
     this.pooled = false;
     this.rest = 0;
+    this.tagged = false;
     this.speed = 0;
     this.bank = 0;
     this.lie = 0;

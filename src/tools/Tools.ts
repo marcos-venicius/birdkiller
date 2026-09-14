@@ -19,7 +19,7 @@ import type { FelledTree, WorldEdits } from '../world/WorldEdits';
 import { buildAxe } from './AxeModel';
 import type { Builder } from './Builder';
 
-export type ToolId = 'rifle' | 'axe' | 'build';
+export type ToolId = 'rifle' | 'axe' | 'build' | 'tracker';
 
 /** O que o E recolhe: árvore derrubada ou tronco caído da mata. */
 type Target = { kind: 'felled'; tree: FelledTree; wood: number } | { kind: 'log'; log: LogRef; wood: number };
@@ -52,7 +52,7 @@ const _pos = new THREE.Vector3();
 const _rot = new THREE.Vector3();
 
 /**
- * Ferramentas na mão: o rifle (tecla 1), o machado (tecla 2) e a construção (tecla 3). O machado golpeia
+ * Ferramentas na mão: o rifle (tecla 1), o machado (tecla 2), a construção (tecla 3) e o rifle de rastreio (4). O machado golpeia
  * no botão esquerdo: cada árvore pede alguns golpes conforme a grossura e cai; o E recolhe a madeira da
  * derrubada ou de um tronco caído da mata. O barulho espanta os bichos por perto. A construção fica no Builder.
  */
@@ -117,6 +117,7 @@ export class Tools {
     this.raise = 0;
     this.swing = -1;
     this.hud.setTool(tool === 'axe' ? 'Machado' : tool === 'build' ? 'Construir' : null);
+    this.hud.setWeaponLabel(tool === 'tracker' ? 'Rastreio' : null);
   }
 
   update(dt: number): void {
@@ -125,7 +126,10 @@ export class Tools {
     if (this.input.wasPressed('Digit1')) this.select('rifle');
     if (this.input.wasPressed('Digit2')) this.select('axe');
     if (this.input.wasPressed('Digit3')) this.select('build');
-    this.weapon.holstered = this.current !== 'rifle';
+    if (this.input.wasPressed('Digit4')) this.select('tracker');
+    // Rifle e rastreio são a mesma arma na mão (o rastreio com supressor e dardos).
+    this.weapon.holstered = this.current !== 'rifle' && this.current !== 'tracker';
+    this.weapon.variant = this.current === 'tracker' ? 'tracker' : 'rifle';
     this.raise = Math.min(1, this.raise + dt / T.switchTime);
 
     const axe = this.current === 'axe';
@@ -163,7 +167,7 @@ export class Tools {
       this.hud.setAction(this.target ? `E recolher madeira (+${this.target.wood})` : null);
     }
     if (this.target && this.input.wasPressed('KeyE')) this.collect(this.target);
-    this.hud.setWood(this.edits.wood, this.edits.wood > 0 || this.current !== 'rifle');
+    this.hud.setWood(this.edits.wood, this.edits.wood > 0 || this.current === 'axe' || this.current === 'build');
     if (this.progress.size > 64) this.progress.clear();
   }
 

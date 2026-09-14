@@ -42,10 +42,12 @@ interface Bullet {
   /** Tempo desde o impacto (s); negativo enquanto voa. */
   after: number;
   active: boolean;
+  /** Dardo do rifle de rastreio (marca o bicho em vez de ferir). */
+  dart: boolean;
 }
 
 /** O que aconteceu no trecho percorrido num quadro. */
-export type Resolve = (from: THREE.Vector3, dir: THREE.Vector3, maxT: number, travelled: number) => boolean;
+export type Resolve = (from: THREE.Vector3, dir: THREE.Vector3, maxT: number, travelled: number, dart: boolean) => boolean;
 
 const _dir = new THREE.Vector3();
 const _a = new THREE.Vector3();
@@ -83,6 +85,7 @@ export class Ballistics {
         points: 0,
         after: -1,
         active: false,
+        dart: false,
       });
     }
     const segs = MAX_BULLETS * MAX_POINTS;
@@ -138,7 +141,7 @@ export class Ballistics {
    * começa na boca do cano: é essa diferença que faz o risco aparecer saindo da arma até o alvo,
    * em vez de um ponto parado no meio da tela. A precisão não muda.
    */
-  fire(origin: THREE.Vector3, dir: THREE.Vector3): void {
+  fire(origin: THREE.Vector3, dir: THREE.Vector3, dart = false): void {
     const C = CONFIG.combat;
     const b = this.bullets.find((x) => !x.active) ?? this.bullets[0];
     _dir.copy(dir).normalize();
@@ -152,6 +155,7 @@ export class Ballistics {
     b.points = 0;
     b.after = -1;
     b.active = true;
+    b.dart = dart;
     // Primeiro ponto do rastro: a boca do cano, à direita e abaixo do olho.
     _side.crossVectors(_dir, UP).normalize();
     _down.crossVectors(_dir, _side).normalize();
@@ -177,7 +181,7 @@ export class Ballistics {
       const speed = b.vel.length();
       const step = Math.min(speed * dt, C.range - b.dist);
       _dir.copy(b.vel).divideScalar(speed);
-      if (resolve(b.pos, _dir, step, b.dist)) {
+      if (resolve(b.pos, _dir, step, b.dist, b.dart)) {
         b.after = 0;
         continue;
       }

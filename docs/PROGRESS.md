@@ -48,6 +48,9 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage30-tracker.json` (tecla 4, supressor e 3 dardos, dardo real marca o veado sem ferir, o bando vizinho
+não se assusta, marca na bússola com a distância, o marcado não some a 400 m, dardo passa pelo pássaro, 4ª marca
+tira a mais antiga, abate do marcado apaga a marca, o rifle comum segue igual),
 `stage29-wounded.json` (veado ferido mais lento que o bando e com gotas sobre a trilha, deita e faz poça, levanta
 com o jogador perto, segundo tiro mata; cão vai no ferido; ave de asa ferida cai, fica no chão 30 s, foge pulando;
 raspão real pela Hunting deixa a ave `grounded`),
@@ -109,6 +112,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - 1 / 2 / 3: rifle / machado / construir. E: recolhe madeira (árvore derrubada ou tronco caído).
 - Construindo: botão direito troca a altura da torre, botão esquerdo constrói.
 - F: cão farejando javali → farejando veado → junto.
+- 4: rifle de rastreio (silencioso; o dardo marca o javali ou veado na bússola até ele morrer).
 - K: copia o link do seu mundo (`?seed=`), para mandar a outra pessoa.
 - Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
@@ -294,6 +298,15 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   atingida** (estado `grounded`) cai batendo a asa, não decola mais, fica com a asa caída, tenta voar em vão de
   4 em 4–8 s, foge pulando de quem chega a 12 m (pato ferido rema) e perde penas; tiro no corpo mata e pontua.
   Dicas `ferido` e `asa`; o guia (H) explica em "Atirar".
+
+- [x] **28. Rifle de rastreio** (ideia do usuário) — tecla **4**: o mesmo rifle com supressor (`Kar98kModel.suppressor`)
+  e rótulo "RASTREIO", carregador próprio de 3 dardos (`Weapon.variant`, cada variante guarda o seu). Silencioso:
+  sopro baixo (`playSuppressed`), sem clarão, coice menor e **sem espantar ninguém** (`Hunting.shoot(…, dart)` não
+  chama `scare`). A bala leva `dart` até o `resolve`: passa pelos pássaros e, no javali/veado, **marca** em vez de
+  ferir (`QuadrupedManager.tag`: o bicho se assusta com a picada e o bando corre junto). A bússola mostra "⌖ veado
+  180 m" para cada marcado vivo (máx. 3; o mais antigo perde a marca); o marcado não some de longe (fora do despawn
+  por distância) até morrer — no abate, aviso "rastreado abatido". Mesma balística da bala: luneta, telêmetro e
+  tracinhos valem igual. Marcas não são guardadas entre sessões.
 
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking

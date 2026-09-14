@@ -19,6 +19,8 @@ export interface Kar98kModel {
   bolt: THREE.Group;
   boltRestZ: number;
   flash: THREE.Sprite;
+  /** Supressor do rifle de rastreio (oculto no rifle comum). */
+  suppressor: THREE.Object3D;
 }
 
 export function woodTexture(): THREE.CanvasTexture {
@@ -199,6 +201,11 @@ export function buildKar98k(): Kar98kModel {
   objective.position.z = z(0.7) - 0.0005;
   group.add(ocular, objective);
 
+  // Supressor do rifle de rastreio: tubo grosso depois da boca do cano (só aparece nele).
+  const suppressor = tubeZ(0.021, 0.021, 1.08, 1.34, BARREL_Y, dark, 16);
+  suppressor.visible = false;
+  group.add(suppressor);
+
   // Clarão na boca do cano.
   const flash = new THREE.Sprite(
     new THREE.SpriteMaterial({
@@ -214,5 +221,5 @@ export function buildKar98k(): Kar98kModel {
   flash.renderOrder = 10;
   group.add(flash);
 
-  return { group, bolt, boltRestZ: bolt.position.z, flash };
+  return { group, bolt, boltRestZ: bolt.position.z, flash, suppressor };
 }

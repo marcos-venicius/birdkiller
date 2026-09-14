@@ -48,6 +48,7 @@ aparecem sozinhas, uma única vez, quando a situação chega (a primeira noite, 
 | Recolher madeira (árvore derrubada ou tronco caído) | E |
 | Construindo: trocar a altura / construir | Botão direito / botão esquerdo |
 | Cão: farejar javali / farejar veado / junto | F |
+| Rifle de rastreio (silencioso; o dardo marca o bicho na bússola) | 4 |
 | Soltar o mouse | Esc |
 
 O carregador tem 5 tiros e recarrega sozinho quando esvazia (pente inteiro); com R você completa antes, cartucho

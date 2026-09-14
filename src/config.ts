@@ -329,6 +329,13 @@ export const CONFIG = {
     treeClearance: 0.9,
   },
 
+  tracker: {
+    /** Dardos por carregador do rifle de rastreio (munição infinita). */
+    magazineSize: 3,
+    /** Bichos marcados ao mesmo tempo (marcando mais um, o mais antigo perde a marca). */
+    maxTagged: 3,
+  },
+
   wounded: {
     /** Ferido na traseira: fração da velocidade que sobra (manca), na fuga e andando. */
     limp: 0.55,

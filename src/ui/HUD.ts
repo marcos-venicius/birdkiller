@@ -48,6 +48,8 @@ export class HUD {
   private readonly guideEl: HTMLElement;
   private readonly bdcEl: SVGGElement;
   private readonly dogEl: HTMLElement;
+  private readonly kindEl: HTMLElement;
+  private readonly tagEls: HTMLElement[] = [];
   private readonly reserveEl: HTMLElement;
   private readonly toolEl: HTMLElement;
   private readonly woodBoxEl: HTMLElement;
@@ -99,7 +101,7 @@ export class HUD {
       <div class="hud-guide" hidden></div>
       <div class="hud-tip"></div>
       <div class="hud-reload" hidden>Recarregando...</div>
-      <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span><span class="tool" hidden></span></div>
+      <div class="hud-ammo"><span class="kind" hidden></span><span data-ammo>0</span><span class="reserve">/ ∞</span><span class="tool" hidden></span></div>
       <div class="hud-hint">
         Clique para controlar
         <small>WASD anda · botão direito liga a luneta · botão esquerdo atira · <kbd>−</kbd> <kbd>=</kbd> sensibilidade do mouse · <kbd>H</kbd> guia de campo com todos os controles e o que procurar</small>
@@ -113,6 +115,7 @@ export class HUD {
     this.killsEl = root.querySelector('[data-kills]')!;
     this.killEl = root.querySelector('.hud-kill')!;
     this.ammoEl = root.querySelector('[data-ammo]')!;
+    this.kindEl = root.querySelector('.hud-ammo .kind')!;
     this.reserveEl = root.querySelector('.hud-ammo .reserve')!;
     this.toolEl = root.querySelector('.hud-ammo .tool')!;
     this.woodBoxEl = root.querySelector('.hud-score .wood')!;
@@ -166,6 +169,13 @@ export class HUD {
     this.dogEl.className = 'pin dog';
     this.dogEl.innerHTML = '<b>cão</b> <i></i>';
     this.compassEl.append(this.dogEl);
+    for (let i = 0; i < CONFIG.tracker.maxTagged; i++) {
+      const el = document.createElement('span');
+      el.className = 'pin tag';
+      el.innerHTML = '<b></b> <i></i>';
+      this.compassEl.append(el);
+      this.tagEls.push(el);
+    }
   }
 
   /**
@@ -285,6 +295,12 @@ export class HUD {
     this.reserveEl.hidden = name !== null;
   }
 
+  /** Rótulo da arma junto da munição ("Rastreio"); null esconde (rifle comum). */
+  setWeaponLabel(text: string | null): void {
+    this.kindEl.textContent = text ?? '';
+    this.kindEl.hidden = text === null;
+  }
+
   setAmmo(inMagazine: number): void {
     this.ammoEl.textContent = String(inMagazine);
   }
@@ -354,6 +370,7 @@ export class HUD {
     marks: readonly { bearing: number; distance: number }[],
     pins: readonly { n: number; bearing: number; distance: number }[] = [],
     dog: { bearing: number; distance: number } | null = null,
+    tags: readonly { bearing: number; distance: number; label: string }[] = [],
   ): void {
     if (this.compassEl.hidden) return;
     for (let i = 0; i < this.pinEls.length; i++) {
@@ -373,6 +390,18 @@ export class HUD {
       this.dogEl.querySelector('i')!.textContent = `${Math.round(dog.distance)} m`;
     } else {
       this.dogEl.style.opacity = '0';
+    }
+    // Bichos marcados pelo rastreio.
+    for (let i = 0; i < this.tagEls.length; i++) {
+      const el = this.tagEls[i];
+      const tag = tags[i];
+      if (!tag) {
+        el.style.opacity = '0';
+        continue;
+      }
+      this.place(el, wrapDeg(tag.bearing - heading), 1);
+      el.querySelector('b')!.textContent = `⌖ ${tag.label}`;
+      el.querySelector('i')!.textContent = `${Math.round(tag.distance)} m`;
     }
     for (let i = 0; i < CARDINALS.length; i++) this.place(this.dirEls[i], wrapDeg(CARDINALS[i][1] - heading), 1);
     for (let i = 0; i < this.markEls.length; i++) {

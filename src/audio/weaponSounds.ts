@@ -22,6 +22,25 @@ function slide(a: AudioSystem, at: number, duration: number, from: number, to: n
   a.noiseBurst({ at, duration, type: 'bandpass', freq: from, freqEnd: to, q: 2.5, gain, attack: 0.01, reverb: 0.05 });
 }
 
+/**
+ * Disparo com supressor (rifle de rastreio): não é silêncio — é o "pá" abafado de um tiro silenciado.
+ * O estalo seco da ação, um "pop" grave e surdo saindo do supressor, o baque no ombro e o chiado do gás;
+ * bem mais baixo e curto que o estampido, e quase sem eco na mata.
+ */
+export function playSuppressed(a: AudioSystem): void {
+  const p = 0.94 + Math.random() * 0.12;
+  // Ação e percussão: estalo metálico seco na hora do disparo.
+  a.noiseBurst({ duration: 0.018, type: 'highpass', freq: 3500 * p, gain: 0.45, reverb: 0.05 });
+  click(a, 0.004, 2600 * p, 0.45);
+  // O "pop" abafado: estouro de ar grave e filtrado, com um pouquinho de mata em volta.
+  a.noiseBurst({ at: 0.006, duration: 0.14, type: 'lowpass', freq: 1500 * p, freqEnd: 260, gain: 0.95, attack: 0.002, reverb: 0.25 });
+  a.tone({ at: 0.006, duration: 0.16, freq: 130 * p, freqEnd: 52, gain: 0.55 });
+  // Chiado do gás escapando pelo supressor.
+  a.noiseBurst({ at: 0.03, duration: 0.22, type: 'bandpass', freq: 4200, freqEnd: 2200, q: 1.1, gain: 0.14, attack: 0.02 });
+  // Resto bem baixo voltando da mata.
+  a.noiseBurst({ at: 0.28, duration: 0.4, type: 'lowpass', freq: 450, freqEnd: 140, gain: 0.05, attack: 0.03, reverb: 1 });
+}
+
 /** Levanta e puxa o ferrolho. */
 export function playBoltOpen(a: AudioSystem, at = 0): void {
   click(a, at, 2600, 0.5);

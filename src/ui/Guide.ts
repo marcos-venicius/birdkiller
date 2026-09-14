@@ -22,6 +22,7 @@ export const GUIDE: { title: string; items: string[] }[] = [
       '**V** liga o infravermelho da luneta: ótimo de noite, na chuva e na neblina; ruim sob sol forte',
       'Cabeça ou peito abate. Ferido na traseira, o bicho foge mancando e deixa sangue: siga as gotas ou mande o cão',
       'Pássaro pego na asa cai e não voa mais: foge pulando pelo chão',
+      '**4** rifle de rastreio: silencioso, 3 dardos. O dardo marca o javali ou veado na bússola (⌖) até ele morrer',
     ],
   },
   {
@@ -55,7 +56,7 @@ export const GUIDE: { title: string; items: string[] }[] = [
   {
     title: 'Machado e madeira',
     items: [
-      '**1** rifle · **2** machado · **3** construir',
+      '**1** rifle · **2** machado · **3** construir · **4** rastreio',
       '**Botão esquerdo** com o machado golpeia o tronco: de 3 a 8 golpes, conforme a grossura, e a árvore cai',
       '**E** recolhe a madeira da árvore derrubada ou de um tronco caído na mata',
       'Cortar faz barulho: os bichos por perto fogem',

@@ -71,7 +71,8 @@ export class QuadrupedManager implements AnimalWorld {
       const b = this.active[i];
       b.update(dt, this);
       const d = Math.hypot(b.pos.x - pp.x, b.pos.z - pp.z);
-      if (b.removable || d > C.despawnDistance) {
+      // O marcado pelo rastreio não some de longe: o sinal continua até ele morrer.
+      if (b.removable || (d > C.despawnDistance && !(b.tagged && b.alive))) {
         this.release(i);
         continue;
       }
@@ -114,6 +115,13 @@ export class QuadrupedManager implements AnimalWorld {
   spawnTrail(minD: number, maxD: number): Quadruped | null {
     if (this.living >= this.kind.cfg.maxActive) return null;
     return this.trySpawn(false, minD, maxD);
+  }
+
+  /** Dardo rastreador: marca o bicho (a bússola segue ele até morrer) e ele se assusta com a picada. */
+  tag(animal: Quadruped, origin: THREE.Vector3, order: number): void {
+    animal.tagged = true;
+    animal.tagOrder = order;
+    this.startFlee(animal, origin);
   }
 
   /** Espanta os javalis num raio (disparo). */

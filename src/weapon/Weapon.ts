@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { AudioSystem } from '../audio/AudioSystem';
-import { playBoltClose, playBoltOpen, playGunshot, playReload, playTopUp } from '../audio/weaponSounds';
+import { playBoltClose, playBoltOpen, playGunshot, playReload, playSuppressed, playTopUp } from '../audio/weaponSounds';
 import { CONFIG } from '../config';
 import type { Engine } from '../core/Engine';
 import type { Input } from '../core/Input';
@@ -53,14 +53,21 @@ export class Weapon {
   scopeSensitivity = 1;
   /** Guardado (machado ou construção na mão): sem mira, tiro nem recarga; o modelo some. */
   holstered = false;
+  /** Rifle comum ou de rastreio (supressor e dardos) — escolhido pelas ferramentas. */
+  variant: 'rifle' | 'tracker' = 'rifle';
 
   /** Luneta efetivamente no olho (depois da animação) — quem liga o telêmetro. */
   get inScope(): boolean {
     return this.scoped;
   }
 
+  /** Capacidade do carregador da variante na mão. */
+  get capacity(): number {
+    return this.current === 'tracker' ? CONFIG.tracker.magazineSize : CONFIG.weapon.magazineSize;
+  }
+
   /** Chamado a cada disparo com a origem e a direção exata do tiro (já com dispersão). */
-  onFire?: (origin: THREE.Vector3, dir: THREE.Vector3) => void;
+  onFire?: (origin: THREE.Vector3, dir: THREE.Vector3, dart: boolean) => void;
 
   private readonly model: Kar98kModel;
   private timer = 0;
@@ -75,6 +82,12 @@ export class Weapon {
   private time = 0;
   private flashTimer = 0;
   private scoped = false;
+  /** A variante na mão agora, e o carregador guardado de cada uma (trocar não perde as balas da outra). */
+  private current: 'rifle' | 'tracker' = 'rifle';
+  private readonly mags: Record<'rifle' | 'tracker', number> = {
+    rifle: CONFIG.weapon.magazineSize,
+    tracker: CONFIG.tracker.magazineSize,
+  };
   /** 0 = rifle embaixo da tela (acabou de voltar para a mão), 1 = em posição. */
   private draw = 1;
   private reloadShown = false;
@@ -119,7 +132,7 @@ export class Weapon {
     if (this.state === 'cycling' && this.timer >= W.boltTime) {
       this.setState('ready');
     } else if (this.state === 'reloading' && this.timer >= this.reloadDuration) {
-      this.magazine = W.magazineSize;
+      this.magazine = this.capacity;
       this.hud.setAmmo(this.magazine);
       this.setState('ready');
     }
@@ -133,6 +146,17 @@ export class Weapon {
     } else {
       this.draw = approach(this.draw, 1, dt / CONFIG.tools.switchTime);
     }
+    // Rifle ↔ rastreio: cada um com o seu carregador; o ferrolho/recarga em andamento para, e a arma sobe de novo.
+    if (this.variant !== this.current) {
+      this.mags[this.current] = this.magazine;
+      this.current = this.variant;
+      this.magazine = this.mags[this.current];
+      this.model.suppressor.visible = this.current === 'tracker';
+      if (this.state !== 'ready') this.setState('ready');
+      this.draw = 0;
+      this.hud.setAmmo(this.magazine);
+    }
+    if (!holstered && this.state === 'ready' && this.magazine === 0) this.startReload();
     const showReload = this.state === 'reloading' && !holstered;
     if (showReload !== this.reloadShown) {
       this.reloadShown = showReload;
@@ -140,7 +164,7 @@ export class Weapon {
     }
 
     // R: recarga manual quando falta munição (a automática continua quando o carregador esvazia).
-    if (!holstered && this.input.wasPressed('KeyR') && this.state !== 'reloading' && this.magazine < W.magazineSize) this.startReload();
+    if (!holstered && this.input.wasPressed('KeyR') && this.state !== 'reloading' && this.magazine < this.capacity) this.startReload();
 
     // Mira: o botão direito liga/desliga. Shift (para correr) e a recarga desligam; mirar impede correr.
     if (!holstered && this.input.wasMousePressed(2) && this.state !== 'reloading') this.aimToggled = !this.aimToggled;
@@ -197,6 +221,7 @@ export class Weapon {
     const W = CONFIG.weapon;
     const P = this.player;
     const cam = this.engine.camera;
+    const dart = this.current === 'tracker';
     this.magazine--;
     this.hud.setAmmo(this.magazine);
 
@@ -212,16 +237,22 @@ export class Weapon {
     const a = Math.random() * TAU;
     const r = Math.tan(spread * Math.sqrt(Math.random()));
     _dir.addScaledVector(_right, r * Math.cos(a)).addScaledVector(_up, r * Math.sin(a)).normalize();
-    this.onFire?.(cam.position.clone(), _dir.clone());
+    this.onFire?.(cam.position.clone(), _dir.clone(), dart);
 
-    this.recoil = 1;
-    this.kick.x += W.kickPitch * (P.crouched ? 0.7 : 1);
-    this.kick.y += (Math.random() - 0.5) * W.kickYaw;
-    this.flashTimer = W.flashTime;
-    this.model.flash.material.rotation = Math.random() * TAU;
-    this.model.flash.scale.setScalar(0.18 + Math.random() * 0.1);
-    if (this.scoped) this.hud.flash();
-    playGunshot(this.audio);
+    // Rastreio: o supressor tira o clarão e boa parte do coice; só sai um sopro.
+    const k = dart ? 0.55 : 1;
+    this.recoil = k;
+    this.kick.x += W.kickPitch * (P.crouched ? 0.7 : 1) * k;
+    this.kick.y += (Math.random() - 0.5) * W.kickYaw * k;
+    if (dart) {
+      playSuppressed(this.audio);
+    } else {
+      this.flashTimer = W.flashTime;
+      this.model.flash.material.rotation = Math.random() * TAU;
+      this.model.flash.scale.setScalar(0.18 + Math.random() * 0.1);
+      if (this.scoped) this.hud.flash();
+      playGunshot(this.audio);
+    }
 
     if (this.magazine > 0) {
       this.setState('cycling');
@@ -238,7 +269,7 @@ export class Weapon {
    */
   private startReload(): void {
     const W = CONFIG.weapon;
-    const missing = W.magazineSize - this.magazine;
+    const missing = this.capacity - this.magazine;
     const fullClip = this.magazine === 0;
     this.reloadDuration = fullClip ? W.reloadTime : W.topUpBase + missing * W.topUpPerRound;
     this.setState('reloading');

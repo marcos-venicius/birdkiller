@@ -156,7 +156,7 @@ const deerVoices = new AnimalVoices(audio, deerKind().sounds);
 const dogVoice = new DogVoice(audio);
 const footsteps = new Footsteps(audio, biome);
 const music = new Music(audio);
-weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
+weapon.onFire = (origin, dir, dart) => hunting.shoot(origin, dir, dart);
 // Machado e madeira (teclas 1 e 2, E recolhe): as árvores derrubadas ficam no chão até alguém recolher.
 const felled = new FelledTrees(engine.scene, terrain, vegetation, edits);
 // Construir (tecla 3): torre-fantasma onde a mira aponta, três alturas.
@@ -225,6 +225,7 @@ function offerTips(): void {
   if (tools.targetWood !== null) tips.offer('tronco');
   if (edits.wood >= CONFIG.build.sizes[0].cost) tips.offer('construir');
   if (tools.current === 'build') tips.offer('fantasma');
+  if (tools.current === 'tracker') tips.offer('rastreio');
 }
 
 /** Chegou perto de um lugar (ou subiu nele): entra no caderno. */
@@ -291,6 +292,7 @@ let compassTimer = 0;
 // Marcadores de direção (tecla Q): marcam o ponto na mira, aparecem na bússola e no mundo.
 const markers = new Markers();
 const compassPins: { n: number; bearing: number; distance: number }[] = [];
+const compassTags: { bearing: number; distance: number; label: string }[] = [];
 const worldPins: { n: number; x: number; y: number; distance: number }[] = [];
 const markDir = new THREE.Vector3();
 const markTarget = new THREE.Vector3();
@@ -506,11 +508,22 @@ engine.renderer.setAnimationLoop(() => {
       const dz = m.pos.z - p.z;
       compassPins.push({ n: m.n, bearing: (THREE.MathUtils.radToDeg(Math.atan2(dx, -dz)) + 360) % 360, distance: Math.hypot(dx, dz) });
     }
+    // Bichos marcados pelo rastreio (vivos): o sinal aponta para eles, perto ou longe.
+    compassTags.length = 0;
+    for (const m of [boars, deer]) {
+      for (const a of m.active) {
+        if (!a.alive || !a.tagged) continue;
+        const dx = a.pos.x - p.x;
+        const dz = a.pos.z - p.z;
+        const label = (a.rare?.name ?? m.kind.name).toLowerCase();
+        compassTags.push({ bearing: (THREE.MathUtils.radToDeg(Math.atan2(dx, -dz)) + 360) % 360, distance: Math.hypot(dx, dz), label });
+      }
+    }
     const ddx = dog.pos.x - p.x;
     const ddz = dog.pos.z - p.z;
     const dd = Math.hypot(ddx, ddz);
     const dogMark = dd > 12 ? { bearing: (THREE.MathUtils.radToDeg(Math.atan2(ddx, -ddz)) + 360) % 360, distance: dd } : null;
-    hud.setCompass((THREE.MathUtils.radToDeg(-player.yaw) + 360) % 360, compassMarks, compassPins, dogMark);
+    hud.setCompass((THREE.MathUtils.radToDeg(-player.yaw) + 360) % 360, compassMarks, compassPins, dogMark, compassTags);
   }
   // Marcadores no mundo: projetados na tela a cada quadro (poucos, só transform de DOM).
   worldPins.length = 0;
