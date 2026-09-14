@@ -36,7 +36,7 @@ export class Dog {
   /** A caça abatida para onde ele está indo (ou do lado da qual está sentado). */
   carcass: Quadruped | null = null;
   /** Achou um bando: quantos e de quê (uma vez por bando). */
-  onFound?: (count: number, kind: Quarry) => void;
+  onFound?: (count: number, kind: Quarry, wounded: boolean) => void;
   /** Não há rastro nenhum da espécie por perto. */
   onNoTrail?: (kind: Quarry) => void;
   /** Voltou a ficar junto sozinho (depois de levar o jogador até a caça). */
@@ -47,7 +47,7 @@ export class Dog {
   private readonly tail: THREE.Mesh;
   private readonly legs: THREE.Mesh[] = [];
   private herdId = -1;
-  private announced = -1;
+  private announced = '';
   private readonly fetched = new WeakSet<Quadruped>();
   private scanTimer = 0;
   private trailTimer = 0;
@@ -106,7 +106,7 @@ export class Dog {
   setMode(mode: DogMode): void {
     this.mode = mode;
     this.herdId = -1;
-    this.announced = -1;
+    this.announced = '';
     this.target = null;
     this.carcass = null;
     this.scanTimer = 0;
@@ -224,9 +224,10 @@ export class Dog {
       this.brake(dt);
       this.faceToward(t.pos.x, t.pos.z, dt, 3);
       this.setState('point');
-      if (this.announced !== this.herdId) {
-        this.announced = this.herdId;
-        this.onFound?.(this.herdCount(kind), kind);
+      const key = `${this.herdId}:${t.wounded}`;
+      if (this.announced !== key) {
+        this.announced = key;
+        this.onFound?.(this.herdCount(kind), kind, t.wounded);
       }
       return;
     }
@@ -253,6 +254,23 @@ export class Dog {
         this.target = null;
         return;
       }
+    }
+    // Um ferido da espécie por perto: o faro vai direto nele (o sangue ajuda) e não troca pelo bando sadio.
+    if (this.target?.active && this.target.wounded) return;
+    let hurt: Quadruped | null = null;
+    let hurtD = D.search * 1.5;
+    for (const a of m.active) {
+      if (!a.wounded) continue;
+      const d = Math.hypot(a.pos.x - P.x, a.pos.z - P.z);
+      if (d < hurtD) {
+        hurt = a;
+        hurtD = d;
+      }
+    }
+    if (hurt) {
+      this.target = hurt;
+      this.herdId = hurt.herdId;
+      return;
     }
     let best: Quadruped | null = null;
     let bestD = Infinity;

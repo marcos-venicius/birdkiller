@@ -65,3 +65,9 @@ export function lapping(a: AudioSystem, dest: Dest): void {
     a.tone({ at, duration: 0.07, freq: r(240, 340), freqEnd: 180, type: 'sine', gain: 0.32, attack: 0.005, dest });
   }
 }
+
+/** Gemido do javali ferido: grunhido longo, grave e arrastado. */
+export function groan(a: AudioSystem, dest: Dest): void {
+  a.tone({ duration: 0.7, freq: 110, freqEnd: 70, type: 'sawtooth', gain: 0.35, attack: 0.08, dest, filter: { type: 'bandpass', freq: 320, q: 2.5 } });
+  a.noiseBurst({ duration: 0.6, type: 'bandpass', freq: 260, q: 2, gain: 0.2, attack: 0.1, dest });
+}

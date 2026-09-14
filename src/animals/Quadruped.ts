@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import { CONFIG } from '../config';
 import { markWarm } from '../core/Engine';
 import { angleDiff, raySphere, TAU } from '../core/math';
 import type { AnimalKind, RareVariant } from './kinds';
 import type { HitZone, QuadrupedGeometry } from './quadrupedModel';
 
-export type AnimalState = 'forage' | 'walk' | 'drink' | 'alert' | 'flee' | 'dying' | 'dead';
+export type AnimalState = 'forage' | 'walk' | 'drink' | 'alert' | 'flee' | 'bed' | 'dying' | 'dead';
 export type { HitZone };
 
 /** O que o javali consulta no mundo — implementado pelo QuadrupedManager. */
@@ -49,6 +50,10 @@ export class Quadruped {
   rare: RareVariant | null = null;
   /** Tempo até sentir sede de novo (s). */
   thirst = rand(20, 120);
+  /** Metros andados desde a última gota de sangue (ferido) — quem solta as gotas é o manager. */
+  bleed = 0;
+  /** Já deixou a poça de sangue onde deitou. */
+  pooled = false;
   /** O destino atual é a margem do lago. */
   private drinking = false;
   private readonly water = new THREE.Vector3();
@@ -72,6 +77,9 @@ export class Quadruped {
   private deathSide = 1;
   private readonly slide = new THREE.Vector3();
   private sinkTime = -1;
+  /** Ferido: tempo até deitar, e o quanto está deitado de barriga (0..1). */
+  private bedTimer = 0;
+  private rest = 0;
 
   constructor(
     readonly geo: QuadrupedGeometry,
@@ -102,6 +110,11 @@ export class Quadruped {
     return this.state !== 'dying' && this.state !== 'dead';
   }
 
+  /** Ferido na traseira: manca, sangra e acaba deitando. */
+  get wounded(): boolean {
+    return this.health < 2 && this.alive;
+  }
+
   /** Tempo desde que o corpo parou no chão (s). */
   get corpseAge(): number {
     return this.state === 'dead' ? this.stateTime : 0;
@@ -114,6 +127,9 @@ export class Quadruped {
     this.scale = scale;
     this.group.scale.setScalar(scale);
     this.health = 2;
+    this.bleed = 0;
+    this.pooled = false;
+    this.rest = 0;
     this.speed = 0;
     this.bank = 0;
     this.lie = 0;
@@ -144,13 +160,19 @@ export class Quadruped {
     if (!this.alive) return;
     this.threat.copy(threat);
     const away = Math.atan2(this.pos.x - threat.x, this.pos.z - threat.z) + rand(-0.5, 0.5);
-    const d = rand(90, 130);
+    // Ferido não aguenta correr muito.
+    const W = CONFIG.wounded;
+    const d = this.wounded ? rand(W.fleeDistance[0], W.fleeDistance[1]) : rand(90, 130);
+    this.pooled = false;
     this.target.set(this.pos.x + Math.sin(away) * d, 0, this.pos.z + Math.cos(away) * d);
     this.setState('flee', rand(9, 14));
   }
 
   wound(): void {
     this.health = 1;
+    // Fica para trás: larga o líder do bando e, depois de fugir e andar um pouco, deita.
+    this.leader = null;
+    this.bedTimer = rand(CONFIG.wounded.bedAfter[0], CONFIG.wounded.bedAfter[1]);
   }
 
   /** Tiro letal: desaba de lado, escorregando com o embalo que tinha. */
@@ -209,12 +231,19 @@ export class Quadruped {
     this.stateTime += dt;
     if (this.alive) this.thirst -= dt;
     const C = this.kind.cfg;
+    const limp = this.wounded ? CONFIG.wounded.limp : 1;
+    const bx = this.pos.x;
+    const bz = this.pos.z;
+    if (this.wounded && (this.state === 'forage' || this.state === 'walk')) {
+      this.bedTimer -= dt;
+      if (this.bedTimer <= 0) this.setState('bed', Infinity);
+    }
     switch (this.state) {
       case 'forage':
         this.updateForage(dt, world);
         break;
       case 'walk': {
-        const dist = this.moveToward(this.target, C.walkSpeed * (0.9 + 0.2 * Math.sin(this.time * 0.3)), 1.4, dt, world);
+        const dist = this.moveToward(this.target, C.walkSpeed * limp * (0.9 + 0.2 * Math.sin(this.time * 0.3)), 1.4, dt, world);
         if (dist < 1.6 && this.drinking) {
           this.drinking = false;
           this.setState('drink', rand(C.drinkTime[0], C.drinkTime[1]));
@@ -223,6 +252,10 @@ export class Quadruped {
         }
         break;
       }
+      case 'bed':
+        // Deitado ferido: parado, de cabeça erguida, até alguém chegar perto (o manager levanta ele).
+        this.speed *= Math.exp(-6 * dt);
+        break;
       case 'drink':
         this.speed *= Math.exp(-6 * dt);
         // Fica de frente para a água enquanto bebe.
@@ -242,7 +275,7 @@ export class Quadruped {
         }
         break;
       case 'flee': {
-        const dist = this.moveToward(this.target, C.fleeSpeed * (this.health < 2 ? 1.15 : 1), 3.2, dt, world, Math.sin(this.time * 1.6) * 0.35);
+        const dist = this.moveToward(this.target, C.fleeSpeed * limp, 3.2, dt, world, Math.sin(this.time * 1.6) * 0.35);
         if (dist < 5 || this.stateTime > this.stateDur) {
           world.pickForageSpot(this, this.target);
           this.setState('walk', rand(15, 30));
@@ -256,6 +289,7 @@ export class Quadruped {
         break;
     }
 
+    if (this.wounded) this.bleed += Math.hypot(this.pos.x - bx, this.pos.z - bz);
     if (this.state !== 'dead') this.followTerrain(dt, world);
     if (this.sinkTime >= 0) {
       this.sinkTime += dt;
@@ -380,11 +414,14 @@ export class Quadruped {
   private animate(dt: number, smooth = true): void {
     const s = this.scale;
     const gallop = this.speed > 3;
-    const bounding = gallop && this.kind.bounding;
+    const limping = this.wounded;
+    // Ferido não salta: foge num galope rasteiro e torto.
+    const bounding = gallop && this.kind.bounding && !limping;
     const stride = (gallop ? (bounding ? 2.6 : 1.7) : 0.8) * s;
     this.gait += (this.speed / stride) * TAU * dt * (smooth ? 1 : 0);
     const p = this.gait;
     const k = smooth ? 1 - Math.exp(-6 * dt) : 1;
+    this.rest += ((this.state === 'bed' ? 1 : 0) - this.rest) * k;
 
     if (this.alive) {
       // Passo: diagonais juntas; galope: dianteiras juntas e traseiras juntas, defasadas.
@@ -397,6 +434,15 @@ export class Quadruped {
           ? [p, p + 0.35, p + 3.0, p + 3.4]
           : [p, p + Math.PI, p + Math.PI, p];
       for (let i = 0; i < 4; i++) this.legs[i].rotation.x = Math.sin(phases[i]) * amp;
+      if (limping) {
+        // Mancando: a traseira direita quase não apoia (erguida, passada curta) e o corpo balança de lado.
+        this.legs[2].rotation.x = Math.sin(phases[2]) * amp * 0.25 - 0.35;
+        this.bank = Math.sin(p) * 0.08 * Math.min(this.speed, 1);
+      }
+      if (this.rest > 0.01) {
+        // Deitado de barriga: as quatro dobradas para a frente.
+        for (let i = 0; i < 4; i++) this.legs[i].rotation.x += ((i < 2 ? -1.3 : -1.2) - this.legs[i].rotation.x) * this.rest;
+      }
       this.bob = gallop
         ? (bounding ? Math.max(0, Math.sin(p)) * 0.22 : Math.sin(p * 2) * 0.05) * s
         : Math.abs(Math.sin(p)) * 0.02 * s * Math.min(this.speed, 1);
@@ -417,6 +463,7 @@ export class Quadruped {
       hp = this.kind.alertPitch;
       hy = THREE.MathUtils.clamp(angleDiff(this.yaw, Math.atan2(this.threat.x - this.pos.x, this.threat.z - this.pos.z)), -0.9, 0.9);
     } else if (this.state === 'flee') hp = 0.15 + Math.sin(p * 2) * 0.08;
+    else if (this.state === 'bed') hp = this.kind.alertPitch * 0.4;
     else if (!this.alive) hp = 0.4;
     else if (this.state === 'walk') hp = this.kind.feedPitch * 0.35;
     this.headPitch += (hp - this.headPitch) * k;
@@ -428,7 +475,7 @@ export class Quadruped {
   private applyTransform(): void {
     const s = this.scale;
     const { bodyY, lyingY } = this.geo;
-    this.group.position.set(this.pos.x, this.pos.y + (bodyY + (lyingY - bodyY) * this.lie) * s + this.bob, this.pos.z);
+    this.group.position.set(this.pos.x, this.pos.y + (bodyY * (1 - 0.42 * this.rest) + (lyingY - bodyY) * this.lie) * s + this.bob, this.pos.z);
     this.group.rotation.set(this.bodyPitch * (1 - this.lie), this.yaw, this.bank);
   }
 }

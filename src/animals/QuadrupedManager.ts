@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from '../config';
 import { TAU } from '../core/math';
 import type { PlayerController } from '../player/PlayerController';
+import type { BloodTrail } from '../effects/BloodTrail';
 import type { Biome } from '../world/Biome';
 import type { ChunkManager } from '../world/ChunkManager';
 import { inPlayerView } from '../world/spawnRules';
@@ -25,6 +26,8 @@ export class QuadrupedManager implements AnimalWorld {
   readonly active: Quadruped[] = [];
   /** Depuração: congela os bichos (capturas de tela). */
   frozen = false;
+  /** Onde os feridos pingam sangue (definido pelo main). */
+  blood: BloodTrail | null = null;
   /** Depuração/testes: chamado a cada bicho criado. */
   onSpawn?: (animal: Quadruped, initial: boolean) => void;
 
@@ -81,6 +84,19 @@ export class QuadrupedManager implements AnimalWorld {
         else if (d < sense) b.alert(_threat);
       } else if (b.state === 'alert' && d < sense * 0.7) {
         this.startFlee(b, _threat);
+      } else if (b.state === 'bed' && d < sense * 0.8) {
+        // Ferido deitado: o jogador chegou perto, levanta e foge mancando.
+        this.startFlee(b, _threat);
+      }
+      if (b.wounded && this.blood) {
+        if (b.bleed >= CONFIG.wounded.bloodEvery * (b.state === 'flee' ? 1 : 2)) {
+          b.bleed = 0;
+          this.blood.drop(b.pos.x + rand(-0.2, 0.2), b.pos.z + rand(-0.2, 0.2));
+        }
+        if (b.state === 'bed' && !b.pooled) {
+          b.pooled = true;
+          this.blood.pool(b.pos.x, b.pos.z);
+        }
       }
     }
 
@@ -124,6 +140,7 @@ export class QuadrupedManager implements AnimalWorld {
       return 'killed';
     }
     animal.wound();
+    this.blood?.splatter(animal.pos.x, animal.pos.z, 5, 0.6);
     this.startFlee(animal, origin);
     return 'wounded';
   }

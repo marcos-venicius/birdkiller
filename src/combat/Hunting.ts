@@ -54,6 +54,8 @@ export class Hunting {
   lastShot: ShotResult | null = null;
   /** Chamado a cada abate (o caderno de campo escuta aqui); não mexe na pontuação. */
   onKill?: (info: KillInfo) => void;
+  /** Tiro não letal (bicho ferido ou asa atingida) — para as dicas. */
+  onWound?: (kind: 'animal' | 'bird') => void;
 
   constructor(
     private readonly terrain: Terrain,
@@ -170,6 +172,7 @@ export class Hunting {
         this.onKill?.({ id: rare?.id ?? kind.id, name, distance: result.distance, scale: animalHit.animal.scale, weightId: kind.id });
       } else {
         this.hud.toast(`${name} ferido`);
+        this.onWound?.('animal');
       }
       this.particles.tufts(result.point, animalHit.animal.geo.tufts, result.lethal ? 12 : 7, dir);
       playFleshHit(this.audio, result.distance, result.point);
@@ -187,9 +190,11 @@ export class Hunting {
         this.onKill?.({ id: sp.id, name: sp.name, distance: result.distance });
         this.particles.feathers(result.point, sp.colors, 16, dir);
       } else {
-        // Raspão na asa: algumas penas e o pássaro foge.
-        this.particles.feathers(result.point, sp.colors, 5, dir);
-        birdHit.bird.scare(origin, this.birds);
+        // Asa atingida: algumas penas, e o pássaro não voa mais — cai e foge pelo chão.
+        this.particles.feathers(result.point, sp.colors, 6, dir);
+        this.birds.wound(birdHit.bird, dir);
+        this.hud.toast(`${sp.name} com a asa ferida`);
+        this.onWound?.('bird');
       }
       playBirdHit(this.audio, result.distance, result.point);
     } else if (kind === 'water') {

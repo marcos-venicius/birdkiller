@@ -80,3 +80,9 @@ export function lapping(a: AudioSystem, dest: Dest): void {
     a.tone({ at, duration: 0.07, freq: r(240, 340), freqEnd: 180, type: 'sine', gain: 0.32, attack: 0.005, dest });
   }
 }
+
+/** Gemido do veado ferido: balido baixo e trêmulo. */
+export function groan(a: AudioSystem, dest: AudioNode | null): void {
+  a.tone({ duration: 0.8, freq: 380, freqEnd: 260, type: 'triangle', gain: 0.18, attack: 0.1, dest, filter: { type: 'bandpass', freq: 700, q: 2 } });
+  a.tone({ at: 0.15, duration: 0.5, freq: 395, freqEnd: 300, type: 'triangle', gain: 0.08, dest });
+}

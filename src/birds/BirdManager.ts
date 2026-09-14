@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Particles } from '../effects/Particles';
 import { CONFIG } from '../config';
 import { TAU } from '../core/math';
 import type { PlayerController } from '../player/PlayerController';
@@ -24,9 +25,13 @@ function perchKey(x: number, z: number): string {
  * População de pássaros: spawn dinâmico fora da visão, destinos (copas, chão, passeio),
  * sustos e descarte/reuso via pool. Implementa o BirdWorld consultado por cada Bird.
  */
+const _featherDir = new THREE.Vector3(0, 0.4, 0);
+
 export class BirdManager implements BirdWorld {
   readonly active: Bird[] = [];
   readonly speciesList = SPECIES;
+  /** Penas soltas pela ave ferida (definido pelo main). */
+  particles: Particles | null = null;
   /** Depuração: congela todos os pássaros (capturas de tela). */
   frozen = false;
   /** Atividade (1 de dia, menor à noite): limita quantos pássaros aparecem. */
@@ -84,6 +89,11 @@ export class BirdManager implements BirdWorld {
       if ((b.state === 'perched' || b.state === 'landing') && Math.hypot(hd, b.pos.y - _threat.y) < fear * b.species.wary) {
         b.scare(_threat, this);
       }
+      if (b.state === 'grounded') {
+        // Asa ferida: foge pulando de quem chega perto, perdendo uma pena de vez em quando.
+        if (Math.hypot(hd, b.pos.y - pp.y) < C.grounded.fear) b.scare(_threat, this);
+        if (this.particles && Math.random() < dt * 0.35) this.particles.feathers(b.pos, b.species.colors, 1, _featherDir);
+      }
     }
 
     this.spawnTimer -= dt;
@@ -118,6 +128,12 @@ export class BirdManager implements BirdWorld {
     while (this.corpses.length > CONFIG.combat.maxCorpses) this.corpses.shift()!.sink();
   }
 
+  /** Raspão na asa: o pássaro não voa mais (cai e foge pelo chão). */
+  wound(bird: Bird, dir: THREE.Vector3): void {
+    if (!bird.alive) return;
+    bird.wound(dir, this);
+  }
+
   /** Espanta os pássaros num raio (disparo). */
   scare(origin: THREE.Vector3, radius: number): void {
     for (const b of this.active) if (b.pos.distanceTo(origin) < radius * b.species.wary) b.scare(origin, this);
@@ -136,6 +152,11 @@ export class BirdManager implements BirdWorld {
     const h = this.terrain.heightAt(x, z);
     const lake = this.terrain.lakes.at(x, z);
     return lake ? Math.max(h, lake.level) : h;
+  }
+
+  waterLevel(x: number, z: number): number | null {
+    const lake = this.terrain.lakes.at(x, z);
+    return lake ? lake.level : null;
   }
 
   swim(pos: THREE.Vector3): number | null {

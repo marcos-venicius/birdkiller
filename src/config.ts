@@ -204,6 +204,8 @@ export const CONFIG = {
     fearCrouch: 7,
     /** Raio em que um disparo espanta os pássaros. */
     shotScare: 80,
+    /** Asa ferida: a este raio (m) do jogador ele foge pulando; tenta voar (em vão) a cada tantos segundos. */
+    grounded: { fear: 12, flapEvery: [4, 8] },
   },
 
   boars: {
@@ -325,6 +327,20 @@ export const CONFIG = {
     flatness: 2.5,
     /** Folga das árvores em pé além da diagonal das pernas (m): elas atravessariam a plataforma. */
     treeClearance: 0.9,
+  },
+
+  wounded: {
+    /** Ferido na traseira: fração da velocidade que sobra (manca), na fuga e andando. */
+    limp: 0.55,
+    /** Quanto foge (m) antes de passar a andar, e em quanto tempo deita depois (s). */
+    fleeDistance: [40, 70],
+    bedAfter: [20, 50],
+    /** Uma gota de sangue a cada tantos metros fugindo (andando, o dobro). */
+    bloodEvery: 1.4,
+    /** Máximo de gotas no mundo (a mais antiga some). */
+    bloodMax: 600,
+    /** Intervalo entre gemidos (s). */
+    groanEvery: [6, 14],
   },
 
   dog: {

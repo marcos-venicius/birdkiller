@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import { CONFIG } from '../config';
 import { markWarm } from '../core/Engine';
 import { angleDiff, raySphere, smoothstep, TAU } from '../core/math';
 import type { BirdGeometry } from './birdGeometry';
 import type { Species } from './species';
 
-export type BirdState = 'perched' | 'flying' | 'fleeing' | 'landing' | 'falling' | 'dead';
+export type BirdState = 'perched' | 'flying' | 'fleeing' | 'landing' | 'falling' | 'grounded' | 'dead';
 /** perch = copa de árvore; ground = chão; roam = só passear até lá. */
 export type TargetKind = 'perch' | 'ground' | 'roam';
 
@@ -13,6 +14,8 @@ export interface BirdWorld {
   groundAt(x: number, z: number): number;
   /** Mantém o nadador dentro do lago; devolve o nível da água (null se saiu de um). */
   swim(pos: THREE.Vector3): number | null;
+  /** Nível da água de um lago em (x, z), ou null. */
+  waterLevel(x: number, z: number): number | null;
   /** Escolhe o próximo destino e chama bird.setTarget(). */
   chooseDestination(bird: Bird): void;
   releasePerch(bird: Bird): void;
@@ -82,6 +85,15 @@ export class Bird {
   private restPitch = 0;
   private restBank = 0;
   private sinkTime = -1;
+  /** Asa ferida: ainda caindo (true) ou já no chão/na água. */
+  private airborne = false;
+  private readonly threatPos = new THREE.Vector3();
+  private runTime = 0;
+  private flapTry = 0;
+  private flapBurst = 0;
+  private hopHeight = 0.35;
+  /** Asa machucada caída (0..1). */
+  private droop = 0;
 
   constructor(
     readonly species: Species,
@@ -120,6 +132,7 @@ export class Bird {
     this.group.scale.setScalar(this.species.length);
     this.sinkTime = -1;
     this.removable = false;
+    this.droop = 0;
     this.pitch = 0;
     this.bank = 0;
   }
@@ -172,6 +185,12 @@ export class Bird {
   /** Foge para longe de `threat` (jogador ou disparo). */
   scare(threat: THREE.Vector3, world: BirdWorld): void {
     if (!this.alive || this.state === 'fleeing') return;
+    if (this.state === 'grounded') {
+      // Asa ferida: não voa — foge pulando pelo chão (ou remando, na água).
+      this.threatPos.copy(threat);
+      this.runTime = rand(2, 4);
+      return;
+    }
     const sitting = this.state === 'perched' || this.state === 'landing';
     world.releasePerch(this);
     _v.subVectors(this.pos, threat).setY(0);
@@ -200,6 +219,21 @@ export class Bird {
     this.limp = rand(0.25, 0.65);
   }
 
+  /** Asa atingida: não voa mais — cai batendo a asa até o chão (ou a água) e foge pulando. */
+  wound(dir: THREE.Vector3, world: BirdWorld): void {
+    if (!this.alive || this.state === 'grounded') return;
+    world.releasePerch(this);
+    this.leader = null;
+    this.onGround = false;
+    this.onWater = false;
+    this.airborne = true;
+    this.runTime = 0;
+    this.flapBurst = 0;
+    this.hopTime = 0;
+    this.setState('grounded');
+    this.vel.multiplyScalar(0.5).addScaledVector(dir, rand(1, 2));
+  }
+
   /** Começa a remover o corpo (encolhe e some). */
   sink(): void {
     if (this.sinkTime < 0) this.sinkTime = 0;
@@ -219,7 +253,9 @@ export class Bird {
     t = Math.min(t, raySphere(o, d, _v, 0.17 * L * scale));
     if (t < maxT) return { t, lethal: true };
     if (this.fold < 0.5) {
-      const tw = raySphere(o, d, this.pos, this.species.span * L * 0.9);
+      // A asa aberta cresce na mesma proporção do corpo: senão, no pássaro pequeno, sobraria um anel de
+      // poucos centímetros entre o corpo aumentado e a ponta da asa.
+      const tw = raySphere(o, d, this.pos, this.species.span * L * 0.9 * scale);
       if (tw < maxT) return { t: tw, lethal: false };
     }
     return null;
@@ -238,6 +274,9 @@ export class Bird {
         break;
       case 'falling':
         this.updateFalling(dt, world);
+        break;
+      case 'grounded':
+        this.updateGrounded(dt, world);
         break;
       case 'dead':
         this.updateDead(dt);
@@ -461,6 +500,80 @@ export class Bird {
     this.restPitch = rand(-0.25, 0.25);
   }
 
+  /** Asa ferida: cai batendo a asa; no chão foge pulando da ameaça e às vezes tenta, em vão, voar. */
+  private updateGrounded(dt: number, world: BirdWorld): void {
+    const L = this.species.length;
+    const G = CONFIG.birds.grounded;
+    const ground = world.groundAt(this.pos.x, this.pos.z);
+    const level = world.waterLevel(this.pos.x, this.pos.z);
+    const wet = level !== null && level > ground;
+    if (this.airborne) {
+      // A asa boa freia a queda, mas não sustenta o voo.
+      this.vel.y = Math.max(this.vel.y - GRAVITY * dt, -3.2);
+      const drag = Math.exp(-0.8 * dt);
+      this.vel.x *= drag;
+      this.vel.z *= drag;
+      this.pos.addScaledVector(this.vel, dt);
+      this.orientToVelocity(dt);
+      const rest = wet ? level + L * 0.16 : ground + L * 0.2;
+      if (this.pos.y > rest) return;
+      this.pos.y = rest;
+      this.airborne = false;
+      this.onGround = true;
+      this.onWater = wet;
+      this.vel.set(0, 0, 0);
+      this.targetYaw = this.yaw;
+      this.flapTry = rand(G.flapEvery[0], G.flapEvery[1]);
+      return;
+    }
+    this.runTime -= dt;
+    this.flapTry -= dt;
+    this.flapBurst = Math.max(0, this.flapBurst - dt);
+    const running = this.runTime > 0;
+    if (running) this.targetYaw = Math.atan2(this.pos.x - this.threatPos.x, this.pos.z - this.threatPos.z);
+    if (this.onWater) {
+      // Pato ferido: rema para longe, sem conseguir levantar voo.
+      this.yaw += angleDiff(this.yaw, this.targetYaw) * (1 - Math.exp(-4 * dt));
+      const speed = running ? 0.9 : 0.12;
+      this.pos.x += Math.sin(this.yaw) * speed * dt;
+      this.pos.z += Math.cos(this.yaw) * speed * dt;
+      const lv = world.swim(this.pos);
+      if (lv === null) {
+        this.onWater = false;
+        return;
+      }
+      this.pos.y = lv + L * 0.16 + Math.sin(this.time * 1.7 + this.phase) * 0.015;
+      this.pitch = -0.05;
+      return;
+    }
+    if (this.hopTime > 0) {
+      this.hopTime = Math.max(0, this.hopTime - dt);
+      const t = 1 - this.hopTime / HOP_TIME;
+      this.pos.lerpVectors(this.hopFrom, this.hopTo, t);
+      this.pos.y += Math.sin(t * Math.PI) * this.hopHeight * L;
+    } else if (running) {
+      this.startHop(this.targetYaw + rand(-0.5, 0.5), rand(1.6, 2.4) * L, 0.4, world);
+    } else if (this.flapTry <= 0) {
+      // Tenta voar: bate as asas e só consegue um pulinho.
+      this.flapTry = rand(G.flapEvery[0], G.flapEvery[1]);
+      this.flapBurst = 0.8;
+      this.startHop(this.yaw + rand(-0.4, 0.4), rand(0.3, 0.8) * L, 1.6, world);
+    } else {
+      this.pos.y = ground + L * 0.2;
+    }
+    this.yaw += angleDiff(this.yaw, this.targetYaw) * (1 - Math.exp(-10 * dt));
+    this.pitch += (-0.15 - this.pitch) * (1 - Math.exp(-6 * dt));
+    this.bank *= Math.exp(-6 * dt);
+  }
+
+  private startHop(a: number, d: number, height: number, world: BirdWorld): void {
+    this.hopFrom.copy(this.pos);
+    this.hopTo.set(this.pos.x + Math.sin(a) * d, 0, this.pos.z + Math.cos(a) * d);
+    this.hopTo.y = world.groundAt(this.hopTo.x, this.hopTo.z) + this.species.length * 0.2;
+    this.hopHeight = height;
+    this.hopTime = HOP_TIME;
+  }
+
   private updateDead(dt: number): void {
     const k = 1 - Math.exp(-8 * dt);
     this.pitch += angleDiff(this.pitch, this.restPitch) * k;
@@ -483,6 +596,14 @@ export class Bird {
       amp = 0.3;
       freq = 5;
       fold = this.limp;
+    } else if (this.state === 'grounded') {
+      // Caindo ou tentando voar: bate as asas; no chão, fechadas (a machucada, caída).
+      if (this.airborne || this.flapBurst > 0) {
+        amp = 1;
+        freq *= 1.3;
+      } else {
+        fold = 1;
+      }
     } else if (this.state === 'dead') {
       fold = this.limp;
     } else {
@@ -506,6 +627,7 @@ export class Bird {
     const k = 1 - Math.exp(-12 * dt);
     this.flapAmp += (amp - this.flapAmp) * k;
     this.fold += (fold - this.fold) * k;
+    this.droop += ((this.state === 'grounded' && !this.airborne && this.flapBurst <= 0 ? 1 : 0) - this.droop) * k;
     this.dihedral = dihedral;
     this.flapPhase += freq * TAU * dt;
     this.poseWings();
@@ -514,7 +636,9 @@ export class Bird {
   private poseWings(): void {
     const ang = this.dihedral * (1 - this.fold) + this.flapAmp * Math.sin(this.flapPhase) - this.fold * 0.2;
     const sweep = this.fold * 1.35;
-    this.wingR.rotation.set(0, sweep, ang);
+    // Asa machucada (a direita) meio aberta e caída.
+    const d = this.droop;
+    this.wingR.rotation.set(0, sweep * (1 - 0.55 * d), ang * (1 - d) - 0.5 * d);
     this.wingL.rotation.set(0, -sweep, -ang);
   }
 

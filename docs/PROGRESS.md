@@ -48,6 +48,9 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage29-wounded.json` (veado ferido mais lento que o bando e com gotas sobre a trilha, deita e faz poça, levanta
+com o jogador perto, segundo tiro mata; cão vai no ferido; ave de asa ferida cai, fica no chão 30 s, foge pulando;
+raspão real pela Hunting deixa a ave `grounded`),
 `stage28-dog.json` (F cicla os modos, junto acompanha e senta, farejar javali vai na direção do bando, espera
 o jogador na coleira e aponta com a contagem, sem bicho por perto surge um rastro fora da vista, abate → vai até
 a caça e senta, tiro não acerta o cão, custo por quadro),
@@ -280,6 +283,18 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   volta a ficar junto. Os bichos não percebem o cão. Preso ou longe demais: reaparece atrás do jogador.
   Marcador "cão" na bússola a mais de 12 m. Sons em `audio/DogVoice.ts` (fungada, ganido, arfar, passos).
 
+- [x] **27. O bicho ferido** (anotado e pedido pelo usuário) — antes o tiro não letal não deixava marca (o
+  quadrúpede ferido fugia até 15% *mais* rápido e a ave pega na asa saía voando). Agora o **javali/veado ferido**
+  (`Quadruped.wounded`) foge mancando a 55% da velocidade, sem os saltos, 40–70 m, larga o líder e fica para trás;
+  uma traseira quase não apoia e o corpo balança. Anda devagar e em 20–50 s **deita** (estado `bed`, de barriga,
+  cabeça erguida), gemendo de vez em quando (`groan` por espécie em `AnimalVoices`); jogador perto, levanta e foge
+  mancando. **Sangue** (`effects/BloodTrail.ts`, um InstancedMesh em anel de 600 gotas deitadas no relevo): respingo
+  no tiro, uma gota a cada 1,4 m fugindo (2,8 m andando) e uma poça onde deita. O próximo tiro mata, como antes.
+  O **cão** farejando a espécie prefere o ferido (até 360 m) e avisa "achou o veado ferido". A **ave com a asa
+  atingida** (estado `grounded`) cai batendo a asa, não decola mais, fica com a asa caída, tenta voar em vão de
+  4 em 4–8 s, foge pulando de quem chega a 12 m (pato ferido rema) e perde penas; tiro no corpo mata e pontua.
+  Dicas `ferido` e `asa`; o guia (H) explica em "Atirar".
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
@@ -293,14 +308,7 @@ Ideias anotadas pelo usuário (ainda sem ordem nem plano):
   torres, meus lagos ou qualquer lugar) para achar de novo. Diferente dos marcadores Q (temporários, de direção):
   ficam guardados por mundo, com um tipo/ícone, e aparecem na bússola e no mundo como os marcadores; entram no
   caderno (Tab). As torres construídas pelo jogador podem virar favoritas automaticamente.
-- [ ] **Bicho ferido diferente dos outros** — hoje o tiro não letal não deixa marca nenhuma: o javali/veado
-  ferido (`health = 1`) foge igual aos outros — até 15% mais rápido (`Quadruped` na fuga) — e a ave pega na asa
-  só sai voando (`Bird.scare`). Na vida real: o **quadrúpede ferido manca** (mais lento, passada irregular, fica
-  para trás do bando, para para descansar e acaba deitando depois de um tempo); **deixa rastro de sangue**
-  (gotas no chão que dá para seguir — casa com os rastros/pegadas da gaveta e com o **cão**, que poderia seguir
-  o sangue até o bicho); a **ave com a asa atingida não voa** (cai, bate a asa no chão, corre ou só dá voos
-  curtos e baixos). Pensar também em como isso aparece de longe (luneta/infravermelho) e no som (gemido, asa
-  batendo no mato).
+- [x] Bicho ferido diferente dos outros: feito na etapa 27.
 
 Sugestões ainda na gaveta: **apito de caça** (tecla que imita o chamado e atrai a bicharada por alguns segundos)
 e **rastros/sinais** (pegadas de javali, penas, grama amassada). O usuário recusou minimapa: um mapa de floresta
@@ -366,6 +374,7 @@ src/
   ui/Guide.ts             conteúdo do guia de campo (tecla H)
   ui/Tips.ts              dicas na hora certa: fila, intervalo e o que já foi visto
   player/Sensitivity.ts   sensibilidade do mouse e da luneta (teclas − e =)
+  effects/BloodTrail.ts   gotas de sangue dos feridos (InstancedMesh em anel)
   animals/Dog.ts          o cão: junto, farejando, esperando, apontando, indo até a caça
   animals/dogModel.ts     cão procedural (perdigueiro)
   audio/DogVoice.ts       sons do cão (observa os estados, como o AnimalVoices)

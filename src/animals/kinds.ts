@@ -11,6 +11,8 @@ type Sound = (a: AudioSystem, dest: Dest) => void;
 
 /** Sons de uma espécie, todos tocados a partir da posição do bicho. */
 export interface AnimalSounds {
+  /** Gemido do bicho ferido. */
+  groan: Sound;
   /** Chamado ocioso (grunhido, balido), o barulho de comer e o de beber água. */
   idle: Sound;
   feed: Sound;
@@ -100,6 +102,7 @@ export function boarKind(): AnimalKind {
     geometries: BOAR_PALETTES.map((p) => buildBoarGeometry(p)),
     sounds: {
       idle: boarSounds.grunt,
+      groan: boarSounds.groan,
       feed: boarSounds.rooting,
       drink: boarSounds.lapping,
       alarm: boarSounds.snort,
@@ -126,6 +129,7 @@ export function deerKind(): AnimalKind {
     geometries: DEER_PALETTES.map((p) => buildDeerGeometry(p)),
     sounds: {
       idle: deerSounds.bleat,
+      groan: deerSounds.groan,
       feed: deerSounds.grazing,
       drink: deerSounds.lapping,
       alarm: deerSounds.bark,

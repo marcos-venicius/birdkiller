@@ -19,6 +19,7 @@ import { BirdManager } from './birds/BirdManager';
 import { Ballistics } from './combat/Ballistics';
 import { Hunting } from './combat/Hunting';
 import { Particles } from './effects/Particles';
+import { BloodTrail } from './effects/BloodTrail';
 import { CONFIG } from './config';
 import { Engine } from './core/Engine';
 import { smoothstep } from './core/math';
@@ -141,6 +142,11 @@ deer.populate();
 // O cão de caça (tecla F): junto, ou farejando javali ou veado.
 const dog = new Dog(engine.scene, terrain, chunks, player, { boar: boars, deer });
 const particles = new Particles(engine.scene, terrain);
+// Sangue dos bichos feridos (gotas no chão que dá para seguir) e as penas da ave de asa ferida.
+const blood = new BloodTrail(engine.scene, terrain);
+boars.blood = blood;
+deer.blood = blood;
+birds.particles = particles;
 const ballistics = new Ballistics(engine.scene);
 const hunting = new Hunting(terrain, chunks, birds, [boars, deer], particles, hud, audio, ballistics);
 const ambience = new Ambience(audio, biome, terrain.lakes);
@@ -159,7 +165,8 @@ const QUARRY = {
   boar: { one: 'javali', many: 'javalis', alone: 'um javali sozinho' },
   deer: { one: 'veado', many: 'veados', alone: 'um veado sozinho' },
 } as const;
-dog.onFound = (n, kind) => hud.note(`O cão achou ${n === 1 ? QUARRY[kind].alone : `um bando de ${n} ${QUARRY[kind].many}`}`);
+dog.onFound = (n, kind, wounded) =>
+  hud.note(`O cão achou ${wounded ? `o ${QUARRY[kind].one} ferido` : n === 1 ? QUARRY[kind].alone : `um bando de ${n} ${QUARRY[kind].many}`}`);
 dog.onNoTrail = (kind) => hud.note(`O cão não acha rastro de ${QUARRY[kind].one} por aqui`);
 dog.onHeel = () => hud.toast('Cão: junto');
 const tools = new Tools(engine, input, player, hud, audio, weapon, terrain, chunks, particles, birds, [boars, deer], felled, edits, builder);
@@ -189,6 +196,7 @@ hunting.onKill = (info) => {
     tips.offer('caderno');
   }
 };
+hunting.onWound = (kind) => tips.offer(kind === 'animal' ? 'ferido' : 'asa');
 window.addEventListener('pagehide', () => journal.flush());
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) journal.flush();
@@ -595,6 +603,7 @@ if (import.meta.env.DEV) {
       builder,
       dog,
       dogVoice,
+      blood,
       session,
       saveSession,
       shareUrl,

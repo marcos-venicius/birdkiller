@@ -1,12 +1,14 @@
 import type * as THREE from 'three';
 import type { AnimalState, Quadruped } from '../animals/Quadruped';
 import type { AudioSystem } from './AudioSystem';
+import { CONFIG } from '../config';
 import type { AnimalSounds } from '../animals/kinds';
 
 interface Timers {
   grunt: number;
   root: number;
   step: number;
+  groan: number;
 }
 
 const r = (a: number, b: number) => a + Math.random() * (b - a);
@@ -61,10 +63,15 @@ export class AnimalVoices {
       }
       if (!animal.alive) continue;
 
-      const t = this.timers.get(animal) ?? { grunt: r(1, 8), root: r(0.5, 3), step: 0 };
+      const t = this.timers.get(animal) ?? { grunt: r(1, 8), root: r(0.5, 3), step: 0, groan: r(2, 6) };
       t.grunt -= dt;
       t.root -= dt;
       t.step -= dt;
+      t.groan -= dt;
+      if (animal.wounded && t.groan <= 0) {
+        t.groan = r(CONFIG.wounded.groanEvery[0], CONFIG.wounded.groanEvery[1]);
+        if (d < 60 * far) S.groan(a, here());
+      }
       if ((state === 'forage' || state === 'walk' || state === 'drink') && t.grunt <= 0) {
         t.grunt = r(4, 12);
         if (d < 70 * far) {
