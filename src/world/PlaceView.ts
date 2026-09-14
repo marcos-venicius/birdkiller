@@ -72,7 +72,7 @@ export class PlaceView {
       if (layer.depthMaterial) tree.customDepthMaterial = layer.depthMaterial;
       group.add(tree);
     } else {
-      const geo = place.type === 'tower' ? this.tower(place) : this.cabin();
+      const geo = place.type === 'tower' ? this.towerGeometry(place) : this.cabin();
       const mesh = new THREE.Mesh(geo, this.material);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -91,59 +91,82 @@ export class PlaceView {
     return this.terrain.heightAt(place.x + lx * c - lz * s, place.z + lx * s + lz * c) - place.y;
   }
 
-  private tower(place: Place): THREE.BufferGeometry {
+  /**
+   * Torre de caça de qualquer altura (as geradas e as do jogador, e o fantasma da construção), no espaço
+   * local do lugar: pernas a `span` do centro, travamento em X a cada ~4 m, plataforma, grade, telhado e escada.
+   */
+  towerGeometry(place: Place): THREE.BufferGeometry {
     const H = place.floorY - place.y;
+    const h = place.span;
+    const e = h + 0.3;
+    const leg = H > 10 ? 0.3 : 0.2;
     const parts: THREE.BufferGeometry[] = [];
-    // Pernas até o chão de cada uma, e o travamento em X nos quatro lados.
+    // Pernas até o chão de cada uma.
     for (const [lx, lz] of [
-      [-1.4, -1.4],
-      [1.4, -1.4],
-      [-1.4, 1.4],
-      [1.4, 1.4],
+      [-h, -h],
+      [h, -h],
+      [-h, h],
+      [h, h],
     ]) {
       const g = this.groundLocal(place, lx, lz) - 0.3;
       const len = H - g;
-      parts.push(box(0.2, len, 0.2, lx, g + len / 2, lz, WOOD_DARK));
+      parts.push(box(leg, len, leg, lx, g + len / 2, lz, WOOD_DARK));
     }
-    const braceH = H * 0.62;
-    const braceLen = Math.hypot(2.8, braceH);
-    const braceAng = Math.atan2(2.8, braceH);
-    for (const side of [-1, 1]) {
-      for (const dir of [-1, 1]) {
-        parts.push(box(0.1, braceLen, 0.1, 0, H * 0.18 + braceH / 2, side * 1.42, WOOD_GRAY, 0, 0, dir * braceAng));
-        parts.push(box(0.1, braceLen, 0.1, side * 1.42, H * 0.18 + braceH / 2, 0, WOOD_GRAY, dir * braceAng, 0, 0));
+    // Travamento em X nos quatro lados, em níveis de ~4 m, com uma travessa entre um nível e outro.
+    const y0 = Math.min(H * 0.18, 1.2);
+    const levels = Math.max(1, Math.round((H * 0.8 - y0) / 4));
+    const lh = (H * 0.8 - y0) / levels;
+    const w = 2 * h + 0.04;
+    const braceLen = Math.hypot(w, lh);
+    const braceAng = Math.atan2(w, lh);
+    const side = h + 0.02;
+    for (let k = 0; k < levels; k++) {
+      const yc = y0 + lh * (k + 0.5);
+      for (const sd of [-1, 1]) {
+        for (const dir of [-1, 1]) {
+          parts.push(box(0.1, braceLen, 0.1, 0, yc, sd * side, WOOD_GRAY, 0, 0, dir * braceAng));
+          parts.push(box(0.1, braceLen, 0.1, sd * side, yc, 0, WOOD_GRAY, dir * braceAng, 0, 0));
+        }
+        if (k > 0) {
+          parts.push(box(w + 0.1, 0.1, 0.1, 0, y0 + lh * k, sd * side, WOOD_GRAY));
+          parts.push(box(0.1, 0.1, w + 0.1, sd * side, y0 + lh * k, 0, WOOD_GRAY));
+        }
       }
     }
     // Plataforma, grade (aberta no lado da escada, +Z) e telhado de quatro águas.
-    parts.push(box(3.5, 0.16, 3.5, 0, H, 0, WOOD));
+    const rail = e - 0.04;
+    const gap = 0.5;
+    const half = (e - gap) / 2;
+    parts.push(box(2 * e + 0.1, 0.16, 2 * e + 0.1, 0, H, 0, WOOD));
     for (const yRail of [H + 0.5, H + 1.0]) {
-      parts.push(box(3.4, 0.08, 0.08, 0, yRail, -1.66, WOOD));
-      parts.push(box(0.08, 0.08, 3.4, -1.66, yRail, 0, WOOD));
-      parts.push(box(0.08, 0.08, 3.4, 1.66, yRail, 0, WOOD));
-      parts.push(box(1.2, 0.08, 0.08, -1.1, yRail, 1.66, WOOD));
-      parts.push(box(1.2, 0.08, 0.08, 1.1, yRail, 1.66, WOOD));
+      parts.push(box(2 * e, 0.08, 0.08, 0, yRail, -rail, WOOD));
+      parts.push(box(0.08, 0.08, 2 * e, -rail, yRail, 0, WOOD));
+      parts.push(box(0.08, 0.08, 2 * e, rail, yRail, 0, WOOD));
+      parts.push(box(2 * half, 0.08, 0.08, -(gap + half), yRail, rail, WOOD));
+      parts.push(box(2 * half, 0.08, 0.08, gap + half, yRail, rail, WOOD));
     }
     for (const [lx, lz] of [
-      [-1.66, -1.66],
-      [1.66, -1.66],
-      [-1.66, 1.66],
-      [1.66, 1.66],
+      [-rail, -rail],
+      [rail, -rail],
+      [-rail, rail],
+      [rail, rail],
     ]) {
       parts.push(box(0.12, 2.35, 0.12, lx, H + 1.18, lz, WOOD_DARK));
     }
-    const roof = new THREE.ConeGeometry(2.7, 1.2, 4);
+    const roof = new THREE.ConeGeometry(e * 1.59, 1.2, 4);
     roof.rotateY(Math.PI / 4);
     roof.translate(0, H + 2.35 + 0.6, 0);
     parts.push(paint(roof, solid(ROOF), 0.1));
-    // Escada inclinada: do chão (z = 2,55) até a abertura da plataforma (z = 1,72).
-    const g0 = this.groundLocal(place, 0, 2.55) - 0.1;
+    // Escada inclinada: do chão (z = span + 1,15) até a abertura da plataforma (z = span + 0,32).
+    const z0 = h + 1.15;
+    const g0 = this.groundLocal(place, 0, z0) - 0.1;
     const dy = H + 0.9 - g0;
     const dz = -0.83;
     const railLen = Math.hypot(dy, dz);
     const tilt = Math.atan2(dz, dy);
-    for (const sx of [-0.4, 0.4]) parts.push(box(0.08, railLen, 0.08, sx, g0 + dy / 2, 2.55 + dz / 2, WOOD_DARK, tilt));
+    for (const sx of [-0.4, 0.4]) parts.push(box(0.08, railLen, 0.08, sx, g0 + dy / 2, z0 + dz / 2, WOOD_DARK, tilt));
     for (let t = 0.3; t < dy - 0.2; t += 0.34) {
-      parts.push(box(0.8, 0.05, 0.06, 0, g0 + t, 2.55 + (dz * t) / dy, WOOD));
+      parts.push(box(0.8, 0.05, 0.06, 0, g0 + t, z0 + (dz * t) / dy, WOOD));
     }
     return merge(parts);
   }

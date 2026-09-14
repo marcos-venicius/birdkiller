@@ -3,6 +3,38 @@ import { CONFIG } from '../config';
 import type { Terrain } from './Terrain';
 import type { LayerDef } from './vegetation/Vegetation';
 
+export type TreeKind = 'conifer' | 'broadleaf' | 'birch' | 'snag';
+
+/** Árvore em pé que o machado derruba (alinhada a `trunks`; null = toco). */
+export interface TreeRef {
+  /** Id estável no mundo: o chunk e a célula da grade de árvores. */
+  id: string;
+  layer: number;
+  /** Índice da instância na camada (muda a cada repovoamento). */
+  index: number;
+  kind: TreeKind;
+  scale: number;
+  /** Raio do tronco na base (m, já na escala). */
+  radius: number;
+  /** Altura do topo da copa em escala 1. */
+  top: number;
+}
+
+/** Tronco caído que dá para recolher. */
+export interface LogRef {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  /** Direção do comprimento no plano e o desnível de uma ponta à outra. */
+  dx: number;
+  dz: number;
+  rise: number;
+  len: number;
+  r: number;
+  wood: number;
+}
+
 /**
  * Envia ao GPU só a parte usada dos buffers de instância e atualiza o volume de culling
  * (`computeBounds = false` quando quem chama já definiu mesh.boundingSphere).
@@ -49,6 +81,10 @@ export class Chunk {
   readonly trunks: number[] = [];
   /** Pedras para oclusão do tiro: esferas (x, y, z, raio). */
   readonly rocks: number[] = [];
+  /** Quem é cada tronco de `trunks`: árvore cortável, ou null (toco). */
+  readonly treeRefs: (TreeRef | null)[] = [];
+  /** Troncos caídos recolhíveis. */
+  readonly logs: LogRef[] = [];
   grass: THREE.InstancedMesh | null = null;
 
   constructor(
@@ -85,6 +121,8 @@ export class Chunk {
     this.perches.length = 0;
     this.trunks.length = 0;
     this.rocks.length = 0;
+    this.treeRefs.length = 0;
+    this.logs.length = 0;
   }
 
   finishContent(): void {

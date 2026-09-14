@@ -288,6 +288,45 @@ export const CONFIG = {
     scaleOther: [0.8, 0.95],
   },
 
+  tools: {
+    /** Tempo para levantar a ferramenta nova depois de trocar (s). */
+    switchTime: 0.3,
+    /** Alcance do machado (m), duração do golpe e o instante do golpe em que ele acerta (s). */
+    axeReach: 2.4,
+    swingTime: 0.7,
+    swingHit: 0.42,
+    /** Golpes para derrubar = raio do tronco (m) × isto, entre o mínimo e o máximo. */
+    hitsPerRadius: 13,
+    minHits: 3,
+    maxHits: 8,
+    /** O barulho do machado e o estrondo da árvore caindo espantam os bichos até esta distância (m). */
+    chopScare: 30,
+    fallScare: 70,
+    /** Duração da queda da árvore (s). */
+    fallTime: 2.2,
+    /** Madeira de uma árvore de escala 1, por espécie (multiplicada pela escala dela). */
+    wood: { conifer: 10, broadleaf: 12, birch: 6, snag: 5 },
+    /** Tronco caído: comprimento (m) × espessura × isto. */
+    logWood: 1,
+    /** Distância para recolher madeira com E (m), e até onde as árvores derrubadas são desenhadas. */
+    collectReach: 3,
+    felledViewDistance: 170,
+  },
+
+  build: {
+    /** Torres que o jogador constrói: altura da plataforma (m), madeira e o afastamento das pernas. */
+    sizes: [
+      { name: 'Torre baixa', height: 3, cost: 15, legs: 1.4 },
+      { name: 'Torre média', height: 8, cost: 35, legs: 1.4 },
+      { name: 'Torre alta', height: 20, cost: 80, legs: 1.8 },
+    ],
+    /** Até onde a mira escolhe o lugar (m) e o desnível máximo do chão em volta. */
+    maxDistance: 20,
+    flatness: 2.5,
+    /** Folga das árvores em pé além da diagonal das pernas (m): elas atravessariam a plataforma. */
+    treeClearance: 0.9,
+  },
+
   places: {
     /** Lado da célula que pode ter um lugar para descobrir (m) e a chance de ter. */
     cell: 420,

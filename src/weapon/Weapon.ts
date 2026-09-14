@@ -49,10 +49,12 @@ export class Weapon {
   aim = 0;
   /** Mira ligada (o botão direito alterna). */
   aimToggled = false;
-  /** Luneta efetivamente no olho (depois da animação) — quem liga o telêmetro. */
   /** Sensibilidade da luneta escolhida pelo jogador, relativa à padrão (teclas − e = com a luneta). */
   scopeSensitivity = 1;
+  /** Guardado (machado ou construção na mão): sem mira, tiro nem recarga; o modelo some. */
+  holstered = false;
 
+  /** Luneta efetivamente no olho (depois da animação) — quem liga o telêmetro. */
   get inScope(): boolean {
     return this.scoped;
   }
@@ -73,6 +75,9 @@ export class Weapon {
   private time = 0;
   private flashTimer = 0;
   private scoped = false;
+  /** 0 = rifle embaixo da tela (acabou de voltar para a mão), 1 = em posição. */
+  private draw = 1;
+  private reloadShown = false;
   private readonly vmSun: THREE.DirectionalLight;
   private readonly vmHemi: THREE.HemisphereLight;
   private readonly vmFlash: THREE.PointLight;
@@ -116,15 +121,29 @@ export class Weapon {
     } else if (this.state === 'reloading' && this.timer >= this.reloadDuration) {
       this.magazine = W.magazineSize;
       this.hud.setAmmo(this.magazine);
-      this.hud.setReloading(false);
       this.setState('ready');
     }
 
+    // Guardado (machado ou construção na mão): nada de mira, tiro ou recarga; ao voltar, sobe de baixo.
+    // A recarga em andamento continua por trás, só sem o aviso na tela.
+    const holstered = this.holstered;
+    if (holstered) {
+      this.aimToggled = false;
+      this.draw = 0;
+    } else {
+      this.draw = approach(this.draw, 1, dt / CONFIG.tools.switchTime);
+    }
+    const showReload = this.state === 'reloading' && !holstered;
+    if (showReload !== this.reloadShown) {
+      this.reloadShown = showReload;
+      this.hud.setReloading(showReload);
+    }
+
     // R: recarga manual quando falta munição (a automática continua quando o carregador esvazia).
-    if (this.input.wasPressed('KeyR') && this.state !== 'reloading' && this.magazine < W.magazineSize) this.startReload();
+    if (!holstered && this.input.wasPressed('KeyR') && this.state !== 'reloading' && this.magazine < W.magazineSize) this.startReload();
 
     // Mira: o botão direito liga/desliga. Shift (para correr) e a recarga desligam; mirar impede correr.
-    if (this.input.wasMousePressed(2) && this.state !== 'reloading') this.aimToggled = !this.aimToggled;
+    if (!holstered && this.input.wasMousePressed(2) && this.state !== 'reloading') this.aimToggled = !this.aimToggled;
     if (this.input.wasPressed('ShiftLeft') || this.input.wasPressed('ShiftRight') || this.state === 'reloading') {
       this.aimToggled = false;
     }
@@ -134,7 +153,7 @@ export class Weapon {
     const aimT = smoothstep(0, 1, this.aim);
     const zoom = smoothstep(0.35, 1, this.aim);
 
-    if (this.input.wasMousePressed(0) && this.state === 'ready' && this.magazine > 0 && !P.running) this.fire(zoom);
+    if (!holstered && this.draw >= 1 && this.input.wasMousePressed(0) && this.state === 'ready' && this.magazine > 0 && !P.running) this.fire(zoom);
 
     const fov = THREE.MathUtils.lerp(CONFIG.camera.fov, W.scopeFov, zoom);
     if (Math.abs(cam.fov - fov) > 1e-4) {
@@ -147,8 +166,8 @@ export class Weapon {
     if (scoped !== this.scoped) {
       this.scoped = scoped;
       this.hud.setScoped(scoped);
-      this.model.group.visible = !scoped;
     }
+    this.model.group.visible = !scoped && !holstered;
     this.hud.setCrosshairVisible(this.aim < 0.05);
 
     // Coice da câmera (volta sozinho) + oscilação da respiração na luneta.
@@ -223,7 +242,6 @@ export class Weapon {
     const fullClip = this.magazine === 0;
     this.reloadDuration = fullClip ? W.reloadTime : W.topUpBase + missing * W.topUpPerRound;
     this.setState('reloading');
-    this.hud.setReloading(true);
     if (fullClip) playReload(this.audio, this.reloadDuration);
     else playTopUp(this.audio, missing, this.reloadDuration);
   }
@@ -257,6 +275,10 @@ export class Weapon {
     const rl = smoothstep(0, 1, this.reloadPose);
     _pos.copy(HIP.pos).lerp(SPRINT.pos, sp).lerp(RELOAD.pos, rl).lerp(ADS.pos, aimT);
     _rot.copy(HIP.rot).lerp(SPRINT.rot, sp).lerp(RELOAD.rot, rl).lerp(ADS.rot, aimT);
+    // Voltando para a mão (depois do machado): sobe de baixo da tela.
+    const drawn = smoothstep(0, 1, this.draw);
+    _pos.y -= (1 - drawn) * 0.3;
+    _rot.x -= (1 - drawn) * 0.5;
 
     // Balanço dos passos (quase some na mira).
     const bob = P.bobAmount * (1 - aimT * 0.9);

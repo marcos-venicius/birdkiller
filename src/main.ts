@@ -28,6 +28,8 @@ import { Journal } from './ui/Journal';
 import { Markers } from './ui/Markers';
 import { Tips } from './ui/Tips';
 import { Sensitivity, formatSensitivity } from './player/Sensitivity';
+import { Tools } from './tools/Tools';
+import { addBuiltTower, Builder } from './tools/Builder';
 import { browserStore, resolveWorldSeed, SessionStore, shareUrl } from './ui/Session';
 import { Weapon } from './weapon/Weapon';
 import { Atmosphere } from './world/Atmosphere';
@@ -36,6 +38,8 @@ import { PLACE_KINDS, type PlaceType } from './world/Places';
 import { PlaceView } from './world/PlaceView';
 import { Water } from './world/Water';
 import { Weather } from './world/Weather';
+import { FelledTrees } from './world/Felled';
+import { WorldEdits } from './world/WorldEdits';
 import { Biome } from './world/Biome';
 import { ChunkManager } from './world/ChunkManager';
 import { Terrain } from './world/Terrain';
@@ -55,6 +59,11 @@ const world = resolveWorldSeed(location.search, browserStore, import.meta.env.DE
 const biome = new Biome(world.seed);
 const terrain = new Terrain(world.seed, biome);
 const vegetation = new Vegetation(terrain, biome, world.seed);
+// O que o jogador mudou neste mundo (árvores cortadas, troncos recolhidos, torres, madeira): a vegetação
+// precisa saber antes do primeiro povoamento.
+const edits = new WorldEdits(world.seed);
+vegetation.setEdits(edits.cut, edits.taken);
+for (const t of edits.towers) addBuiltTower(terrain, t);
 const chunks = new ChunkManager(engine.scene, terrain, vegetation);
 const atmosphere = new Atmosphere(engine.scene);
 const water = new Water(engine.scene, terrain.lakes);
@@ -137,6 +146,11 @@ const deerVoices = new AnimalVoices(audio, deerKind().sounds);
 const footsteps = new Footsteps(audio, biome);
 const music = new Music(audio);
 weapon.onFire = (origin, dir) => hunting.shoot(origin, dir);
+// Machado e madeira (teclas 1 e 2, E recolhe): as árvores derrubadas ficam no chão até alguém recolher.
+const felled = new FelledTrees(engine.scene, terrain, vegetation, edits);
+// Construir (tecla 3): torre-fantasma onde a mira aponta, três alturas.
+const builder = new Builder(engine, input, player, hud, audio, terrain, chunks, placeView, edits);
+const tools = new Tools(engine, input, player, hud, audio, weapon, terrain, chunks, particles, birds, [boars, deer], felled, edits, builder);
 
 // Caderno de campo: espécies avistadas/abatidas, recordes e totais, guardados entre sessões.
 // Comuns primeiro; os raros ficam no fim da lista, como "???" até aparecerem.
@@ -150,6 +164,7 @@ const journal = new Journal([
 // Dicas na hora certa (uma vez só na vida) e o guia de campo (tecla H).
 const tips = new Tips((text) => hud.tip(text));
 tips.offer('guia');
+tips.offer('ferramentas');
 let guideOpen = false;
 let tipTimer = 0;
 
@@ -185,6 +200,10 @@ function offerTips(): void {
     if (place.type === 'cabin' && d < 45) tips.offer('cabana');
     if (place.type === 'giantTree' && d < 150) tips.offer('arvore');
   }
+  if (tools.current === 'axe') tips.offer('machado');
+  if (tools.targetWood !== null) tips.offer('tronco');
+  if (edits.wood >= CONFIG.build.sizes[0].cost) tips.offer('construir');
+  if (tools.current === 'build') tips.offer('fantasma');
 }
 
 /** Chegou perto de um lugar (ou subiu nele): entra no caderno. */
@@ -323,6 +342,8 @@ engine.renderer.setAnimationLoop(() => {
   windTime.value += dt;
   player.update(dt);
   weapon.update(dt);
+  tools.update(dt);
+  felled.update(dt, player.position);
   // À noite (e na chuva) aparecem menos pássaros — e eles quase não cantam.
   birds.activity = (1 - atmosphere.night * 0.65) * (1 - weather.rain * 0.5);
   birds.dawn = atmosphere.hour >= CONFIG.rares.dawn[0] && atmosphere.hour <= CONFIG.rares.dawn[1];
@@ -545,6 +566,10 @@ if (import.meta.env.DEV) {
       world,
       tips,
       sensitivity,
+      edits,
+      felled,
+      tools,
+      builder,
       session,
       saveSession,
       shareUrl,

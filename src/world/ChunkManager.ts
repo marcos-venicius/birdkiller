@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config';
 import { TAU } from '../core/math';
-import { Chunk } from './Chunk';
+import { Chunk, type LogRef } from './Chunk';
 import type { Terrain } from './Terrain';
 import type { Vegetation } from './vegetation/Vegetation';
 
@@ -42,6 +42,20 @@ function segmentHitsSquare(
     return t0 <= t1;
   };
   return slab(ox, dx, x0 - margin, x0 + size + margin) && slab(oz, dz, z0 - margin, z0 + size + margin);
+}
+
+/** Distância em que o raio (d normalizado, `a` = d.x² + d.z²) entra no tronco `i` de `tr`; -1 se não entra. */
+function trunkHit(tr: number[], i: number, o: THREE.Vector3, d: THREE.Vector3, a: number): number {
+  const ox = o.x - tr[i];
+  const oz = o.z - tr[i + 1];
+  const r = tr[i + 2];
+  const b = ox * d.x + oz * d.z;
+  const c = ox * ox + oz * oz - r * r;
+  if (c <= 0) return -1;
+  const disc = b * b - a * c;
+  if (disc <= 0) return -1;
+  const t = (-b - Math.sqrt(disc)) / a;
+  return o.y + d.y * t > tr[i + 3] ? -1 : t;
 }
 
 /**
@@ -176,16 +190,8 @@ export class ChunkManager {
       const tr = chunk.trunks;
       if (a > 1e-9) {
         for (let i = 0; i < tr.length; i += 4) {
-          const ox = o.x - tr[i];
-          const oz = o.z - tr[i + 1];
-          const r = tr[i + 2];
-          const b = ox * d.x + oz * d.z;
-          const c = ox * ox + oz * oz - r * r;
-          if (c <= 0) continue;
-          const disc = b * b - a * c;
-          if (disc <= 0) continue;
-          const t = (-b - Math.sqrt(disc)) / a;
-          if (t <= 0 || t >= best || o.y + d.y * t > tr[i + 3]) continue;
+          const t = trunkHit(tr, i, o, d, a);
+          if (t <= 0 || t >= best) continue;
           best = t;
           kind = 'trunk';
         }
@@ -206,6 +212,77 @@ export class ChunkManager {
       }
     }
     return { t: kind ? best : Infinity, kind };
+  }
+
+  /** Tronco em pé (árvore ou toco) atingido pelo raio antes de maxT: o chunk e a posição dele em `trunks`. */
+  raycastTree(o: THREE.Vector3, d: THREE.Vector3, maxT: number): { chunk: Chunk; slot: number; t: number } | null {
+    const s = CONFIG.world.chunkSize;
+    const a = d.x * d.x + d.z * d.z;
+    if (a < 1e-9) return null;
+    let best = maxT;
+    let hit: Chunk | null = null;
+    let slot = -1;
+    for (const chunk of this.loaded.values()) {
+      if (!segmentHitsSquare(o.x, o.z, d.x, d.z, best, chunk.cx * s, chunk.cz * s, s, 2.5)) continue;
+      const tr = chunk.trunks;
+      for (let i = 0; i < tr.length; i += 4) {
+        const t = trunkHit(tr, i, o, d, a);
+        if (t <= 0 || t >= best) continue;
+        best = t;
+        hit = chunk;
+        slot = i / 4;
+      }
+    }
+    return hit ? { chunk: hit, slot, t: best } : null;
+  }
+
+  /** Chunk já povoado que contém o ponto (ou null). */
+  chunkAt(x: number, z: number): Chunk | null {
+    const s = CONFIG.world.chunkSize;
+    const chunk = this.loaded.get(key(Math.floor(x / s), Math.floor(z / s)));
+    return chunk && !this.populateQueue.includes(chunk) ? chunk : null;
+  }
+
+  /** Povoa de novo o chunk do ponto — depois de o jogador cortar uma árvore ou recolher um tronco. */
+  repopulate(x: number, z: number): boolean {
+    const chunk = this.chunkAt(x, z);
+    if (!chunk) return false;
+    this.vegetation.populate(chunk);
+    return true;
+  }
+
+  /** Alguma árvore em pé (tocos não contam) a menos de `r` do ponto? */
+  standingTreeNear(x: number, z: number, r: number): boolean {
+    const s = CONFIG.world.chunkSize;
+    const pcx = Math.floor(x / s);
+    const pcz = Math.floor(z / s);
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const chunk = this.loaded.get(key(pcx + dx, pcz + dz));
+        if (!chunk) continue;
+        const tr = chunk.trunks;
+        chunk.treeRefs.forEach((ref, k) => {
+          if (ref && Math.hypot(x - tr[k * 4], z - tr[k * 4 + 1]) < r + tr[k * 4 + 2]) r = -Infinity;
+        });
+        if (r === -Infinity) return true;
+      }
+    }
+    return false;
+  }
+
+  /** Troncos caídos recolhíveis dos chunks em volta do ponto. */
+  logsNear(x: number, z: number, out: LogRef[]): LogRef[] {
+    out.length = 0;
+    const s = CONFIG.world.chunkSize;
+    const pcx = Math.floor(x / s);
+    const pcz = Math.floor(z / s);
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const chunk = this.loaded.get(key(pcx + dx, pcz + dz));
+        if (chunk) for (const log of chunk.logs) out.push(log);
+      }
+    }
+    return out;
   }
 
   /**

@@ -3,7 +3,7 @@ import { CONFIG } from '../../config';
 import { TAU } from '../../core/math';
 import { hash2, mulberry32 } from '../../core/rng';
 import { ForestGrid, type Biome } from '../Biome';
-import type { Chunk } from '../Chunk';
+import type { Chunk, TreeKind } from '../Chunk';
 import { commitInstances } from '../Chunk';
 import type { Terrain } from '../Terrain';
 import * as G from './geometries';
@@ -35,6 +35,7 @@ export const LAYER = {
 } as const;
 
 interface Species {
+  kind: TreeKind;
   layer: number;
   /** Raio do tronco na base (colisão), em escala 1. */
   radius: number;
@@ -48,10 +49,10 @@ interface Species {
 
 const SPECIES: Record<'conifer' | 'broadleaf' | 'birch' | 'snag', Species> = {
   // Pontas: conífera = ponta do último cone; copa/bétula = topo da bola de folhas mais alta; seca = topo do tronco.
-  conifer: { layer: LAYER.conifer, radius: 0.32, perch: [0, 13.35, 0], trunkTop: 12.3, minScale: 0.7, maxScale: 1.5 },
-  broadleaf: { layer: LAYER.broadleaf, radius: 0.42, perch: [-0.2, 10.45, 0.5], trunkTop: 6.0, minScale: 0.75, maxScale: 1.35 },
-  birch: { layer: LAYER.birch, radius: 0.2, perch: [-0.4, 10.3, 0.3], trunkTop: 9.6, minScale: 0.8, maxScale: 1.25 },
-  snag: { layer: LAYER.snag, radius: 0.34, perch: [0, 8.02, 0], trunkTop: 7.7, minScale: 0.75, maxScale: 1.2 },
+  conifer: { kind: 'conifer', layer: LAYER.conifer, radius: 0.32, perch: [0, 13.35, 0], trunkTop: 12.3, minScale: 0.7, maxScale: 1.5 },
+  broadleaf: { kind: 'broadleaf', layer: LAYER.broadleaf, radius: 0.42, perch: [-0.2, 10.45, 0.5], trunkTop: 6.0, minScale: 0.75, maxScale: 1.35 },
+  birch: { kind: 'birch', layer: LAYER.birch, radius: 0.2, perch: [-0.4, 10.3, 0.3], trunkTop: 9.6, minScale: 0.8, maxScale: 1.25 },
+  snag: { kind: 'snag', layer: LAYER.snag, radius: 0.34, perch: [0, 8.02, 0], trunkTop: 7.7, minScale: 0.75, maxScale: 1.2 },
 };
 
 const _m = new THREE.Matrix4();
@@ -60,6 +61,7 @@ const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _s = new THREE.Vector3();
 const _tint = new THREE.Color();
+const _white = new THREE.Color(1, 1, 1);
 
 /** Tinta multiplicativa em torno do branco: brilho ± brightness/2, deslocamento quente/frio ± warmth. */
 function tint(rand: () => number, brightness: number, warmth: number): THREE.Color {
@@ -74,6 +76,8 @@ export class Vegetation {
   readonly grassGeometry: THREE.BufferGeometry;
   readonly grassMaterial: THREE.Material;
   private readonly forestGrid: ForestGrid;
+  private cut: ReadonlySet<string> = new Set();
+  private taken: ReadonlySet<string> = new Set();
 
   constructor(
     private readonly terrain: Terrain,
@@ -106,7 +110,7 @@ export class Vegetation {
       { name: 'fern', lod0: G.fern(), lod1: null, material: plant, capacity: 120, castShadow: false },
       { name: 'rock', lod0: rock, lod1: rock, material: solid, capacity: 48, castShadow: true },
       { name: 'log', lod0: log, lod1: log, material: solid, capacity: 8, castShadow: true },
-      { name: 'stump', lod0: G.stump(), lod1: null, material: solid, capacity: 10, castShadow: true },
+      { name: 'stump', lod0: G.stump(), lod1: null, material: solid, capacity: 60, castShadow: true },
       { name: 'debris', lod0: G.debris(), lod1: null, material: solid, capacity: 50, castShadow: false },
     ];
 
@@ -118,6 +122,12 @@ export class Vegetation {
       fadeStart: gd - 16,
       fadeEnd: gd - 2,
     });
+  }
+
+  /** Árvores cortadas e troncos recolhidos pelo jogador neste mundo (ids por chunk e célula). */
+  setEdits(cut: ReadonlySet<string>, taken: ReadonlySet<string>): void {
+    this.cut = cut;
+    this.taken = taken;
   }
 
   populate(chunk: Chunk): void {
@@ -154,11 +164,22 @@ export class Vegetation {
         const y = terrain.heightAt(x, z) - 0.2;
         const autumn = sp === SPECIES.broadleaf && rand() < 0.06;
         const c = autumn ? _tint.setRGB(1.2, 1.0, 0.7).multiplyScalar(0.85 + rand() * 0.2) : tint(rand, 0.3, 0.06);
-        if (!this.put(chunk, sp.layer, x, y, z, rand() * TAU, sxz, s, sxz, c, (rand() - 0.5) * 0.06, (rand() - 0.5) * 0.06)) {
+        // Todos os sorteios da árvore acontecem antes de saber se ela foi cortada: a sequência do `rand`
+        // não pode mudar, senão o resto do chunk (arbustos, pedras...) sairia diferente.
+        const yaw = rand() * TAU;
+        const tiltX = (rand() - 0.5) * 0.06;
+        const tiltZ = (rand() - 0.5) * 0.06;
+        const radius = sp.radius * sxz;
+        const id = `${chunk.cx}:${chunk.cz}:${gx}:${gz}`;
+        if (this.cut.has(id)) {
+          this.putStump(chunk, x, z, (radius / 0.42) * 1.1, yaw);
           continue;
         }
-        chunk.colliders.push(x, z, sp.radius * sxz + 0.05);
-        chunk.trunks.push(x, z, sp.radius * sxz, y + sp.trunkTop * s);
+        const index = chunk.layers[sp.layer].count;
+        if (!this.put(chunk, sp.layer, x, y, z, yaw, sxz, s, sxz, c, tiltX, tiltZ)) continue;
+        chunk.colliders.push(x, z, radius + 0.05);
+        chunk.trunks.push(x, z, radius, y + sp.trunkTop * s);
+        chunk.treeRefs.push({ id, layer: sp.layer, index, kind: sp.kind, scale: s, radius, top: sp.perch[1] });
         // Topo da copa pela mesma matriz da instância (inclui escala e inclinação).
         _p.fromArray(sp.perch).applyMatrix4(_m);
         chunk.perches.push(_p.x, _p.y, _p.z);
@@ -221,7 +242,13 @@ export class Vegetation {
       const h1 = terrain.heightAt(x - dx * len * 0.5, z - dz * len * 0.5);
       const h2 = terrain.heightAt(x + dx * len * 0.5, z + dz * len * 0.5);
       const y = (h1 + h2) * 0.5 + 0.3 * rs * 0.6;
-      this.put(chunk, LAYER.log, x, y, z, yaw, len, rs, rs, tint(rand, 0.25, 0.06), 0, Math.atan2(h2 - h1, len));
+      // A cor é sorteada antes de saber se o tronco já foi recolhido (a sequência do `rand` não muda).
+      const color = tint(rand, 0.25, 0.06);
+      const id = `${chunk.cx}:${chunk.cz}:log:${i}`;
+      if (this.taken.has(id)) continue;
+      if (!this.put(chunk, LAYER.log, x, y, z, yaw, len, rs, rs, color, 0, Math.atan2(h2 - h1, len))) continue;
+      const wood = Math.max(2, Math.round(len * rs * CONFIG.tools.logWood));
+      chunk.logs.push({ id, x, y, z, dx, dz, rise: h2 - h1, len, r: 0.3 * rs, wood });
     }
 
     // Tocos.
@@ -235,6 +262,7 @@ export class Vegetation {
       this.put(chunk, LAYER.stump, x, y, z, rand() * TAU, s, s, s, tint(rand, 0.25, 0.06));
       chunk.colliders.push(x, z, 0.42 * s);
       chunk.trunks.push(x, z, 0.42 * s, y + 0.6 * s);
+      chunk.treeRefs.push(null);
     }
 
     // Galhos secos no chão.
@@ -314,6 +342,15 @@ export class Vegetation {
       sphere.makeEmpty();
     }
     commitInstances(mesh, false);
+  }
+
+  /** Toco de uma árvore cortada pelo jogador (sem sorteio: não mexe na sequência do chunk). */
+  private putStump(chunk: Chunk, x: number, z: number, s: number, yaw: number): void {
+    const y = this.terrain.heightAt(x, z) - 0.05;
+    if (!this.put(chunk, LAYER.stump, x, y, z, yaw, s, s * 0.8, s, _white)) return;
+    chunk.colliders.push(x, z, 0.42 * s);
+    chunk.trunks.push(x, z, 0.42 * s, y + 0.6 * s * 0.8);
+    chunk.treeRefs.push(null);
   }
 
   private putRock(chunk: Chunk, rand: () => number, x: number, z: number, s: number): void {

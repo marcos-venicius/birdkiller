@@ -19,6 +19,11 @@ export const TIPS = {
   marcador: 'Q marca na bússola o ponto da mira: não perde o bicho de vista enquanto olha para outro lado.',
   caderno: 'Segure Tab para ver o caderno de campo: espécies, recordes e os lugares que você já achou.',
   longe: 'Longe assim, a bala cai: a 300 m ela passa quase 1 m abaixo da mira. Levante um pouco.',
+  ferramentas: 'Tecla 2 pega o machado para cortar árvores e juntar madeira; 1 volta para o rifle.',
+  machado: 'Machado: golpeie o tronco com o botão esquerdo. Árvore grossa pede mais golpes; derrubada, E recolhe a madeira.',
+  tronco: 'E recolhe a madeira deste tronco. Troncos caídos na mata também servem, sem precisar cortar nada.',
+  construir: 'Já dá para construir uma torre: tecla 3 mostra onde ela fica, e o botão esquerdo constrói.',
+  fantasma: 'Botão direito troca a altura: 3, 8 ou 20 m. Verde pode construir; vermelho diz o que falta.',
 } as const;
 
 export type TipId = keyof typeof TIPS;

@@ -447,7 +447,7 @@ body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(960px, 94vw);
+  width: min(1180px, 96vw);
   max-height: 90vh;
   overflow: auto;
   padding: 18px 24px 12px;
@@ -477,8 +477,14 @@ body {
 
 .hud-guide .cols {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px 24px;
+}
+
+@media (max-width: 1100px) {
+  .hud-guide .cols {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 @media (max-width: 760px) {
@@ -507,4 +513,28 @@ body {
   font-size: 11px;
   opacity: 0.6;
   text-align: center;
+}
+
+.hud-score .wood {
+  margin-left: 16px;
+}
+
+/* Ação possível logo abaixo do retículo ("E recolher madeira"). */
+.hud-action {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 20px);
+  transform: translateX(-50%);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/* Nome da ferramenta no lugar da munição (machado, construir). */
+.hud-ammo .tool {
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.85;
 }

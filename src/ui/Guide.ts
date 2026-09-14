@@ -51,6 +51,24 @@ export const GUIDE: { title: string; items: string[] }[] = [
     ],
   },
   {
+    title: 'Machado e madeira',
+    items: [
+      '**1** rifle · **2** machado · **3** construir',
+      '**Botão esquerdo** com o machado golpeia o tronco: de 3 a 8 golpes, conforme a grossura, e a árvore cai',
+      '**E** recolhe a madeira da árvore derrubada ou de um tronco caído na mata',
+      'Cortar faz barulho: os bichos por perto fogem',
+    ],
+  },
+  {
+    title: 'Construir torres',
+    items: [
+      '**3** mostra uma torre-fantasma onde a mira aponta, com a escada virada para você',
+      '**Botão direito** troca a altura: 3 m (15 de madeira), 8 m (35) ou 20 m (80), acima da copa',
+      '**Botão esquerdo** constrói. Vermelho diz o que falta: madeira, árvores no caminho, chão plano, sair da água',
+      'Suas torres ficam no seu mundo para sempre',
+    ],
+  },
+  {
     title: 'Seu mundo',
     items: [
       'O dia passa (~42 min), às vezes chove e de madrugada baixa neblina',

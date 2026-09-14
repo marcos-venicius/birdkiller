@@ -48,6 +48,10 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage25-axe.json` (tecla 2, golpes até cair conforme o raio, rifle sem atirar, queda e toco, resto do chunk
+idêntico, E recolhe a derrubada e um tronco da mata, persistência depois de recarregar),
+`stage26-build.json` (tecla 3, fantasma vermelho sem madeira e verde com, as três alturas, os motivos de não poder,
+constrói a de 20 m, sobe a escada andando torto até a plataforma, a vista lá de cima, persistência),
 `stage24-sensitivity.json` (− e = mudam o giro por pixel do mouse, a da luneta é separada, limites,
 lembrada depois de recarregar),
 `stage23-guide.json` (H abre e fecha o guia, dicas oferecidas pela situação e mostradas uma vez só,
@@ -94,6 +98,8 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
 - Q: marcador de direção no ponto da mira (Q de novo olhando para ele apaga; até 3, o mais antigo sai).
 - H: abre/fecha o guia de campo (o jogo não pausa).
 - − / =: diminui/aumenta a sensibilidade do mouse (com a luneta no olho, a da luneta).
+- 1 / 2 / 3: rifle / machado / construir. E: recolhe madeira (árvore derrubada ou tronco caído).
+- Construindo: botão direito troca a altura da torre, botão esquerdo constrói.
 - K: copia o link do seu mundo (`?seed=`), para mandar a outra pessoa.
 - Tab (segurar): caderno de campo — espécies, recordes e totais; solta e fecha, o jogo não pausa.
 - V: liga/desliga o infravermelho da luneta (só faz efeito com a luneta no olho; marca "IV" no canto do retículo).
@@ -231,6 +237,26 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   padrão da luneta). `player/Sensitivity.ts`, guardado em `localStorage['birdkiller.sensibilidade']`. Aparece
   na caixa "Clique para controlar" e no guia (H).
 
+- [x] **23. Machado e madeira** (o usuário liberou o "inventário simples": a regra da spec "era apenas para o início
+  do projeto") — ferramentas nas teclas **1** rifle · **2** machado (`tools/Tools.ts`, `tools/AxeModel.ts`). Golpe no
+  botão esquerdo (0,7 s, alcance 2,4 m): 3 a 8 golpes conforme o raio do tronco; a árvore cai para longe do jogador
+  (gira em torno da base até a copa encostar no relevo — `world/Felled.ts`), vira toco no chunk e fica deitada até o
+  **E** recolher a madeira (conífera 10 × escala, copa 12, bétula 6, seca 5). Troncos caídos da mata também se
+  recolhem com E (comprimento × espessura). O barulho do machado e o estrondo da queda espantam os bichos. Tudo por
+  mundo em `localStorage['birdkiller.obras.<seed>']` (`world/WorldEdits.ts`): ids `cx:cz:gx:gz` das árvores
+  cortadas e `cx:cz:log:i` dos troncos recolhidos. A vegetação sorteia tudo de uma árvore antes de pular (a
+  sequência do `rand` não muda: o resto do chunk fica idêntico) e o chunk é repovoado na hora (~5 ms). Madeira no
+  placar e "E recolher madeira (+n)" logo abaixo do retículo.
+- [x] **24. Torres construídas pelo jogador** — **3** construir (`tools/Builder.ts`): torre-fantasma translúcida onde a
+  mira aponta (até 20 m), com a escada virada para o jogador; botão direito troca **3 m (15 de madeira) · 8 m (35) ·
+  20 m (80)**, botão esquerdo constrói. Vermelho, com o motivo: falta madeira, árvores no caminho (tocos não contam:
+  cortar abre espaço), chão inclinado (> 2,5 m), água, perto de outro lugar. `Places.tower()` + lista `built`, que
+  entra em colisão, piso, escada, tiro e desenho — mas **não** em `clear()`: a vegetação pula sorteios onde o lugar
+  está ocupado, e uma torre nova embaralharia a mata do chunk inteiro. `PlaceView.towerGeometry` serve para
+  qualquer altura (travamento em X a cada ~4 m, pernas mais grossas na alta). Escadas: parede invisível atrás
+  da escada e o jogador preso à largura dela (`holdOnLadder`) — na torre de 20 m, W meio torto tirava o jogador
+  da escada no meio da subida.
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
@@ -239,16 +265,7 @@ obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele
   caminho e desenhar água nele (quase uma etapa inteira sozinho).
 
 Ideias anotadas pelo usuário (ainda sem ordem nem plano):
-- [ ] **Machado e madeira** — cortar árvores com um machado para juntar madeira. Pontos a decidir: como trocar
-  entre rifle e machado (tecla), animação e som do golpe, a árvore cai e vira toco (e o toco precisa ficar
-  guardado por mundo, como os lugares), quanto de madeira cada árvore dá. A spec pede "sem inventário
-  complexo": a madeira deve ser um número só, visível só quando importa (não uma mochila).
-- [ ] **Construir torres com a madeira** — erguer uma torre de caça de tamanhos diferentes (ex.: baixa, média,
-  alta, cada uma custando mais madeira) no ponto que o jogador escolher, o "meu ponto de caça". Reaproveita o
-  modelo, a escada e as colisões das torres da etapa 19 (`world/Places.ts`, `world/PlaceView.ts`); precisa de
-  prévia de onde vai ficar (fantasma no chão), regra de terreno (não em lago, não em cima de árvore/cabana) e
-  persistência por mundo (`localStorage`, junto da sessão do seed). Não pode virar progressão: construir é
-  escolha do jogador, não desbloqueio.
+- [x] Machado e madeira, e construir torres com ela: feitos nas etapas 23 e 24.
 - [ ] **Meus lugares favoritos** — marcar de forma permanente os pontos preferidos (minhas cabanas, minhas
   torres, meus lagos ou qualquer lugar) para achar de novo. Diferente dos marcadores Q (temporários, de direção):
   ficam guardados por mundo, com um tipo/ícone, e aparecem na bússola e no mundo como os marcadores; entram no
@@ -318,6 +335,12 @@ src/
   ui/Guide.ts             conteúdo do guia de campo (tecla H)
   ui/Tips.ts              dicas na hora certa: fila, intervalo e o que já foi visto
   player/Sensitivity.ts   sensibilidade do mouse e da luneta (teclas − e =)
+  tools/Tools.ts          ferramenta na mão (1 rifle, 2 machado, 3 construir), golpe, E recolher
+  tools/AxeModel.ts       machado procedural
+  tools/Builder.ts        torre-fantasma, alturas, custo e o que impede de construir
+  world/Felled.ts         árvores derrubadas: queda, deitadas no chão, alvo do E
+  world/WorldEdits.ts     o que o jogador mudou no mundo (cortes, troncos, derrubadas, torres, madeira)
+  audio/toolSounds.ts     golpe, queda da árvore, toras, marteladas
   ui/Session.ts           mundo por jogador (resolveWorldSeed), link de compartilhar e a sessão salva por mundo
   ui/Markers.ts           marcadores de direção (tecla Q): toggle pela mira, máximo 3, números reaproveitados
   ui/Journal.ts           caderno de campo: modelo, regras de recorde e persistência (sem DOM)

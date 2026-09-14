@@ -45,6 +45,10 @@ export interface Place {
   radius: number;
   /** Altura do piso principal (plataforma da torre, assoalho da cabana). */
   floorY: number;
+  /** Afastamento das pernas da torre, do centro (m). */
+  span: number;
+  /** Construída pelo jogador: não entra no caderno e não afasta a vegetação. */
+  own: boolean;
   solids: Solid[];
   floors: Floor[];
   ladders: Ladder[];
@@ -98,6 +102,8 @@ function inRect(r: Rect, x: number, z: number, margin = 0): boolean {
  */
 export class Places {
   private readonly cells = new Map<number, Place | null>();
+  /** Torres do jogador, consultadas junto com os lugares da grade (colisão, piso, escada, tiro, desenho). */
+  private readonly built: Place[] = [];
   private lastKey = NaN;
   private lastPlace: Place | null = null;
 
@@ -114,9 +120,28 @@ export class Places {
     return this.cellPlace(Math.floor(x / C.cell), Math.floor(z / C.cell));
   }
 
-  /** Lugares com o centro a até `radius` do ponto. */
+  /**
+   * Torre construída pelo jogador (`add` = false: só a descrição, para o fantasma da construção).
+   * O centro fica em (x, z), a escada no lado +Z local.
+   */
+  tower(id: string, x: number, z: number, yaw: number, height: number, span: number, add = true): Place {
+    const y = this.heightAt(x, z);
+    const place: Place = { id, type: 'tower', x, z, y, yaw, radius: span + 2.4, floorY: y, span, own: true, solids: [], floors: [], ladders: [] };
+    this.towerParts(place, height);
+    if (add) this.built.push(place);
+    return place;
+  }
+
+  /** Alguma torre do jogador a menos de (raio dela + margem) do ponto? */
+  builtNear(x: number, z: number, margin: number): boolean {
+    for (const p of this.built) if (Math.hypot(x - p.x, z - p.z) < p.radius + margin) return true;
+    return false;
+  }
+
+  /** Lugares com o centro a até `radius` do ponto (os da grade e as torres do jogador). */
   near(x: number, z: number, radius: number, out: Place[]): Place[] {
     out.length = 0;
+    for (const p of this.built) if (Math.hypot(x - p.x, z - p.z) < radius) out.push(p);
     const C = CONFIG.places;
     const n = Math.ceil(radius / C.cell);
     const i0 = Math.floor(x / C.cell);
@@ -130,7 +155,11 @@ export class Places {
     return out;
   }
 
-  /** true se nenhum lugar ocupa o ponto (com folga) — vegetação e spawn do jogador consultam aqui. */
+  /**
+   * true se nenhum lugar da grade ocupa o ponto (com folga) — vegetação e spawn do jogador consultam aqui.
+   * As torres do jogador ficam de fora de propósito: a vegetação pula sorteios onde o lugar está ocupado, e
+   * uma torre nova embaralharia a mata do chunk inteiro (use `builtNear` para elas).
+   */
   clear(x: number, z: number, margin = 0): boolean {
     const p = this.at(x, z);
     return !p || Math.hypot(x - p.x, z - p.z) > p.radius + margin;
@@ -142,7 +171,12 @@ export class Places {
    */
   resolveCollision(pos: THREE.Vector3, radius: number, height: number): void {
     const p = this.at(pos.x, pos.z);
-    if (!p || Math.hypot(pos.x - p.x, pos.z - p.z) > p.radius + 4) return;
+    if (p) this.collide(p, pos, radius, height);
+    for (const b of this.built) this.collide(b, pos, radius, height);
+  }
+
+  private collide(p: Place, pos: THREE.Vector3, radius: number, height: number): void {
+    if (Math.hypot(pos.x - p.x, pos.z - p.z) > p.radius + 4) return;
     for (const s of p.solids) {
       if (pos.y + height <= s.y0 || pos.y >= s.y1) continue;
       if (s.kind === 'cyl') {
@@ -189,17 +223,20 @@ export class Places {
    */
   floorAt(x: number, z: number, y: number, stepUp: number): number {
     const p = this.at(x, z);
-    if (!p) return -Infinity;
     let best = -Infinity;
-    for (const f of p.floors) if (f.y <= y + stepUp && f.y > best && inRect(f, x, z)) best = f.y;
-    return best;
+    for (const q of this.built) best = floorOf(q, x, z, y, stepUp, best);
+    return p ? floorOf(p, x, z, y, stepUp, best) : best;
   }
 
   /** A escada em que o ponto está (pés dentro do volume), ou null. */
   ladderAt(pos: THREE.Vector3): Ladder | null {
     const p = this.at(pos.x, pos.z);
-    if (!p) return null;
-    for (const l of p.ladders) if (pos.y >= l.y0 && pos.y <= l.y1 && inRect(l, pos.x, pos.z)) return l;
+    const l = p ? ladderOf(p, pos) : null;
+    if (l) return l;
+    for (const q of this.built) {
+      const b = ladderOf(q, pos);
+      if (b) return b;
+    }
     return null;
   }
 
@@ -216,19 +253,15 @@ export class Places {
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
         const p = this.cellPlace(i, j);
-        if (!p) continue;
-        // Descarte rápido: o raio nem passa perto do lugar.
-        const tx = (p.x - o.x) * d.x + (p.z - o.z) * d.z;
-        const cx = o.x + d.x * tx - p.x;
-        const cz = o.z + d.z * tx - p.z;
-        if (cx * cx + cz * cz > (p.radius + 3) ** 2) continue;
-        for (const s of p.solids) {
-          const t = s.kind === 'cyl' ? rayCyl(o, d, s) : rayBox(o, d, s);
-          if (t > 0 && t < best && t <= maxT) best = t;
-        }
+        if (p) best = rayPlace(p, o, d, maxT, best);
       }
     }
+    for (const p of this.built) best = rayPlace(p, o, d, maxT, best);
     return best;
+  }
+
+  private towerParts(place: Place, height: number): void {
+    towerPartsOf(place, height);
   }
 
   private cellPlace(i: number, j: number): Place | null {
@@ -280,30 +313,12 @@ export class Places {
   private describe(id: string, type: PlaceType, x: number, z: number, yaw: number, rule: TypeRule, highest: number): Place {
     const y = this.heightAt(x, z);
     const g = { x, z, cos: Math.cos(yaw), sin: Math.sin(yaw) };
-    const place: Place = { id, type, x, z, y, yaw, radius: rule.radius, floorY: y, solids: [], floors: [], ladders: [] };
+    const place: Place = { id, type, x, z, y, yaw, radius: rule.radius, floorY: y, span: 1.4, own: false, solids: [], floors: [], ladders: [] };
     const box = (lx: number, lz: number, hx: number, hz: number, y0: number, y1: number) =>
       place.solids.push({ kind: 'box', ...rect(g, lx, lz, hx, hz), y0, y1 });
 
     if (type === 'tower') {
-      const top = y + CONFIG.places.towerHeight;
-      place.floorY = top;
-      for (const [lx, lz] of [
-        [-1.4, -1.4],
-        [1.4, -1.4],
-        [-1.4, 1.4],
-        [1.4, 1.4],
-      ]) {
-        const r = rect(g, lx, lz, 0, 0);
-        place.solids.push({ kind: 'cyl', x: r.x, z: r.z, r: 0.14, y0: y - 2, y1: top + 2.3 });
-      }
-      place.floors.push({ ...rect(g, 0, 0, 1.7, 1.7), y: top });
-      // Grade em volta da plataforma, com a abertura da escada no lado +Z.
-      box(0, -1.66, 1.7, 0.06, top, top + 1.05);
-      box(-1.66, 0, 0.06, 1.7, top, top + 1.05);
-      box(1.66, 0, 0.06, 1.7, top, top + 1.05);
-      box(-1.1, 1.66, 0.6, 0.06, top, top + 1.05);
-      box(1.1, 1.66, 0.6, 0.06, top, top + 1.05);
-      place.ladders.push({ ...rect(g, 0, 2.15, 0.48, 0.55), y0: y - 1, y1: top + 0.35 });
+      this.towerParts(place, CONFIG.places.towerHeight);
     } else if (type === 'cabin') {
       // Assoalho logo acima do canto mais alto (a base de pedra esconde o vão por baixo).
       const floor = highest + 0.2;
@@ -324,6 +339,77 @@ export class Places {
     }
     return place;
   }
+}
+
+/**
+ * Pernas, plataforma, grade (aberta no lado +Z, onde chega a escada) e a escada de uma torre de caça com a
+ * plataforma a `height` m do chão e as pernas a `place.span` m do centro.
+ */
+function towerPartsOf(place: Place, height: number): void {
+  const g = { x: place.x, z: place.z, cos: Math.cos(place.yaw), sin: Math.sin(place.yaw) };
+  const h = place.span;
+  const e = h + 0.3;
+  const top = place.y + height;
+  place.floorY = top;
+  const legR = height > 10 ? 0.2 : 0.14;
+  for (const [lx, lz] of [
+    [-h, -h],
+    [h, -h],
+    [-h, h],
+    [h, h],
+  ]) {
+    const r = rect(g, lx, lz, 0, 0);
+    place.solids.push({ kind: 'cyl', x: r.x, z: r.z, r: legR, y0: place.y - 2, y1: top + 2.3 });
+  }
+  place.floors.push({ ...rect(g, 0, 0, e, e), y: top });
+  const box = (lx: number, lz: number, hx: number, hz: number) =>
+    place.solids.push({ kind: 'box', ...rect(g, lx, lz, hx, hz), y0: top, y1: top + 1.05 });
+  const rail = e - 0.04;
+  const gap = 0.5;
+  const half = (e - gap) / 2;
+  box(0, -rail, e, 0.06);
+  box(-rail, 0, 0.06, e);
+  box(rail, 0, 0.06, e);
+  box(-(gap + half), rail, half, 0.06);
+  box(gap + half, rail, half, 0.06);
+  place.ladders.push({ ...rect(g, 0, h + 0.75, 0.48, 0.55), y0: place.y - 1, y1: top + 0.35 });
+  // Atrás da escada (entre ela e as pernas): quem sobe apertando W não escorrega para baixo da plataforma.
+  // Termina pouco abaixo do topo, onde o passo à frente leva à plataforma.
+  place.solids.push({ kind: 'box', ...rect(g, 0, h + 0.35, 0.5, 0.05), y0: place.y - 1, y1: top - 0.6 });
+}
+
+/** Mantém quem está subindo dentro da largura da escada (numa torre alta, andar torto tiraria o jogador dela). */
+export function holdOnLadder(l: Ladder, pos: THREE.Vector3): void {
+  const [lx, lz] = local(l, pos.x, pos.z);
+  const m = l.hx - 0.05;
+  if (Math.abs(lx) <= m) return;
+  const cx = Math.max(-m, Math.min(m, lx));
+  pos.x = l.x + cx * l.cos - lz * l.sin;
+  pos.z = l.z + cx * l.sin + lz * l.cos;
+}
+
+function floorOf(p: Place, x: number, z: number, y: number, stepUp: number, best: number): number {
+  for (const f of p.floors) if (f.y <= y + stepUp && f.y > best && inRect(f, x, z)) best = f.y;
+  return best;
+}
+
+function ladderOf(p: Place, pos: THREE.Vector3): Ladder | null {
+  for (const l of p.ladders) if (pos.y >= l.y0 && pos.y <= l.y1 && inRect(l, pos.x, pos.z)) return l;
+  return null;
+}
+
+/** Primeira parede, perna ou tronco do lugar no raio, se vier antes de `best`. */
+function rayPlace(p: Place, o: THREE.Vector3, d: THREE.Vector3, maxT: number, best: number): number {
+  // Descarte rápido: o raio nem passa perto do lugar.
+  const tx = (p.x - o.x) * d.x + (p.z - o.z) * d.z;
+  const cx = o.x + d.x * tx - p.x;
+  const cz = o.z + d.z * tx - p.z;
+  if (cx * cx + cz * cz > (p.radius + 3) ** 2) return best;
+  for (const s of p.solids) {
+    const t = s.kind === 'cyl' ? rayCyl(o, d, s) : rayBox(o, d, s);
+    if (t > 0 && t < best && t <= maxT) best = t;
+  }
+  return best;
 }
 
 /** Raio contra cilindro vertical com altura; 0 ou negativo = não bate (ou começou dentro). */

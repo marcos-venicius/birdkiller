@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from '../config';
 import type { Input } from '../core/Input';
+import { holdOnLadder } from '../world/Places';
 import type { Terrain } from '../world/Terrain';
 
 const MAX_PITCH = THREE.MathUtils.degToRad(CONFIG.player.maxPitch);
@@ -115,6 +116,7 @@ export class PlayerController {
     // A margem do lago segura o jogador na parte rasa.
     this.terrain.lakes.block(this.position, P.radius);
     places.resolveCollision(this.position, P.radius, P.eyeHeight);
+    if (ladder && this.position.y < ladder.y1 - 0.5) holdOnLadder(ladder, this.position);
 
     // Chão = relevo, ou um piso de lugar (plataforma, assoalho) que o pé alcança.
     const floor = places.floorAt(this.position.x, this.position.z, this.position.y, P.stepUp);

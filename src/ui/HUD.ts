@@ -39,6 +39,13 @@ export class HUD {
   private readonly noteEl: HTMLElement;
   private readonly journalEl: HTMLElement;
   private readonly guideEl: HTMLElement;
+  private readonly reserveEl: HTMLElement;
+  private readonly toolEl: HTMLElement;
+  private readonly woodBoxEl: HTMLElement;
+  private readonly woodEl: HTMLElement;
+  private readonly actionEl: HTMLElement;
+  private wood = -1;
+  private action: string | null = null;
   private readonly tipEl: HTMLElement;
   private readonly rangeEl: HTMLElement;
   private readonly irEl: HTMLElement;
@@ -72,15 +79,17 @@ export class HUD {
       <div class="hud-score">
         <span class="label">Pontos</span><span data-score>0</span>
         <span class="label kills">Abates</span><span data-kills>0</span>
+        <span class="wood" hidden><span class="label">Madeira</span><span data-wood>0</span></span>
       </div>
       <div class="hud-crosshair"></div>
+      <div class="hud-action" hidden></div>
       <div class="hud-kill"></div>
       <div class="hud-note"></div>
       <div class="hud-journal" hidden></div>
       <div class="hud-guide" hidden></div>
       <div class="hud-tip"></div>
       <div class="hud-reload" hidden>Recarregando...</div>
-      <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span></div>
+      <div class="hud-ammo"><span data-ammo>0</span><span class="reserve">/ ∞</span><span class="tool" hidden></span></div>
       <div class="hud-hint">
         Clique para controlar
         <small>WASD anda · botão direito liga a luneta · botão esquerdo atira · <kbd>−</kbd> <kbd>=</kbd> sensibilidade do mouse · <kbd>H</kbd> guia de campo com todos os controles e o que procurar</small>
@@ -94,6 +103,11 @@ export class HUD {
     this.killsEl = root.querySelector('[data-kills]')!;
     this.killEl = root.querySelector('.hud-kill')!;
     this.ammoEl = root.querySelector('[data-ammo]')!;
+    this.reserveEl = root.querySelector('.hud-ammo .reserve')!;
+    this.toolEl = root.querySelector('.hud-ammo .tool')!;
+    this.woodBoxEl = root.querySelector('.hud-score .wood')!;
+    this.woodEl = root.querySelector('[data-wood]')!;
+    this.actionEl = root.querySelector('.hud-action')!;
     this.reloadEl = root.querySelector('.hud-reload')!;
     this.hintEl = root.querySelector('.hud-hint')!;
     this.debugEl = root.querySelector('.hud-debug')!;
@@ -206,6 +220,31 @@ export class HUD {
 
   hideJournal(): void {
     this.journalEl.hidden = true;
+  }
+
+  /** Madeira juntada (aparece quando há alguma, ou com o machado na mão). */
+  setWood(wood: number, visible: boolean): void {
+    if (wood !== this.wood) {
+      this.wood = wood;
+      this.woodEl.textContent = String(wood);
+    }
+    if (visible === this.woodBoxEl.hidden) this.woodBoxEl.hidden = !visible;
+  }
+
+  /** Ação possível logo abaixo do retículo ("E recolher madeira (+9)"); null esconde. */
+  setAction(text: string | null): void {
+    if (text === this.action) return;
+    this.action = text;
+    this.actionEl.textContent = text ?? '';
+    this.actionEl.hidden = text === null;
+  }
+
+  /** Ferramenta na mão no lugar da munição (null = rifle, volta a mostrar a munição). */
+  setTool(name: string | null): void {
+    this.toolEl.textContent = name ?? '';
+    this.toolEl.hidden = name === null;
+    this.ammoEl.hidden = name !== null;
+    this.reserveEl.hidden = name !== null;
   }
 
   setAmmo(inMagazine: number): void {

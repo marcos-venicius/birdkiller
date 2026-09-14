@@ -21,7 +21,7 @@ export interface Kar98kModel {
   flash: THREE.Sprite;
 }
 
-function woodTexture(): THREE.CanvasTexture {
+export function woodTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 64;
