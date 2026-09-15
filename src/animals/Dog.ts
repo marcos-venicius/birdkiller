@@ -127,6 +127,16 @@ export class Dog {
       this.place(x, z, Math.atan2(P.x - x, P.z - z));
       return;
     }
+    // Jogador dentro do lago: o cão não nada — aparece na margem mais perto, olhando para ele.
+    for (let k = 0; k < 48; k++) {
+      const a = k * 2.4;
+      const r = 6 + k * 2.2;
+      const x = P.x + Math.sin(a) * r;
+      const z = P.z + Math.cos(a) * r;
+      if (!this.chunks.isClear(x, z, 0.6) || !this.terrain.lakes.dry(x, z, 0.3)) continue;
+      this.place(x, z, Math.atan2(P.x - x, P.z - z));
+      return;
+    }
     this.place(P.x, P.z, pl.yaw);
   }
 
@@ -389,7 +399,8 @@ export class Dog {
   /** Querendo andar e sem sair do lugar por muito tempo (preso atrás de um lago, entre troncos): reaparece. */
   private checkStall(dt: number): void {
     const going = this.state === 'heel' || this.state === 'track' || this.state === 'fetch';
-    if (!going) {
+    // Com o jogador na parte funda do lago, o cão fica esperando na margem: preso ali é normal.
+    if (!going || this.player.waterDepth > CONFIG.lakes.wadeDepth) {
       this.stall = 0;
       this.stallX = this.pos.x;
       this.stallZ = this.pos.z;

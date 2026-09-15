@@ -64,8 +64,8 @@
   "shot": "s10-04-meio-dia"
  },
  {
-  "eval": "(() => { __view(0.6, __lake.r * 0.2, -0.05); const p = game.player, l = __lake; return { profundidade: +game.terrain.lakes.depthAt(p.position.x, p.position.z).toFixed(2), distanciaDoCentro: +Math.hypot(p.position.x - l.x, p.position.z - l.z).toFixed(1) }; })()",
-  "label": "empurrado para a parte rasa"
+  "eval": "(() => { __view(0.6, __lake.r * 0.2, -0.05); for (let i = 0; i < 5; i++) game.player.update(1 / 30); const p = game.player, l = __lake; return { profundidade: +game.terrain.lakes.depthAt(p.position.x, p.position.z).toFixed(2), distanciaDoCentro: +Math.hypot(p.position.x - l.x, p.position.z - l.z).toFixed(1), nadando: p.swimming }; })()",
+  "label": "no meio do lago (desde a etapa 29 o jogador nada ali)"
  },
  {
   "wait": 3000

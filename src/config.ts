@@ -34,7 +34,7 @@ export const CONFIG = {
     flatness: 5.5,
     /** Quanto o terreno logo fora do lago pode estar abaixo da água (senão ela fica "pendurada"). */
     outerDrop: 2.5,
-    /** Profundidade até onde o jogador entra na água; além disso a margem o segura. */
+    /** Profundidade até onde javalis, veados e o cão entram na água; além disso a margem os segura. */
     wadeDepth: 0.5,
     /** Lagos com água desenhada até esta distância do jogador. */
     viewDistance: 320,
@@ -130,6 +130,34 @@ export const CONFIG = {
     strideFactor: 0.2,
     bobHeight: 0.035,
     bobSway: 0.025,
+  },
+
+  /** O jogador na água: pisa no raso, vadeia e, onde não dá pé, nada — nunca afunda. Profundidades = água sobre o pé (m). */
+  swim: {
+    /** Acima disto o passo é na água (respingo) — a beira encharcada, 3 cm acima da lâmina, já respinga. */
+    splashDepth: -0.03,
+    /** Até esta altura acima da água (~1,5 m fora da beira) o chão é lama. */
+    mudBand: 0.18,
+    /** Vadeando, a velocidade cai de 1 (seco) até isto quando a água chega na profundidade de nado. */
+    wadeSlow: 0.5,
+    /** Água acima disto não deixa agachar (o olho ficaria embaixo d'água). */
+    crouchMax: 0.5,
+    /** Onde o pé sai do chão e o jogador nada; volta a andar quando o fundo sobe acima de swimExit. */
+    swimDepth: 1.3,
+    swimExit: 1.15,
+    /** Nadando, o olho fica isto acima da lâmina. */
+    swimEye: 0.22,
+    swimSpeed: 2.1,
+    /** Shift: braçadas fortes, sem cansaço. */
+    swimFastSpeed: 3.3,
+    /** Aceleração na água: desliza mais que em terra. */
+    swimAccel: 2.5,
+    /** Distância por braçada (m); parado, ainda bate as pernas devagar (braçadas/s). */
+    strokeLength: 2,
+    treadRate: 0.35,
+    /** Boiando: sobe e desce com a água (m, Hz). */
+    bobHeight: 0.035,
+    bobRate: 0.45,
   },
 
   weapon: {

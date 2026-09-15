@@ -11,6 +11,7 @@ export const TIPS = {
   chuva: 'Na chuva e na neblina, o infravermelho da luneta (V) enxerga o que a névoa esconde.',
   agua: 'A marca ≈ na bússola aponta para água, com a distância: é para lá que os bichos vão beber.',
   lago: 'Lago à vista: patos nadam aqui, e veados e javalis vêm beber na margem. Vale esperar escondido.',
+  nadar: 'Aqui não dá pé: você nada (Shift nada mais rápido). O rifle fica guardado até pisar no fundo de novo.',
   torre: 'Uma torre de caça! Dá para subir pela escada (W olhando reto) e ver a mata de cima.',
   cabana: 'Uma cabana abandonada: dá para entrar pela porta.',
   arvore: 'Uma árvore gigante: ela aparece por cima da mata e ajuda a se orientar.',

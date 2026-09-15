@@ -64,6 +64,11 @@ export class Tools {
   private readonly axe: THREE.Group;
   /** 0 = ferramenta ainda embaixo da tela, 1 = na mão. */
   private raise = 1;
+  /** O que o HUD mostra no lugar da munição ("Machado", "Nadando") e junto dela ("Rastreio"). */
+  private toolLabel: string | null = null;
+  private weaponLabel: string | null = null;
+  /** Aviso "nadando, sem atirar" — no máximo um a cada 4 s. */
+  private swimNoteAt = 0;
   /** Tempo no golpe (-1 = parado) e se o acerto deste golpe já aconteceu. */
   private swing = -1;
   private struck = false;
@@ -116,8 +121,6 @@ export class Tools {
     this.current = tool;
     this.raise = 0;
     this.swing = -1;
-    this.hud.setTool(tool === 'axe' ? 'Machado' : tool === 'build' ? 'Construir' : null);
-    this.hud.setWeaponLabel(tool === 'tracker' ? 'Rastreio' : null);
   }
 
   update(dt: number): void {
@@ -127,12 +130,28 @@ export class Tools {
     if (this.input.wasPressed('Digit2')) this.select('axe');
     if (this.input.wasPressed('Digit3')) this.select('build');
     if (this.input.wasPressed('Digit4')) this.select('tracker');
+    // Nadando, os braços estão ocupados: o rifle vai para as costas, sem machado nem construção; ao
+    // voltar a dar pé, a ferramenta sobe de baixo da tela.
+    const swimming = this.player.swimming;
     // Rifle e rastreio são a mesma arma na mão (o rastreio com supressor e dardos).
-    this.weapon.holstered = this.current !== 'rifle' && this.current !== 'tracker';
+    this.weapon.holstered = swimming || (this.current !== 'rifle' && this.current !== 'tracker');
     this.weapon.variant = this.current === 'tracker' ? 'tracker' : 'rifle';
-    this.raise = Math.min(1, this.raise + dt / T.switchTime);
+    if (swimming) {
+      this.raise = 0;
+      this.swing = -1;
+      if (this.input.wasMousePressed(0) && this.time >= this.swimNoteAt) {
+        this.swimNoteAt = this.time + 4;
+        this.hud.toast('Nadando: o rifle só atira onde der pé');
+      }
+    } else {
+      this.raise = Math.min(1, this.raise + dt / T.switchTime);
+    }
+    this.showLabels(
+      swimming ? 'Nadando' : this.current === 'axe' ? 'Machado' : this.current === 'build' ? 'Construir' : null,
+      !swimming && this.current === 'tracker' ? 'Rastreio' : null,
+    );
 
-    const axe = this.current === 'axe';
+    const axe = this.current === 'axe' && !swimming;
     this.axe.visible = axe;
     if (axe) {
       if (this.swing < 0 && this.raise >= 1 && this.input.wasMousePressed(0)) {
@@ -169,6 +188,17 @@ export class Tools {
     if (this.target && this.input.wasPressed('KeyE')) this.collect(this.target);
     this.hud.setWood(this.edits.wood, this.edits.wood > 0 || this.current === 'axe' || this.current === 'build');
     if (this.progress.size > 64) this.progress.clear();
+  }
+
+  private showLabels(tool: string | null, weapon: string | null): void {
+    if (tool !== this.toolLabel) {
+      this.toolLabel = tool;
+      this.hud.setTool(tool);
+    }
+    if (weapon !== this.weaponLabel) {
+      this.weaponLabel = weapon;
+      this.hud.setWeaponLabel(weapon);
+    }
   }
 
   /** O acerto do golpe: o que estiver no alcance do machado, na mira. */

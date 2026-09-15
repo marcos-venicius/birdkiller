@@ -14,6 +14,7 @@ import { AnimalVoices } from './audio/AnimalVoices';
 import { DogVoice } from './audio/DogVoice';
 import { Footsteps } from './audio/Footsteps';
 import { Music } from './audio/Music';
+import * as waterSounds from './audio/waterSounds';
 import * as weaponSounds from './audio/weaponSounds';
 import { BirdManager } from './birds/BirdManager';
 import { Ballistics } from './combat/Ballistics';
@@ -154,7 +155,8 @@ const voices = new BirdVoices(audio);
 const boarVoices = new AnimalVoices(audio, boarKind().sounds);
 const deerVoices = new AnimalVoices(audio, deerKind().sounds);
 const dogVoice = new DogVoice(audio);
-const footsteps = new Footsteps(audio, biome);
+const footsteps = new Footsteps(audio, biome, terrain.lakes);
+footsteps.onSplash = (point, count, power) => particles.splash(point, count, power);
 const music = new Music(audio);
 weapon.onFire = (origin, dir, dart) => hunting.shoot(origin, dir, dart);
 // Machado e madeira (teclas 1 e 2, E recolhe): as árvores derrubadas ficam no chão até alguém recolher.
@@ -214,6 +216,7 @@ function offerTips(): void {
   if (weather.rain > 0.5 || weather.mist > 0.6) tips.offer('chuva');
   if (compassOn && compassMarks.length > 0) tips.offer('agua');
   if (terrain.lakes.shoreDistance(p.x, p.z) < 70) tips.offer('lago');
+  if (player.swimming) tips.offer('nadar');
   const place = terrain.places.at(p.x, p.z);
   if (place) {
     const d = Math.hypot(p.x - place.x, p.z - place.z);
@@ -631,7 +634,7 @@ if (import.meta.env.DEV) {
       setPaused: (value: boolean) => {
         paused = value;
       },
-      sounds: { ...weaponSounds, ...birdSongs, ...animalSounds, ...boarSounds, ...deerSounds },
+      sounds: { ...weaponSounds, ...birdSongs, ...animalSounds, ...boarSounds, ...deerSounds, ...waterSounds },
     },
   });
 }

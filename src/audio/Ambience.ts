@@ -23,6 +23,8 @@ interface Loops {
   leavesR: NoiseLoop;
   rustle: NoiseLoop;
   water: NoiseLoop;
+  /** A água mexida pelo jogador vadeando ou nadando. */
+  wade: NoiseLoop;
   rainHiss: NoiseLoop;
   rainLeaves: NoiseLoop;
 }
@@ -87,10 +89,15 @@ export class Ambience {
       set(loops.leavesL.freq, 2600 + 1400 * gust, now, 0.5);
       set(loops.leavesR.freq, 2800 + 1300 * gust, now, 0.5);
       // Andar pela vegetação: a grama alta das clareiras farfalha mais; agachado é mais silencioso.
+      // Dentro d'água não há mato: quem faz barulho é a água mexida pelas pernas (ou pelos braços, nadando).
       const speed = Math.hypot(player.velocity.x, player.velocity.z);
       const move = player.onGround ? Math.min(speed / 9, 1) : 0;
-      set(loops.rustle.gain, move * (0.012 + 0.03 * (1 - forest)) * (player.crouched ? 0.5 : 1), now, 0.08);
+      const wet = player.swimming ? 1 : smoothstepFn(0.02, 0.4, player.waterDepth);
+      set(loops.rustle.gain, move * (0.012 + 0.03 * (1 - forest)) * (player.crouched ? 0.5 : 1) * (1 - wet), now, 0.08);
       set(loops.rustle.freq, 2200 + speed * 150, now, 0.1);
+      const wade = player.swimming ? 0.01 + 0.02 * Math.min(speed / 3, 1) : Math.min(speed / 5, 1) * 0.04 * wet;
+      set(loops.wade.gain, wade, now, 0.15);
+      set(loops.wade.freq, 480 + speed * 80, now, 0.2);
       // Marola do lago: só se ouve perto da margem, e a rajada levanta as ondinhas.
       const shore = Math.max(this.lakes.shoreDistance(p.x, p.z), 0);
       const water = (1 - smoothstepFn(2, 45, shore)) * (0.55 + 0.45 * gust);
@@ -118,10 +125,11 @@ export class Ambience {
     const leavesR = a.loop('bandpass', 3200, 0.8, 'ambience', 0.6);
     const rustle = a.loop('bandpass', 2600, 1, 'ambience');
     const water = a.loop('bandpass', 900, 0.7, 'ambience');
+    const wade = a.loop('bandpass', 600, 0.9, 'steps');
     const rainHiss = a.loop('lowpass', 1600, 0.5, 'ambience');
     const rainLeaves = a.loop('bandpass', 3800, 0.9, 'ambience');
-    if (!wind || !leavesL || !leavesR || !rustle || !water || !rainHiss || !rainLeaves) return null;
-    this.loops = { wind, leavesL, leavesR, rustle, water, rainHiss, rainLeaves };
+    if (!wind || !leavesL || !leavesR || !rustle || !water || !wade || !rainHiss || !rainLeaves) return null;
+    this.loops = { wind, leavesL, leavesR, rustle, water, wade, rainHiss, rainLeaves };
     return this.loops;
   }
 

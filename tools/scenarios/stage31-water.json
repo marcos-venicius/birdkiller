@@ -1,0 +1,81 @@
+[
+ {
+  "wait": 3000
+ },
+ {
+  "eval": "(() => { const g = game, L = g.terrain.lakes, out = []; L.near(0, 0, 900, out); const l = out.filter(k => k.depth > 2.6).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z))[0]; window.__lake = l; g.birds.frozen = true; g.audio.unlock(); window.__sim = (frames, keys, fn) => { const p = g.player, inp = g.input; inp.down.clear(); for (const k of keys) inp.down.add(k); for (let i = 0; i < frames; i++) { p.update(1 / 30); g.weapon.update(1 / 30); g.tools.update(1 / 30); g.footsteps.update(1 / 30, p); g.particles.update(1 / 30); if (fn) fn(i); inp.endFrame(); } inp.down.clear(); }; window.__place = (ang, dist) => { const p = g.player; p.spawn(l.x + Math.cos(ang) * dist, l.z + Math.sin(ang) * dist, 0); p.yaw = Math.atan2(-(l.x - p.position.x), -(l.z - p.position.z)); p.pitch = 0; g.chunks.warmup(p.position); }; return { lago: { x: +l.x.toFixed(0), z: +l.z.toFixed(0), r: +l.r.toFixed(1), prof: +l.depth.toFixed(2), nivel: +l.level.toFixed(2) } }; })()",
+  "label": "lago escolhido"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake; __place(0.6, l.r * 1.25); const c0 = { ...g.footsteps.counts }; const rows = []; let minEye = Infinity, minFeet = Infinity, maxSink = 0; __sim(30 * 26, ['KeyW'], (i) => { const eye = g.engine.camera.position.y - l.level; if (p.swimming) { minEye = Math.min(minEye, eye); minFeet = Math.min(minFeet, p.position.y - l.level); } if (i % 45 === 0) rows.push({ t: +(i / 30).toFixed(1), distCentro: +Math.hypot(p.position.x - l.x, p.position.z - l.z).toFixed(1), aguaNoPe: +p.waterDepth.toFixed(2), fundo: +g.terrain.lakes.depthAt(p.position.x, p.position.z).toFixed(2), nadando: p.swimming, vel: +Math.hypot(p.velocity.x, p.velocity.z).toFixed(2), olhoSobreAgua: +eye.toFixed(2) }); }); const c1 = g.footsteps.counts; return { rows, olhoMinimoNadando: +minEye.toFixed(3), peMaisFundo: +minFeet.toFixed(3), passos: { terra: c1.ground - c0.ground, lama: c1.mud - c0.mud, agua: c1.water - c0.water, bracadas: c1.stroke - c0.stroke } }; })()",
+  "label": "atravessa o lago andando (W) de uma margem à outra"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake; __place(1.9, l.r * 0.15); __sim(20, []); const w = g.weapon; const m0 = w.magazine; g.input.buttonsPressed |= 1; g.input.buttons |= 1; __sim(1, []); g.input.buttons = 0; const m1 = w.magazine; g.input.buttonsPressed |= 4; __sim(15, []); const mira = w.aim; const rotulo = (() => { const el = document.querySelector('.hud-ammo .tool'); return !el.hidden && el.textContent === 'Nadando'; })(); p.crouched = false; g.input.pressed.add('KeyC'); __sim(1, []); const agachou = p.crouched; g.input.pressed.add('Space'); __sim(10, []); return { nadando: p.swimming, balasAntes: m0, balasDepois: m1, atirouNadando: m1 !== m0, luneta: +mira.toFixed(2), rifleGuardado: w.holstered, rotuloNadando: rotulo, agachouNadando: agachou, pulouNadando: p.position.y > l.level - 1.25 }; })()",
+  "label": "nadando: sem tiro, sem luneta, sem agachar, sem pular"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "shot": "s31-01-nadando"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player; p.pitch = -0.9; let mx = 0, perto = Infinity; const cam = g.engine.camera; __sim(90, ['KeyW'], () => { mx = Math.max(mx, g.particles.count); for (const q of g.particles.live) perto = Math.min(perto, q.pos.distanceTo(cam.position)); }); return { olho: +(cam.position.y - __lake.level).toFixed(2), particulasMax: mx, gotaMaisPertoDoOlho: +perto.toFixed(2) }; })()",
+  "label": "nadando olhando para baixo (respingos das braçadas)"
+ },
+ {
+  "wait": 1500
+ },
+ {
+  "shot": "s31-02-nadando-olhando-baixo"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake; const L = g.terrain.lakes; let best = null; for (let k = 0; k < 64 && !best; k++) { const a = k / 64 * 6.283; for (let d = l.r * 1.1; d > 0; d -= 0.25) { const x = l.x + Math.cos(a) * d, z = l.z + Math.sin(a) * d; if (L.depthAt(x, z) > 0.55 && L.depthAt(x, z) < 0.75) { best = { a, d }; break; } } } __place(best.a, best.d); __sim(10, []); const w = g.weapon; const m0 = w.magazine; __sim(30, []); g.input.buttonsPressed |= 1; __sim(1, []); return { aguaNoPe: +p.waterDepth.toFixed(2), nadando: p.swimming, atirou: w.magazine === m0 - 1, rotulo: (() => { const el = document.querySelector('.hud-ammo .tool'); return !el.hidden && el.textContent === 'Nadando'; })() }; })()",
+  "label": "com água pelo joelho (~0,6 m): atira normalmente"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake; __place(1.9, l.r * 0.15); __sim(20, []); const nadandoAntes = p.swimming; const back = p.yaw + Math.PI; p.yaw = back; __sim(30 * 25, ['KeyW']); const w = g.weapon; const m0 = w.magazine; __sim(40, []); g.input.buttonsPressed |= 1; __sim(1, []); return { nadandoAntes, nadandoDepois: p.swimming, aguaNoPe: +p.waterDepth.toFixed(2), rifleVoltou: !w.holstered, atirouDepois: w.magazine !== m0 }; })()",
+  "label": "sai nadando e volta a dar pé: o rifle volta"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake, L = g.terrain.lakes; let ang = 0, d = l.r; for (d = l.r * 1.05; d > 0; d -= 0.05) if (L.waterHeight(l.x + Math.cos(ang) * d, l.z + Math.sin(ang) * d) > 0.08) break; const c0 = { ...g.footsteps.counts }; let minD = 9, maxD = -9; __place(ang, d); p.yaw = Math.atan2(-Math.sin(ang), Math.cos(ang)) + Math.PI / 2; const rows = []; for (let s = 0; s < 90; s++) { const a = ang + s * 0.01; const r2 = (() => { let q = l.r * 1.05; for (; q > 0; q -= 0.05) if (L.waterHeight(l.x + Math.cos(a) * q, l.z + Math.sin(a) * q) > 0.08) break; return q; })(); p.position.x = l.x + Math.cos(a) * r2; p.position.z = l.z + Math.sin(a) * r2; const dx = -Math.sin(a), dz = Math.cos(a); p.yaw = Math.atan2(-dx, -dz); g.input.down.add('KeyW'); g.input.down.add('ShiftLeft'); p.update(1 / 30); g.footsteps.update(1 / 30, p); g.input.endFrame(); minD = Math.min(minD, p.waterDepth); maxD = Math.max(maxD, p.waterDepth); } g.input.down.clear(); const c1 = g.footsteps.counts; return { correndo: p.running, aguaNoPe: [+minD.toFixed(2), +maxD.toFixed(2)], passos: { terra: c1.ground - c0.ground, lama: c1.mud - c0.mud, agua: c1.water - c0.water } }; })()",
+  "label": "correndo pela beira, dentro d'água rasa: passos de água"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake, L = g.terrain.lakes; const ang = 2.4; let d = l.r * 1.3; for (; d > 0; d -= 0.05) if (L.waterHeight(l.x + Math.cos(ang) * d, l.z + Math.sin(ang) * d) > -0.12) break; __place(ang, d); const c0 = { ...g.footsteps.counts }; const dx = -Math.sin(ang), dz = Math.cos(ang); for (let s = 0; s < 90; s++) { const a = ang + s * 0.006; let q = l.r * 1.3; for (; q > 0; q -= 0.05) if (L.waterHeight(l.x + Math.cos(a) * q, l.z + Math.sin(a) * q) > -0.12) break; p.position.x = l.x + Math.cos(a) * q; p.position.z = l.z + Math.sin(a) * q; p.yaw = Math.atan2(Math.sin(a), -Math.cos(a)); g.input.down.add('KeyW'); p.update(1 / 30); g.footsteps.update(1 / 30, p); g.input.endFrame(); } g.input.down.clear(); const c1 = g.footsteps.counts; return { alturaSobreAgua: +(-L.waterHeight(p.position.x, p.position.z)).toFixed(2), passos: { terra: c1.ground - c0.ground, lama: c1.mud - c0.mud, agua: c1.water - c0.water } }; })()",
+  "label": "andando na margem seca a ~1 m da água: lama"
+ },
+ {
+  "eval": "(async () => { const g = game, A = g.audio, S = g.sounds, F = g.footsteps; const out = {}; const run = async (name, secs, fn) => { const r = await A.debugRender(secs, fn); out[name] = { pico: +r.peak.toFixed(3), rms: +r.rms.toFixed(4), invalido: r.invalid }; }; await run('passo correndo (clareira) — referência', 1, a => F.play(0.6, 0.1, false)); await run('passo andando (mata) — referência', 1, a => F.play(0.45, 0.9, false)); await run('lama andando', 1, a => F.play(0.45, 0.5, false, 1)); await run('água rasa correndo (5 cm)', 1, a => S.waterStep(a, 0.6, 0.05)); await run('água rasa andando (5 cm)', 1, a => S.waterStep(a, 0.45, 0.05)); await run('água no joelho andando (60 cm)', 1, a => S.waterStep(a, 0.45, 0.6)); await run('água na cintura correndo (1 m)', 1, a => S.waterStep(a, 0.6, 1)); await run('pulo na água rasa', 1.2, a => S.waterStep(a, 1.1, 0.3, true)); await run('braçada', 1.2, a => S.swimStroke(a, 1)); await run('braçada rápida', 1.2, a => S.swimStroke(a, 1.5)); await run('pernas parado', 1.2, a => S.swimStroke(a, 0)); await run('entrar nadando', 1, a => S.plunge(a)); await run('pingos ao sair', 3.5, a => S.drips(a)); return out; })()",
+  "label": "níveis dos sons (render offline)"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake; __place(1.1, l.r * 0.1); __sim(20, []); g.dog.respawnNearPlayer(); const d = g.dog.pos; return { nadando: p.swimming, caoNaAguaFunda: g.terrain.lakes.depthAt(d.x, d.z) > 0.5, caoSeco: g.terrain.lakes.dry(d.x, d.z, 0.2), distDoJogador: +Math.hypot(d.x - p.position.x, d.z - p.position.z).toFixed(1) }; })()",
+  "label": "cão com o jogador no meio do lago: aparece na margem"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake; __place(0.2, l.r * 1.4); __sim(10, []); p.pitch = -0.08; let d = l.r * 1.4; const L = g.terrain.lakes; const ang = 0.2; for (; d > 0; d -= 0.1) if (L.depthAt(l.x + Math.cos(ang) * d, l.z + Math.sin(ang) * d) > 0.8) break; p.position.x = l.x + Math.cos(ang) * d; p.position.z = l.z + Math.sin(ang) * d; __sim(20, []); g.chunks.warmup(p.position); return { aguaNoPe: +p.waterDepth.toFixed(2), nadando: p.swimming }; })()",
+  "label": "vadeando com água pela cintura (vista)"
+ },
+ {
+  "wait": 2500
+ },
+ {
+  "shot": "s31-03-vadeando"
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake; __place(1.9, l.r * 0.3); __sim(20, []); g.saveSession(); return { nadando: p.swimming, y: +(p.position.y - l.level).toFixed(2) }; })()",
+  "label": "salva a sessão nadando"
+ },
+ {
+  "eval": "location.reload(), 'recarregando'"
+ },
+ {
+  "wait": 6000
+ },
+ {
+  "eval": "(() => { const g = game, p = g.player, l = __lake = (() => { const out = []; g.terrain.lakes.near(p.position.x, p.position.z, 100, out); return out[0]; })(); for (let i = 0; i < 10; i++) { p.update(1 / 30); } return { nadando: p.swimming, peSobreAgua: +(p.position.y - l.level).toFixed(2), olhoSobreAgua: +(g.engine.camera.position.y - l.level).toFixed(2) }; })()",
+  "label": "depois de recarregar: continua boiando"
+ }
+]

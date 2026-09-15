@@ -33,6 +33,7 @@ aparecem sozinhas, uma única vez, quando a situação chega (a primeira noite, 
 | Correr (sem cansaço) | Shift |
 | Agachar (alterna) | C |
 | Pular | Espaço |
+| Nadar (onde não dá pé; Shift nada mais rápido) | W A S D |
 | Mirar com a luneta (liga/desliga) | Botão direito |
 | Atirar | Botão esquerdo |
 | Recarregar (quando faltar munição) | R |
@@ -69,7 +70,8 @@ a cartucho — quanto menos faltar, mais rápido. A munição é infinita.
   do seu campo de visão.
 - **Lagos e patos**: clareiras com água espalhadas pela floresta, com ondulação, reflexo do céu e o caminho do sol
   (ou da lua) na superfície. Patos boiam, nadam, mergulham o bico e levantam voo em bando quando você chega perto;
-  o pato abatido cai e fica boiando. Dá para entrar na parte rasa, mas não para nadar.
+  o pato abatido cai e fica boiando. Dá para entrar na água: no raso os passos espirram, mais fundo a água segura
+  as pernas e, onde não dá pé, você nada até a outra margem — sem afundar, mas também sem atirar até pisar no fundo.
 - **Bússola**: uma fita discreta no topo com o rumo e marcas para a água num raio de 600 m, com a distância —
   é assim que você acha os lagos. Tecla L desliga, se preferir a tela limpa.
 - **Veados**: a caça grande. Pastam em clareiras e beiras de mata, ouvem de longe demais para quem chega

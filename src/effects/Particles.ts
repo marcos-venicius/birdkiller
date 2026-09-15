@@ -89,15 +89,15 @@ export class Particles {
     }
   }
 
-  /** Respingo de água: gotas claras subindo e caindo de volta. */
-  splash(point: THREE.Vector3, count: number): void {
+  /** Respingo de água: gotas claras subindo e caindo de volta (`power` < 1 = respingo baixo, de passo ou braçada). */
+  splash(point: THREE.Vector3, count: number, power = 1): void {
     for (let i = 0; i < count; i++) {
       const p = this.spawn();
       if (!p) return;
       p.feather = false;
       p.pos.copy(point);
-      p.vel.set(rnd(-1.8, 1.8), rnd(3, 6.5), rnd(-1.8, 1.8));
-      p.w = p.h = rnd(0.025, 0.06);
+      p.vel.set(rnd(-1.8, 1.8) * power, rnd(3, 6.5) * power, rnd(-1.8, 1.8) * power);
+      p.w = p.h = rnd(0.025, 0.06) * Math.min(1, 0.4 + power);
       p.life = rnd(0.5, 0.9);
       p.color.setRGB(rnd(0.7, 0.9), rnd(0.85, 1), 1);
     }

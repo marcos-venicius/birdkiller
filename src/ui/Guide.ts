@@ -10,6 +10,7 @@ export const GUIDE: { title: string; items: string[] }[] = [
       '**W A S D** anda · **Shift** corre, sem cansaço · **Espaço** pula',
       '**C** agacha: você faz menos barulho e os bichos demoram a notar',
       'Correr espanta tudo por perto; agachado e parado, quase nada',
+      'Dá para entrar nos lagos: a água segura as pernas e, onde não dá pé, você nada — sem atirar até pisar no fundo',
     ],
   },
   {

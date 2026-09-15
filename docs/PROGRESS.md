@@ -48,6 +48,10 @@ vegetação fora d'água, custo do heightAt, capturas em 4 horas do dia),
 tiro vital/traseira, corpo, spawn em área aberta, sons),
 `stage13b-drink.json` (sede: tempo até chegar à margem, distância da água, se fica de frente para ela, e que
 longe de lago nenhum o bicho não trava),
+`stage31-water.json` (atravessa um lago andando: raso → vadeando → nadando → raso, olho sempre acima da água; nadando
+não atira/mira/agacha/pula e o HUD diz "Nadando"; com água no joelho atira; o rifle volta ao dar pé; correndo na
+beira = passos de água, na margem = lama; níveis dos sons novos; o cão fica na margem seca; sessão salva nadando
+volta boiando),
 `stage30-tracker.json` (tecla 4, supressor e 3 dardos, dardo real marca o veado sem ferir, o bando vizinho
 não se assusta, marca na bússola com a distância, o marcado não some a 400 m, dardo passa pelo pássaro, 4ª marca
 tira a mais antiga, abate do marcado apaga a marca, o rifle comum segue igual),
@@ -120,6 +124,7 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   os tem, pedido do usuário): `?hora=22` ou `?hora=5.5` (começa em outra hora; o padrão é 17h), `?chuva=1`
   (começa chovendo), `?ir=torre|cabana|arvore` (começa a ~30 m do lugar mais perto do início) e `?debug`
   (FPS, CPU, relógio, posição). `?quality=0..4` continua valendo no build (ajuste de desempenho, não atalho).
+- Água: dá para entrar nos lagos andando; onde não dá pé o jogador nada (W A S D, Shift mais rápido) e não atira.
 - Ctrl **não** é usado para agachar porque Ctrl+W fecha a aba no navegador.
 
 ## Etapas
@@ -308,6 +313,24 @@ movimento em tempo real — os cenários simulam chamando `game.player.update(1/
   por distância) até morrer — no abate, aviso "rastreado abatido". Mesma balística da bala: luneta, telêmetro e
   tracinhos valem igual. Marcas não são guardadas entre sessões.
 
+- [x] **29. Água: vadear e nadar** (pedido do usuário) — o `Lakes.block` não segura mais o jogador (javalis, veados e o cão continuam parando
+  no raso). `PlayerController.waterDepth` (água sobre o pé) e `swimming`: vadeando, a velocidade cai até 50% com a
+  água chegando a 1,3 m e não dá para agachar com água acima de 0,5 m; onde o fundo passa de 1,3 m o pé sai do chão
+  e o jogador **nada** — boia com o pé a 1,3 m da lâmina e o olho ~22 cm acima dela (**nunca afunda**), sem
+  gravidade nem pulo, 2,1 m/s (Shift 3,3), desliza ao parar, sobe e desce com a marola e com as braçadas; volta a
+  andar quando o fundo sobe acima de 1,15 m. Nadando **não atira**: `Tools` guarda o rifle (`weapon.holstered`),
+  sem luneta, machado ou construção; o HUD mostra "Nadando" no lugar da munição e o clique avisa "o rifle só atira
+  onde der pé"; ao dar pé o rifle sobe de baixo da tela. Com água no joelho ainda atira. **Sons**
+  (`audio/waterSounds.ts`, escolhidos em `Footsteps` por `Lakes.waterHeight`): passo na água (chape + respingo
+  no raso, "xuá" da perna mais fundo — é o que toca correndo pela beira), lama logo fora da beira (~1,5 m), braçada
+  (parado, só as pernas), mergulho ao sair do chão, pingos ao voltar a pisar, pulo caindo na água; no ambiente, o
+  farfalhar da grama some na água e entra a água mexida (`Ambience.wade`). Respingos visíveis (`Particles.splash`
+  com força) no passo e na braçada — nadando, nascem a 1,2 m+ e baixos, para nenhuma gota passar colada no olho.
+  O cão não nada: espera na margem (sem o "preso → reaparece" enquanto o jogador está no fundo) e, se precisar
+  reaparecer, vai para a margem seca mais perto. Dica `nadar` e linha no guia (H). Config em `CONFIG.swim`.
+  Níveis (render offline): passo correndo na água rasa pico 0,055 / RMS 0,0035 (grama correndo 0,026 / 0,0014),
+  braçada 0,092 / 0,0075, mergulho 0,096, pulo na água 0,22. Cenário `stage31-water.json`.
+
 ## A fazer (combinado com o usuário, nesta ordem)
 Plano de retenção escolhido pelo usuário. A spec proíbe XP, níveis, desbloqueios, loja, missões e ranking
 obrigatório, então nada aqui dá "poder": o jogo segura o jogador pelo que ele viu, lembra e ainda quer ver.
@@ -418,7 +441,8 @@ src/
   audio/BirdVoices.ts     cantos por pássaro (intervalo/alcance por espécie, máx. 6 simultâneos) e sons de transição
   audio/birdSongs.ts      SONGS[espécie](a, dest, alarme), wingFlutter, corpseThud
   audio/animalSounds.ts   ANIMALS (coruja, pica-pau, corvo, galho, bugio), cricketChirp
-  audio/Footsteps.ts      passos pelo stepPhase do jogador + aterrissagem
+  audio/Footsteps.ts      passos pelo stepPhase do jogador + aterrissagem; na água: respingo, lama, braçadas
+  audio/waterSounds.ts    passo na água, braçada, mergulho, pingos, lama
   core/Quality.ts         qualidade adaptativa (pixel ratio + mapa de sombras) e ?quality=0..4
   core/math.ts            + angleDiff, raySphere (compartilhados por pássaros e javalis)
   world/spawnRules.ts     inPlayerView(): regra "fora do campo de visão" usada por pássaros e javalis
